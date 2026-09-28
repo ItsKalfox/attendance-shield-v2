@@ -43,8 +43,12 @@ const getOrganizations = async (req, res, next) => {
             status: 'ACTIVE'
         }).populate('organizationId');
 
-        // Extract organizations
-        const organizations = memberships.map(m => m.organizationId);
+        // Extract organizations and attach the user's role
+        const organizations = memberships.map(m => {
+            const org = m.organizationId.toObject();
+            org.userRole = m.role;
+            return org;
+        });
 
         res.status(200).json(organizations);
     } catch (error) {

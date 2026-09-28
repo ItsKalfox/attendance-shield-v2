@@ -82,23 +82,27 @@ const CourseDetails = () => {
     if (loading) return <div className="p-4">Loading course details...</div>;
     if (!course) return <div className="p-4">Course not found</div>;
 
+    const isAttendee = activeOrganization?.userRole === 'ATTENDEE';
+
     return (
         <div className="animate-fade-in">
-            <Link to="/app/courses" className="text-slate-400 hover:text-white flex items-center mb-6 w-fit transition">
+            <Link to="/app/courses" className="text-brand-600 hover:text-brand-800 flex items-center mb-6 w-fit transition font-medium bg-brand-50 px-3 py-1.5 rounded-lg border border-brand-100">
                 <ArrowLeft size={16} className="mr-2" /> Back to Courses
             </Link>
 
             <div className="flex justify-between items-start mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                    <h1 className="text-3xl font-bold mb-2 flex items-center gap-3 text-slate-800">
                         {course.name}
                         <span className="badge badge-primary text-sm">{course.code}</span>
                     </h1>
-                    <p className="text-slate-400 max-w-2xl">{course.description || 'No description'}</p>
+                    <p className="text-slate-500 max-w-2xl">{course.description || 'No description'}</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowEnrollModal(true)}>
-                    <UserPlus size={18} className="mr-2" /> Enroll Students
-                </button>
+                {!isAttendee && (
+                    <button className="btn btn-primary shadow-sm" onClick={() => setShowEnrollModal(true)}>
+                        <UserPlus size={18} className="mr-2" /> Enroll Students
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -128,8 +132,8 @@ const CourseDetails = () => {
                                         {members.map(m => (
                                             <tr key={m._id}>
                                                 <td>{m.userId?.firstName} {m.userId?.lastName}</td>
-                                                <td className="text-slate-400">{m.userId?.email}</td>
-                                                <td className="text-slate-400">{m.userId?.studentId || '-'}</td>
+                                                <td className="text-slate-500">{m.userId?.email}</td>
+                                                <td className="text-slate-500">{m.userId?.studentId || '-'}</td>
                                                 <td>
                                                     <span className="badge badge-success">Active</span>
                                                 </td>
@@ -148,12 +152,12 @@ const CourseDetails = () => {
                         <div className="space-y-4">
                             {course.instructors?.map(inst => (
                                 <div key={inst._id} className="flex items-center">
-                                    <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold mr-3">
+                                    <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold mr-3 border border-brand-200">
                                         {inst.userId?.firstName?.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="font-medium">{inst.userId?.firstName} {inst.userId?.lastName}</div>
-                                        <div className="text-xs text-slate-400">{inst.userId?.email}</div>
+                                        <div className="font-medium text-slate-800">{inst.userId?.firstName} {inst.userId?.lastName}</div>
+                                        <div className="text-xs text-slate-500">{inst.userId?.email}</div>
                                     </div>
                                 </div>
                             ))}
@@ -164,32 +168,32 @@ const CourseDetails = () => {
 
             {/* Enroll Modal */}
             {showEnrollModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
-                    <div className="card w-full max-w-lg relative max-h-[90vh] flex flex-col">
-                        <h2 className="text-xl font-bold mb-4">Enroll Members in {course.code}</h2>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+                    <div className="card w-full max-w-lg relative max-h-[90vh] flex flex-col bg-white">
+                        <h2 className="text-xl font-bold mb-4 text-slate-800">Enroll Members in {course.code}</h2>
                         
-                        <div className="flex-1 overflow-y-auto mb-4 border border-slate-700 rounded-md">
+                        <div className="flex-1 overflow-y-auto mb-4 border border-slate-200 rounded-md bg-slate-50">
                             {orgMembers.length === 0 ? (
-                                <div className="p-8 text-center text-slate-400">
+                                <div className="p-8 text-center text-slate-500">
                                     All organization members are already enrolled in this course!
                                 </div>
                             ) : (
-                                <div className="divide-y divide-slate-700">
+                                <div className="divide-y divide-slate-100">
                                     {orgMembers.map(m => (
-                                        <label key={m._id} className="flex items-center p-3 hover:bg-slate-800 cursor-pointer transition">
+                                        <label key={m._id} className="flex items-center p-3 hover:bg-white cursor-pointer transition">
                                             <input 
                                                 type="checkbox" 
-                                                className="mr-3 w-4 h-4 rounded border-slate-600 text-indigo-500 bg-slate-800 focus:ring-indigo-500/50"
+                                                className="mr-3 w-4 h-4 rounded border-slate-300 text-brand-600 bg-white focus:ring-brand-500/50"
                                                 checked={selectedMemberIds.includes(m._id)}
                                                 onChange={() => toggleMemberSelection(m._id)}
                                             />
                                             <div className="flex-1">
-                                                <div className="font-medium">{m.userId?.firstName} {m.userId?.lastName}</div>
-                                                <div className="text-xs text-slate-400">
+                                                <div className="font-medium text-slate-800">{m.userId?.firstName} {m.userId?.lastName}</div>
+                                                <div className="text-xs text-slate-500">
                                                     {m.userId?.email} {m.studentId ? `· ID: ${m.studentId}` : ''}
                                                 </div>
                                             </div>
-                                            <div className="text-xs badge bg-slate-700 text-slate-300">
+                                            <div className="text-xs badge bg-slate-100 text-slate-600 border border-slate-200">
                                                 {m.role}
                                             </div>
                                         </label>
@@ -198,7 +202,7 @@ const CourseDetails = () => {
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-3 mt-auto pt-4 border-t border-slate-700">
+                        <div className="flex justify-end gap-3 mt-auto pt-4 border-t border-slate-100">
                             <button className="btn btn-outline" onClick={() => setShowEnrollModal(false)} disabled={enrolling}>
                                 Cancel
                             </button>

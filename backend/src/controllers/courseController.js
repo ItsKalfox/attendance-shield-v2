@@ -9,10 +9,18 @@ const getCourses = async (req, res, next) => {
     try {
         const organizationId = req.params.organizationId;
         
-        // Members might only see active courses, whereas admins might see all
-        const query = { organizationId };
-        if (req.member.role === 'MEMBER') {
-            query.status = 'ACTIVE';
+        let query = { organizationId };
+        
+        if (req.member.role === 'ATTENDEE') {
+            // Find courses this user is enrolled in
+            const enrollments = await CourseMember.find({
+                organizationId,
+                userId: req.user._id
+            });
+            const courseIds = enrollments.map(e => e.courseId);
+            
+            query._id = { $in: courseIds };
+            query.status = 'ACTIVE'; // Only show active courses for attendees
         }
 
         const courses = await Course.find(query)
@@ -32,7 +40,7 @@ const getCourses = async (req, res, next) => {
 // @access  Private (ADMIN/OWNER/INSTRUCTOR)
 const createCourse = async (req, res, next) => {
     try {
-        const { name, code, description, instructors } = req.body;
+        const { name, code, description, instructors, attendees } = req.body;
         const organizationId = req.params.organizationId;
 
         const course = await Course.create({
@@ -42,6 +50,30 @@ const createCourse = async (req, res, next) => {
             description,
             instructors: instructors || [req.member._id] // Default to creator if none provided
         });
+
+        if (attendees && Array.isArray(attendees) && attendees.length > 0) {
+            const courseMembersToInsert = [];
+            
+            for (const orgMemberId of attendees) {
+                const orgMember = await OrganizationMember.findOne({
+                    _id: orgMemberId,
+                    organizationId
+                });
+                
+                if (orgMember) {
+                    courseMembersToInsert.push({
+                        organizationId,
+                        courseId: course._id,
+                        userId: orgMember.userId,
+                        organizationMemberId: orgMember._id
+                    });
+                }
+            }
+            
+            if (courseMembersToInsert.length > 0) {
+                await CourseMember.insertMany(courseMembersToInsert);
+            }
+        }
 
         res.status(201).json(course);
     } catch (error) {

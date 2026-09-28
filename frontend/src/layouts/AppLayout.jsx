@@ -89,18 +89,29 @@ const AppLayout = () => {
                         <NavLink to="/app/dashboard" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                             <LayoutDashboard size={20} className="mr-3" /> Dashboard
                         </NavLink>
-                        <NavLink to="/app/sessions" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                            <CalendarClock size={20} className="mr-3" /> Sessions
-                        </NavLink>
-                        <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                            <BookOpen size={20} className="mr-3" /> Courses
-                        </NavLink>
-                        <NavLink to="/app/members" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                            <Users size={20} className="mr-3" /> Members
-                        </NavLink>
-                        <NavLink to="/app/settings" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
-                            <Settings size={20} className="mr-3" /> Settings
-                        </NavLink>
+                        
+                        {activeOrganization?.userRole === 'ATTENDEE' ? (
+                            <>
+                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                    <BookOpen size={20} className="mr-3" /> My Courses
+                                </NavLink>
+                            </>
+                        ) : (
+                            <>
+                                <NavLink to="/app/sessions" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                    <CalendarClock size={20} className="mr-3" /> Sessions
+                                </NavLink>
+                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                    <BookOpen size={20} className="mr-3" /> Courses
+                                </NavLink>
+                                <NavLink to="/app/members" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                    <Users size={20} className="mr-3" /> Members
+                                </NavLink>
+                                <NavLink to="/app/settings" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                    <Settings size={20} className="mr-3" /> Settings
+                                </NavLink>
+                            </>
+                        )}
                     </nav>
                 </div>
                 
