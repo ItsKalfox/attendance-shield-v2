@@ -1,0 +1,250 @@
+const User = require('../models/User');
+const PasswordResetOTP = require('../models/PasswordResetOTP');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
+// Generate JWT
+const generateToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || '30d',
+    });
+};
+
+// @desc    Register a new user
+// @route   POST /api/auth/signup
+// @access  Public
+const signup = async (req, res, next) => {
+    try {
+        const { firstName, lastName, email, password } = req.body;
+
+        if (!firstName || !lastName || !email || !password) {
+            return res.status(400).json({ message: 'Please add all fields' });
+        }
+
+        // Check if user exists
+        const userExists = await User.findOne({ email });
+
+        if (userExists) {
+            return res.status(400).json({ message: 'User already exists' });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        // Create user
+        const user = await User.create({
+            firstName,
+            lastName,
+            email,
+            passwordHash
+        });
+
+        if (user) {
+            res.status(201).json({
+                _id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                avatar: user.avatar,
+                token: generateToken(user._id),
+            });
+        } else {
+            res.status(400).json({ message: 'Invalid user data' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Authenticate a user
+// @route   POST /api/auth/login
+// @access  Public
+const login = async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        // Check for user email
+        const user = await User.findOne({ email }).select('+passwordHash');
+
+        if (user && (await bcrypt.compare(password, user.passwordHash))) {
+            res.json({
+                _id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                avatar: user.avatar,
+                token: generateToken(user._id),
+            });
+        } else {
+            res.status(400).json({ message: 'Invalid credentials' });
+        }
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get user data
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = async (req, res, next) => {
+    try {
+        res.status(200).json(req.user);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Forgot Password
+// @route   POST /api/auth/forgot-password
+// @access  Public
+const forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            // Return success even if user not found to prevent enumeration
+            return res.status(200).json({ message: 'If an account exists, an OTP has been sent.' });
+        }
+
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Hash OTP for DB storage
+        const salt = await bcrypt.genSalt(10);
+        const otpHash = await bcrypt.hash(otp, salt);
+
+        // Delete any existing OTPs for user
+        await PasswordResetOTP.deleteMany({ userId: user._id });
+
+        // Save new OTP
+        await PasswordResetOTP.create({
+            userId: user._id,
+            otpHash,
+            expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+        });
+
+        // Send Email
+        const message = `Your password reset OTP is: ${otp}\n\nIt is valid for 10 minutes.`;
+        
+        await sendEmail({
+            email: user.email,
+            subject: 'Password Reset OTP',
+            message
+        });
+
+        res.status(200).json({ message: 'If an account exists, an OTP has been sent.' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Verify OTP
+// @route   POST /api/auth/verify-reset-otp
+// @access  Public
+const verifyResetOtp = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+        
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Please provide email and OTP' });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        const otpRecord = await PasswordResetOTP.findOne({ 
+            userId: user._id,
+            used: false,
+            expiresAt: { $gt: Date.now() }
+        });
+
+        if (!otpRecord) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        // Check attempts
+        if (otpRecord.attempts >= 5) {
+            return res.status(400).json({ message: 'Too many attempts. Request a new OTP.' });
+        }
+
+        const isMatch = await bcrypt.compare(otp, otpRecord.otpHash);
+
+        if (!isMatch) {
+            otpRecord.attempts += 1;
+            await otpRecord.save();
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+
+        // Generate temporary token for password reset
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+        
+        // Let's store this resetTokenHash on the OTP record
+        otpRecord.used = true;
+        await otpRecord.save();
+        
+        // Actually for simplicity, we can just return a short-lived JWT token specialized for reset
+        const tempToken = jwt.sign({ id: user._id, type: 'reset' }, process.env.JWT_SECRET, { expiresIn: '15m' });
+
+        res.status(200).json({ 
+            message: 'OTP Verified',
+            resetToken: tempToken
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Reset Password
+// @route   POST /api/auth/reset-password
+// @access  Public
+const resetPassword = async (req, res, next) => {
+    try {
+        const { resetToken, password } = req.body;
+
+        if (!resetToken || !password) {
+            return res.status(400).json({ message: 'Please provide reset token and new password' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+        } catch (error) {
+            return res.status(400).json({ message: 'Invalid or expired reset token' });
+        }
+
+        if (decoded.type !== 'reset') {
+            return res.status(400).json({ message: 'Invalid token type' });
+        }
+
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(400).json({ message: 'User not found' });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        user.passwordHash = passwordHash;
+        await user.save();
+
+        res.status(200).json({ message: 'Password has been reset successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+module.exports = {
+    signup,
+    login,
+    getMe,
+    forgotPassword,
+    verifyResetOtp,
+    resetPassword
+};

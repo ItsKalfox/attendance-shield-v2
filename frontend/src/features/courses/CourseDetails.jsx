@@ -1,0 +1,216 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useOrganization } from '../../context/OrganizationContext';
+import api from '../../services/api';
+import { ArrowLeft, Users, UserPlus } from 'lucide-react';
+
+const CourseDetails = () => {
+    const { courseId } = useParams();
+    const { activeOrganization } = useOrganization();
+    
+    const [course, setCourse] = useState(null);
+    const [members, setMembers] = useState([]);
+    const [orgMembers, setOrgMembers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [enrolling, setEnrolling] = useState(false);
+    
+    // Quick and dirty multi-select state
+    const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [showEnrollModal, setShowEnrollModal] = useState(false);
+
+    useEffect(() => {
+        const fetchDetails = async () => {
+            if (!activeOrganization) return;
+            try {
+                setLoading(true);
+                const [courseRes, courseMembersRes, orgMembersRes] = await Promise.all([
+                    api.get(`/organizations/${activeOrganization._id}/courses/${courseId}`),
+                    api.get(`/organizations/${activeOrganization._id}/courses/${courseId}/members`),
+                    api.get(`/organizations/${activeOrganization._id}/members`)
+                ]);
+                
+                setCourse(courseRes.data);
+                setMembers(courseMembersRes.data);
+                
+                // Filter out those already in the course
+                const enrolledIds = courseMembersRes.data.map(m => m.userId?._id);
+                setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id)));
+            } catch (error) {
+                console.error("Failed to load course details", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchDetails();
+    }, [activeOrganization, courseId]);
+
+    const handleEnroll = async () => {
+        if (selectedMemberIds.length === 0) return;
+        
+        try {
+            setEnrolling(true);
+            await api.post(`/organizations/${activeOrganization._id}/courses/${courseId}/members`, {
+                organizationMemberIds: selectedMemberIds
+            });
+            
+            // Reload members
+            const [courseMembersRes, orgMembersRes] = await Promise.all([
+                api.get(`/organizations/${activeOrganization._id}/courses/${courseId}/members`),
+                api.get(`/organizations/${activeOrganization._id}/members`)
+            ]);
+            setMembers(courseMembersRes.data);
+            const enrolledIds = courseMembersRes.data.map(m => m.userId?._id);
+            setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id)));
+            
+            setShowEnrollModal(false);
+            setSelectedMemberIds([]);
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to enroll members');
+        } finally {
+            setEnrolling(false);
+        }
+    };
+
+    const toggleMemberSelection = (orgMemberId) => {
+        setSelectedMemberIds(prev => 
+            prev.includes(orgMemberId) 
+                ? prev.filter(id => id !== orgMemberId)
+                : [...prev, orgMemberId]
+        );
+    };
+
+    if (loading) return <div className="p-4">Loading course details...</div>;
+    if (!course) return <div className="p-4">Course not found</div>;
+
+    return (
+        <div className="animate-fade-in">
+            <Link to="/app/courses" className="text-slate-400 hover:text-white flex items-center mb-6 w-fit transition">
+                <ArrowLeft size={16} className="mr-2" /> Back to Courses
+            </Link>
+
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                        {course.name}
+                        <span className="badge badge-primary text-sm">{course.code}</span>
+                    </h1>
+                    <p className="text-slate-400 max-w-2xl">{course.description || 'No description'}</p>
+                </div>
+                <button className="btn btn-primary" onClick={() => setShowEnrollModal(true)}>
+                    <UserPlus size={18} className="mr-2" /> Enroll Students
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                    <div className="card h-full">
+                        <h2 className="text-xl font-bold mb-4 flex items-center">
+                            <Users size={18} className="mr-2 text-indigo-400" /> 
+                            Enrolled Members ({members.length})
+                        </h2>
+                        
+                        {members.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400">
+                                No students enrolled yet.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="table w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Student ID</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {members.map(m => (
+                                            <tr key={m._id}>
+                                                <td>{m.userId?.firstName} {m.userId?.lastName}</td>
+                                                <td className="text-slate-400">{m.userId?.email}</td>
+                                                <td className="text-slate-400">{m.userId?.studentId || '-'}</td>
+                                                <td>
+                                                    <span className="badge badge-success">Active</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div>
+                    <div className="card h-full">
+                        <h2 className="text-xl font-bold mb-4">Instructors</h2>
+                        <div className="space-y-4">
+                            {course.instructors?.map(inst => (
+                                <div key={inst._id} className="flex items-center">
+                                    <div className="w-10 h-10 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold mr-3">
+                                        {inst.userId?.firstName?.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <div className="font-medium">{inst.userId?.firstName} {inst.userId?.lastName}</div>
+                                        <div className="text-xs text-slate-400">{inst.userId?.email}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Enroll Modal */}
+            {showEnrollModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
+                    <div className="card w-full max-w-lg relative max-h-[90vh] flex flex-col">
+                        <h2 className="text-xl font-bold mb-4">Enroll Members in {course.code}</h2>
+                        
+                        <div className="flex-1 overflow-y-auto mb-4 border border-slate-700 rounded-md">
+                            {orgMembers.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400">
+                                    All organization members are already enrolled in this course!
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-slate-700">
+                                    {orgMembers.map(m => (
+                                        <label key={m._id} className="flex items-center p-3 hover:bg-slate-800 cursor-pointer transition">
+                                            <input 
+                                                type="checkbox" 
+                                                className="mr-3 w-4 h-4 rounded border-slate-600 text-indigo-500 bg-slate-800 focus:ring-indigo-500/50"
+                                                checked={selectedMemberIds.includes(m._id)}
+                                                onChange={() => toggleMemberSelection(m._id)}
+                                            />
+                                            <div className="flex-1">
+                                                <div className="font-medium">{m.userId?.firstName} {m.userId?.lastName}</div>
+                                                <div className="text-xs text-slate-400">
+                                                    {m.userId?.email} {m.studentId ? `· ID: ${m.studentId}` : ''}
+                                                </div>
+                                            </div>
+                                            <div className="text-xs badge bg-slate-700 text-slate-300">
+                                                {m.role}
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-auto pt-4 border-t border-slate-700">
+                            <button className="btn btn-outline" onClick={() => setShowEnrollModal(false)} disabled={enrolling}>
+                                Cancel
+                            </button>
+                            <button className="btn btn-primary" onClick={handleEnroll} disabled={enrolling || selectedMemberIds.length === 0}>
+                                {enrolling ? 'Enrolling...' : `Enroll ${selectedMemberIds.length} members`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default CourseDetails;

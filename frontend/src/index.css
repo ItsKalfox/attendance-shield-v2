@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 font-sans antialiased min-h-screen selection:bg-brand-500/20 selection:text-brand-900;
+  }
+}
+
+@layer components {
+  /* Layout */
+  .app-container {
+    @apply flex h-screen overflow-hidden bg-slate-50;
+  }
+  
+  .app-sidebar {
+    @apply w-72 bg-white border-r border-slate-200 flex flex-col transition-all z-20 shadow-sm relative;
+  }
+  
+  .app-main {
+    @apply flex-1 flex flex-col overflow-hidden relative;
+  }
+  
+  .app-header {
+    @apply h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center px-8 sticky top-0 z-30 shadow-sm;
+  }
+  
+  .app-content {
+    @apply flex-1 overflow-y-auto p-8;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200;
+  }
+  
+  .glass {
+    @apply bg-white/90 backdrop-blur-md border border-slate-200/50 shadow-xl;
+  }
+
+  /* Form Elements */
+  .form-group {
+    @apply mb-5;
+  }
+  
+  .form-label {
+    @apply block text-sm font-semibold text-slate-700 mb-2;
+  }
+  
+  .form-input {
+    @apply w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-slate-800 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 placeholder:text-slate-400 shadow-sm;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none disabled:cursor-not-allowed shadow-sm;
+  }
+  
+  .btn-primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700 shadow-brand-500/25 hover:shadow-brand-500/40 border border-transparent;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900;
+  }
+  
+  .btn-outline {
+    @apply bg-transparent text-brand-600 border border-brand-200 hover:bg-brand-50 hover:border-brand-300;
+  }
+  
+  .btn-danger {
+    @apply bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300;
+  }
+  
+  .btn-block {
+    @apply w-full;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+  }
+  .badge-success { @apply bg-emerald-100 text-emerald-700 border border-emerald-200; }
+  .badge-warning { @apply bg-amber-100 text-amber-700 border border-amber-200; }
+  .badge-danger { @apply bg-red-100 text-red-700 border border-red-200; }
+  .badge-primary { @apply bg-brand-100 text-brand-700 border border-brand-200; }
+
+  /* Tables */
+  .table-container {
+    @apply w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  
+  .table {
+    @apply w-full text-sm text-left border-collapse;
+  }
+  
+  .table th {
+    @apply px-6 py-4 font-semibold text-slate-500 bg-slate-50 border-b border-slate-200 uppercase tracking-wider text-xs;
+  }
+  
+  .table td {
+    @apply px-6 py-4 border-b border-slate-100 text-slate-700;
+  }
+  
+  .table tr:last-child td {
+    @apply border-0;
+  }
+  
+  .table tr:hover td {
+    @apply bg-slate-50/80;
+  }
+}
+
+/* Modal fix for vertical centering */
+.modal-overlay {
+  @apply fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm overflow-y-auto;
+}
+
+.modal-container {
+  @apply min-h-full flex items-center justify-center p-4 sm:p-6;
+}
+
+.modal-content {
+  @apply bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-2xl w-full relative my-8 animate-fade-in;
+}
+
+/* Animations */
+@keyframes fade-in-up {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: none; }
+}
+
+.animate-fade-in {
+  animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.skeleton {
+  @apply relative overflow-hidden bg-slate-200 rounded-lg;
+}
+
+.skeleton::after {
+  content: "";
+  @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
