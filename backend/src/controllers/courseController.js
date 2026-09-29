@@ -125,6 +125,11 @@ const updateCourse = async (req, res, next) => {
             return res.status(404).json({ message: 'Course not found' });
         }
 
+        const requesterRole = req.member.role;
+        if (requesterRole === 'INSTRUCTOR' && !course.instructors.some(id => id.toString() === req.member._id.toString())) {
+            return res.status(403).json({ message: 'Only course instructors or organization owners can modify this course' });
+        }
+
         if (name) course.name = name;
         if (code) course.code = code;
         if (description !== undefined) course.description = description;
@@ -166,6 +171,16 @@ const enrollMembers = async (req, res, next) => {
 
         if (!organizationMemberIds || !Array.isArray(organizationMemberIds)) {
             return res.status(400).json({ message: 'Provide an array of organizationMemberIds' });
+        }
+
+        const course = await Course.findOne({ _id: courseId, organizationId });
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        const requesterRole = req.member.role;
+        if (requesterRole === 'INSTRUCTOR' && !course.instructors.some(id => id.toString() === req.member._id.toString())) {
+            return res.status(403).json({ message: 'Only course instructors or organization owners can enroll members in this course' });
         }
 
         const enrolled = [];

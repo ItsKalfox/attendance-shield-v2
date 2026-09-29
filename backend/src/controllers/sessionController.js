@@ -43,6 +43,10 @@ const createSession = async (req, res, next) => {
         const qrToken = crypto.randomBytes(32).toString('hex');
         const qrTokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
 
+        if (req.member.role === 'INSTRUCTOR' && instructorId !== req.member._id.toString()) {
+            return res.status(403).json({ message: 'You can only create sessions for yourself.' });
+        }
+
         const sessionData = {
             organizationId,
             courseId,
@@ -128,6 +132,10 @@ const confirmSession = async (req, res, next) => {
             return res.status(400).json({ message: 'Session is already confirmed' });
         }
 
+        if (req.member.role === 'INSTRUCTOR' && session.instructorId.toString() !== req.member._id.toString()) {
+            return res.status(403).json({ message: 'You cannot modify other instructors\' sessions.' });
+        }
+
         session.status = 'CONFIRMED';
         session.confirmedAt = new Date();
         session.confirmedBy = req.member._id;
@@ -151,6 +159,10 @@ const cancelSession = async (req, res, next) => {
 
         if (!session) {
             return res.status(404).json({ message: 'Session not found' });
+        }
+
+        if (req.member.role === 'INSTRUCTOR' && session.instructorId.toString() !== req.member._id.toString()) {
+            return res.status(403).json({ message: 'You cannot modify other instructors\' sessions.' });
         }
 
         session.status = 'CANCELLED';
