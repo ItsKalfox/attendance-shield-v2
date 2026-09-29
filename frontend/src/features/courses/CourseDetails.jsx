@@ -41,9 +41,9 @@ const CourseDetails = () => {
                 setMembers(courseMembersRes.data);
                 setSessions(sessionsRes.data);
                 
-                // Filter out those already in the course
+                // Filter out those already in the course and non-attendees
                 const enrolledIds = courseMembersRes.data.map(m => m.userId?._id);
-                setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id)));
+                setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
             } catch (error) {
                 console.error("Failed to load course details", error);
             } finally {
@@ -69,7 +69,7 @@ const CourseDetails = () => {
             ]);
             setMembers(courseMembersRes.data);
             const enrolledIds = courseMembersRes.data.map(m => m.userId?._id);
-            setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id)));
+            setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
             
             setShowEnrollModal(false);
             setSelectedMemberIds([]);
@@ -109,7 +109,7 @@ const CourseDetails = () => {
             // Reload org members to add them back to the enroll list
             const orgMembersRes = await api.get(`/organizations/${activeOrganization._id}/members`);
             const enrolledIds = members.filter(m => m._id !== memberId).map(m => m.userId?._id);
-            setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id)));
+            setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
         } catch (error) {
             alert(error.response?.data?.message || 'Failed to remove member');
         }
@@ -274,7 +274,7 @@ const CourseDetails = () => {
                         <div className="flex-1 overflow-y-auto mb-4 border border-slate-200 rounded-md bg-slate-50">
                             {orgMembers.length === 0 ? (
                                 <div className="p-8 text-center text-slate-500">
-                                    All organization members are already enrolled in this course!
+                                    No available students to enroll. They might all be enrolled already!
                                 </div>
                             ) : (
                                 <div className="divide-y divide-slate-100">
