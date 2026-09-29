@@ -107,8 +107,8 @@ const OrganizationDetails = () => {
             
             {/* Header Details */}
             <div className="card p-8 bg-white border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-6 opacity-5">
-                    <Building2 size={120} />
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 pointer-events-none z-0" style={{ opacity: 0.05 }}>
+                    <Building2 size={180} />
                 </div>
                 
                 <div className="flex flex-col md:flex-row gap-8 items-start relative z-10">
