@@ -143,6 +143,7 @@ const CourseDetails = () => {
     const canDelete = isOwner || isCourseInstructor;
 
     return (
+        <>
         <div className="animate-fade-in">
             <Link to="/app/courses" className="text-brand-600 hover:text-brand-800 flex items-center mb-6 w-fit transition font-medium bg-brand-50 px-3 py-1.5 rounded-lg border border-brand-100">
                 <ArrowLeft size={16} className="mr-2" /> Back to Courses
@@ -262,6 +263,7 @@ const CourseDetails = () => {
                     </div>
                 </div>
             </div>
+        </div>
 
             {/* Enroll Modal */}
             {showEnrollModal && (
@@ -320,7 +322,7 @@ const CourseDetails = () => {
                 type={confirmModalConfig.type}
                 confirmText={confirmModalConfig.action === 'delete_course' ? "Delete" : confirmModalConfig.action === 'remove_member' ? "Remove" : "Confirm"}
             />
-        </div>
+        </>
     );
 };
 
