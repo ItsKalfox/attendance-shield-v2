@@ -187,33 +187,52 @@ const SessionDetails = () => {
         doc.setFontSize(18);
         doc.text('Attendance Report', 14, 22);
         
-        doc.setFontSize(11);
-        doc.text(`Course: ${session.courseId?.name} (${session.courseId?.code})`, 14, 32);
-        doc.text(`Session: ${session.lectureType}`, 14, 38);
-        doc.text(`Instructor: ${session.instructorId?.userId?.firstName} ${session.instructorId?.userId?.lastName}`, 14, 44);
-        doc.text(`Date & Time: ${new Date(session.startTime).toLocaleString()} - ${new Date(session.expiresAt).toLocaleString()}`, 14, 50);
-        
-        const filteredRecordsForPDF = includeFlagged ? attendanceRecords : attendanceRecords.filter(r => !r.isFlagged);
-        const totalMarkedPDF = filteredRecordsForPDF.length;
-        doc.text(`Total Enrolled: ${totalEnrolled}`, 14, 60);
-        doc.text(`Total Present: ${totalMarkedPDF}`, 14, 66);
-        doc.text(`Total Absent: ${totalEnrolled - totalMarkedPDF}`, 14, 72);
-        
-        const tableData = members.map(m => {
-            const record = filteredRecordsForPDF.find(r => r.userId?._id === m.userId?._id);
-            return [
-                `${m.userId?.firstName} ${m.userId?.lastName}`,
-                m.studentId || '-',
-                record ? 'PRESENT' : 'ABSENT',
-                record ? record.markedBy : '-',
-                record ? new Date(record.markedAt).toLocaleTimeString() : '-'
-            ];
-        });
+        const headerTableData = [
+            ['Course Code', session.courseId?.code || '-', 'Session Type', session.lectureType || '-'],
+            ['Course Title', session.courseId?.name || '-', 'Instructor', `${session.instructorId?.userId?.firstName || ''} ${session.instructorId?.userId?.lastName || ''}`.trim()],
+            ['Date', new Date(session.startTime).toLocaleDateString(), 'Time', `${new Date(session.startTime).toLocaleTimeString()} - ${new Date(session.expiresAt).toLocaleTimeString()}`],
+        ];
 
         autoTable(doc, {
-            startY: 80,
-            head: [['Name', 'Student ID', 'Status', 'Marked By', 'Time']],
+            startY: 28,
+            body: headerTableData,
+            theme: 'grid',
+            styles: { fontSize: 10, cellPadding: 3, textColor: 0, lineColor: 0, lineWidth: 0.1, fillColor: 255 },
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 35 },
+                1: { cellWidth: 55 },
+                2: { fontStyle: 'bold', cellWidth: 35 },
+                3: { cellWidth: 55 }
+            }
+        });
+        
+        const filteredRecordsForPDF = includeFlagged ? attendanceRecords : attendanceRecords.filter(r => !r.isFlagged);
+        const presentItems = members.map(m => {
+            const record = filteredRecordsForPDF.find(r => r.userId?._id === m.userId?._id && r.status === 'PRESENT');
+            return record ? { member: m, record } : null;
+        }).filter(item => item !== null);
+
+        const totalMarkedPDF = presentItems.length;
+        const pdfPercentMarked = totalEnrolled > 0 ? Math.round((totalMarkedPDF / totalEnrolled) * 100) : 0;
+        
+        doc.setFontSize(11);
+        doc.text(`Total Enrolled: ${totalEnrolled}`, 14, doc.lastAutoTable.finalY + 10);
+        doc.text(`Total Present: ${totalMarkedPDF}`, 14, doc.lastAutoTable.finalY + 16);
+        doc.text(`Attendance Rate: ${pdfPercentMarked}%`, 14, doc.lastAutoTable.finalY + 22);
+        
+        const tableData = presentItems.map(item => [
+            item.member.studentId || '-',
+            `${item.member.userId?.firstName} ${item.member.userId?.lastName}`,
+            new Date(item.record.markedAt).toLocaleTimeString()
+        ]);
+
+        autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 28,
+            head: [['Student ID', 'Name', 'Mark Time']],
             body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: 255, textColor: 0, fontStyle: 'bold', lineWidth: 0.1, lineColor: 0 },
+            bodyStyles: { fillColor: 255, textColor: 0, lineWidth: 0.1, lineColor: 0 },
         });
         
         doc.save(`Attendance_${session.courseId?.code}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
