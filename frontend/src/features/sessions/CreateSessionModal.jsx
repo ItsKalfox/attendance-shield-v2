@@ -151,6 +151,21 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
         });
     };
 
+    const handleGeofenceToggle = (e) => {
+        const isEnabled = e.target.checked;
+        setFormData(prev => ({ ...prev, isGeofenceEnabled: isEnabled }));
+        
+        if (isEnabled) {
+            navigator.geolocation.getCurrentPosition((position) => {
+                const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+                setFormData(prev => ({ ...prev, geofenceCoordinates: loc }));
+                setMapCenter(loc);
+            }, (err) => {
+                console.warn("Could not auto-fetch location", err);
+            });
+        }
+    };
+
     const tenMinsAgo = new Date(new Date().getTime() - 10 * 60000);
     const minDateTime = new Date(tenMinsAgo.getTime() - tenMinsAgo.getTimezoneOffset() * 60000).toISOString().slice(0,16);
 
@@ -267,7 +282,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                         </div>
                                     </div>
                                     <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" className="sr-only peer" checked={formData.isGeofenceEnabled} onChange={(e) => setFormData({...formData, isGeofenceEnabled: e.target.checked})} />
+                                        <input type="checkbox" className="sr-only peer" checked={formData.isGeofenceEnabled} onChange={handleGeofenceToggle} />
                                         <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
                                     </label>
                                 </div>
