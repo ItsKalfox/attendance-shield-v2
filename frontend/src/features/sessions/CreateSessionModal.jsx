@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
+import { useAuth } from '../../context/AuthContext';
 import { X } from 'lucide-react';
 
 const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const { activeOrganization } = useOrganization();
+    const { user } = useAuth();
     const [courses, setCourses] = useState([]);
     const [instructors, setInstructors] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
@@ -34,19 +36,30 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                 );
                 setInstructors(instructorMembers);
                 
+                let defaultInstructorId = '';
+                // Auto-select the currently logged-in user
+                const myMember = instructorMembers.find(m => m.userId?._id === user?._id || m.userId === user?._id);
+                if (myMember) {
+                    defaultInstructorId = myMember._id;
+                } else if (instructorMembers.length > 0) {
+                    defaultInstructorId = instructorMembers[0]._id;
+                }
+                
                 // Set defaults
                 if (coursesRes.data.length > 0) {
                     setFormData(prev => ({ ...prev, courseId: coursesRes.data[0]._id }));
                 }
-                if (instructorMembers.length > 0) {
-                    setFormData(prev => ({ ...prev, instructorId: instructorMembers[0]._id }));
+                
+                if (defaultInstructorId) {
+                    setFormData(prev => ({ ...prev, instructorId: defaultInstructorId }));
                 }
 
-                // Default times (now, and +15 mins)
+                // Default times (now, and +2 hours)
                 const now = new Date();
                 const nowLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0,16);
                 
-                const expires = new Date(now.getTime() + 15 * 60000);
+                // 2 hours = 120 minutes
+                const expires = new Date(now.getTime() + 120 * 60000);
                 const expiresLocal = new Date(expires.getTime() - expires.getTimezoneOffset() * 60000).toISOString().slice(0,16);
                 
                 setFormData(prev => ({
@@ -62,10 +75,18 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
             }
         };
         fetchData();
-    }, [activeOrganization]);
+    }, [activeOrganization, user]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        const start = new Date(formData.startTime);
+        const expires = new Date(formData.expiresAt);
+        
+        if (expires <= start) {
+            setError('Expiry time must be after the start time.');
+            return;
+        }
         
         setLoading(true);
         setError('');
@@ -87,6 +108,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
             [e.target.name]: e.target.value
         });
     };
+
+    const minDateTime = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16);
 
     return (
         <div className="modal-overlay">
@@ -128,13 +151,14 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                             </div>
 
                             <div className="form-group mb-4">
-                                <label className="form-label">Instructor</label>
+                                <label className="form-label">Instructor (Read-Only)</label>
                                 <select 
                                     name="instructorId" 
-                                    className="form-input"
+                                    className="form-input bg-slate-100 text-slate-500 cursor-not-allowed"
                                     value={formData.instructorId}
                                     onChange={handleChange}
                                     required
+                                    disabled
                                 >
                                     {instructors.map(i => (
                                         <option key={i._id} value={i._id}>{i.userId.firstName} {i.userId.lastName}</option>
@@ -169,6 +193,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                         className="form-input"
                                         value={formData.startTime}
                                         onChange={handleChange}
+                                        min={minDateTime}
                                         required
                                     />
                                 </div>
@@ -180,6 +205,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                         className="form-input"
                                         value={formData.expiresAt}
                                         onChange={handleChange}
+                                        min={formData.startTime || minDateTime}
                                         required
                                     />
                                 </div>
