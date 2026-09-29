@@ -21,6 +21,17 @@ const getSessions = async (req, res, next) => {
             })
             .sort({ startTime: -1 });
 
+        const now = new Date();
+        let changed = false;
+        for (let session of sessions) {
+            if (session.status === 'SCHEDULED' && now >= session.startTime) {
+                session.status = 'ACTIVE';
+                await session.save();
+                changed = true;
+            }
+        }
+        
+        // If anything changed, refetch to get updated statuses (or we just mutate the objects inline since we're returning them)
         res.status(200).json(sessions);
     } catch (error) {
         next(error);
@@ -56,7 +67,8 @@ const createSession = async (req, res, next) => {
             expiresAt: expiresAtDate,
             confirmationDeadline,
             qrToken,
-            qrTokenHash
+            qrTokenHash,
+            status: new Date(startTime) > new Date() ? 'SCHEDULED' : 'ACTIVE'
         };
 
         if (isGeofenceEnabled) {
@@ -97,6 +109,12 @@ const getSessionById = async (req, res, next) => {
 
         // Logic to transition session state if needed before returning
         const now = new Date();
+        
+        if (session.status === 'SCHEDULED' && now >= session.startTime) {
+            session.status = 'ACTIVE';
+            await session.save();
+        }
+
         if (session.status === 'ACTIVE' && now >= session.expiresAt) {
             session.status = 'PENDING_CONFIRMATION';
             await session.save();

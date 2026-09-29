@@ -40,7 +40,7 @@ const attendanceSessionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['ACTIVE', 'PENDING_CONFIRMATION', 'CONFIRMED', 'CANCELLED'],
+        enum: ['SCHEDULED', 'ACTIVE', 'PENDING_CONFIRMATION', 'CONFIRMED', 'CANCELLED'],
         default: 'ACTIVE'
     },
     isGeofenceEnabled: {

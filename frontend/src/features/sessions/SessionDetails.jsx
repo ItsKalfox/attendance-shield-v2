@@ -239,6 +239,7 @@ const SessionDetails = () => {
                 <div>
                     <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
                         {session.courseId?.name} - {session.lectureType}
+                        {session.status === 'SCHEDULED' && <span className="badge bg-indigo-100 text-indigo-700 border border-indigo-200 text-sm">Scheduled</span>}
                         {session.status === 'ACTIVE' && <span className="badge badge-success text-sm">Active</span>}
                         {session.status === 'PENDING_CONFIRMATION' && <span className="badge badge-warning text-sm">Pending</span>}
                         {session.status === 'CONFIRMED' && <span className="badge badge-primary text-sm">Confirmed</span>}

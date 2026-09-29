@@ -49,6 +49,9 @@ const scanAttendance = async (req, res, next) => {
 
         // 3. Validate session is accepting attendance
         const now = new Date();
+        if (session.status === 'SCHEDULED' || now < session.startTime) {
+            return res.status(400).json({ message: 'The session has not started yet.' });
+        }
         if (session.status !== 'ACTIVE' || now >= session.expiresAt) {
             return res.status(400).json({ message: 'Attendance Session Expired' });
         }

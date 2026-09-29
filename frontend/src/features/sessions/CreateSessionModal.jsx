@@ -151,7 +151,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
         });
     };
 
-    const minDateTime = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    const tenMinsAgo = new Date(new Date().getTime() - 10 * 60000);
+    const minDateTime = new Date(tenMinsAgo.getTime() - tenMinsAgo.getTimezoneOffset() * 60000).toISOString().slice(0,16);
 
     return (
         <div className="modal-overlay">
