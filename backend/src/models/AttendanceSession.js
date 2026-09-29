@@ -32,9 +32,11 @@ const attendanceSessionSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    qrToken: {
+        type: String
+    },
     qrTokenHash: {
-        type: String,
-        required: true
+        type: String
     },
     status: {
         type: String,
