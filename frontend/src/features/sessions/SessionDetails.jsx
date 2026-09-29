@@ -1,12 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { ArrowLeft, Users, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import ConfirmModal from '../../components/ConfirmModal';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { Download } from 'lucide-react';
+
+const CircleChart = ({ percentage }) => {
+    const radius = 28;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+    
+    return (
+        <div className="relative flex items-center justify-center h-20 w-20">
+            <svg className="transform -rotate-90 w-20 h-20">
+                <circle
+                    cx="40"
+                    cy="40"
+                    r={radius}
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    fill="transparent"
+                    className="text-slate-100"
+                />
+                <circle
+                    cx="40"
+                    cy="40"
+                    r={radius}
+                    stroke="currentColor"
+                    strokeWidth="6"
+                    fill="transparent"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className="text-brand-500 transition-all duration-1000 ease-out"
+                />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center flex-col">
+                <span className="text-sm font-bold text-slate-800">{percentage}%</span>
+            </div>
+        </div>
+    );
+};
 
 const SessionDetails = () => {
     const { sessionId } = useParams();
     const { activeOrganization } = useOrganization();
+    const navigate = useNavigate();
     
     const [session, setSession] = useState(null);
     const [attendanceRecords, setAttendanceRecords] = useState([]);
@@ -14,19 +56,22 @@ const SessionDetails = () => {
     const [manualUserId, setManualUserId] = useState('');
     const [manualLoading, setManualLoading] = useState(false);
     const [members, setMembers] = useState([]);
+    const [copied, setCopied] = useState(false);
+    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '' });
 
     useEffect(() => {
         const fetchDetails = async () => {
             if (!activeOrganization) return;
             try {
                 setLoading(true);
-                const [sessionRes, recordsRes, membersRes] = await Promise.all([
-                    api.get(`/organizations/${activeOrganization._id}/sessions/${sessionId}`),
+                const sessionRes = await api.get(`/organizations/${activeOrganization._id}/sessions/${sessionId}`);
+                setSession(sessionRes.data);
+
+                const [recordsRes, membersRes] = await Promise.all([
                     api.get(`/organizations/${activeOrganization._id}/sessions/${sessionId}/attendance`),
-                    api.get(`/organizations/${activeOrganization._id}/members`)
+                    api.get(`/organizations/${activeOrganization._id}/courses/${sessionRes.data.courseId._id}/members`)
                 ]);
                 
-                setSession(sessionRes.data);
                 setAttendanceRecords(recordsRes.data);
                 setMembers(membersRes.data);
             } catch (error) {
@@ -49,9 +94,33 @@ const SessionDetails = () => {
         }
     };
 
+    const handleDeleteSession = async () => {
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'delete',
+            message: 'Are you sure you want to delete this session? This action cannot be undone.'
+        });
+    };
+
+    const executeDelete = async () => {
+        try {
+            await api.delete(`/organizations/${activeOrganization._id}/sessions/${sessionId}`);
+            navigate('/app/sessions');
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to delete session');
+        }
+    };
+
     const handleManualMark = async (e) => {
         e.preventDefault();
         if (!manualUserId) return;
+
+        // Duplicate check on frontend
+        const alreadyMarked = attendanceRecords.some(r => r.userId?._id === manualUserId && r.status === 'PRESENT');
+        if (alreadyMarked) {
+            alert('This student is already marked as PRESENT.');
+            return;
+        }
 
         setManualLoading(true);
         try {
@@ -71,9 +140,62 @@ const SessionDetails = () => {
     if (loading) return <div className="p-4">Loading session details...</div>;
     if (!session) return <div className="p-4">Session not found</div>;
 
-    const qrUrl = `${window.location.origin}/attendance/scan/${session.qrToken || ''}`; // Note: Backend doesn't return qrToken in GET requests for security, this is only known at creation.
-    // If we wanted to display the QR code we'd need to have stored it or generate a temporary one that the backend can validate. 
-    // Since the backend hashes it, it cannot be reversed. For production, the frontend would display it ONLY when creating the session.
+    const qrUrl = `${window.location.origin}/attend/${session.qrToken || ''}`;
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(qrUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const exportToPDF = () => {
+        if (!session) return;
+        
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text('Attendance Report', 14, 22);
+        
+        doc.setFontSize(11);
+        doc.text(`Course: ${session.courseId?.name} (${session.courseId?.code})`, 14, 32);
+        doc.text(`Session: ${session.lectureType}`, 14, 38);
+        doc.text(`Instructor: ${session.instructorId?.userId?.firstName} ${session.instructorId?.userId?.lastName}`, 14, 44);
+        doc.text(`Date & Time: ${new Date(session.startTime).toLocaleString()} - ${new Date(session.expiresAt).toLocaleString()}`, 14, 50);
+        
+        const totalEnrolled = members.length;
+        const totalMarked = attendanceRecords.length;
+        doc.text(`Total Enrolled: ${totalEnrolled}`, 14, 60);
+        doc.text(`Total Present: ${totalMarked}`, 14, 66);
+        doc.text(`Total Absent: ${totalEnrolled - totalMarked}`, 14, 72);
+        
+        const tableData = members.map(m => {
+            const record = attendanceRecords.find(r => r.userId?._id === m.userId?._id);
+            return [
+                `${m.userId?.firstName} ${m.userId?.lastName}`,
+                m.studentId || '-',
+                record ? 'PRESENT' : 'ABSENT',
+                record ? record.markedBy : '-',
+                record ? new Date(record.markedAt).toLocaleTimeString() : '-'
+            ];
+        });
+
+        doc.autoTable({
+            startY: 80,
+            head: [['Name', 'Student ID', 'Status', 'Marked By', 'Time']],
+            body: tableData,
+        });
+        
+        doc.save(`Attendance_${session.courseId?.code}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
+    };
+
+    const totalEnrolled = members.length;
+    const totalMarked = attendanceRecords.length;
+    const percentMarked = totalEnrolled > 0 ? Math.round((totalMarked / totalEnrolled) * 100) : 0;
+    
+    const selfMarkedCount = attendanceRecords.filter(r => r.markedBy === 'SELF').length;
+    const adminMarkedCount = attendanceRecords.filter(r => r.markedBy !== 'SELF').length;
+    const selfMarkedPercent = totalMarked > 0 ? Math.round((selfMarkedCount / totalMarked) * 100) : 0;
+    const adminMarkedPercent = totalMarked > 0 ? Math.round((adminMarkedCount / totalMarked) * 100) : 0;
 
     return (
         <div className="animate-fade-in">
@@ -101,11 +223,40 @@ const SessionDetails = () => {
                             <CheckCircle size={18} className="mr-2" /> Confirm Session
                         </button>
                     )}
+                    {activeOrganization?.userRole === 'OWNER' && (
+                        <button className="btn btn-danger" onClick={handleDeleteSession}>
+                            Delete Session
+                        </button>
+                    )}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 flex flex-col gap-6">
+                    {/* Attendance Info / Stats Card */}
+                    <div className="card flex items-center justify-between p-5">
+                        <div className="flex items-center gap-6">
+                            <CircleChart percentage={percentMarked} />
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800 mb-1">Attendance Rate</h3>
+                                <div className="text-sm text-slate-500 flex gap-4">
+                                    <div>
+                                        <span className="font-semibold text-slate-700">{totalMarked}</span> / {totalEnrolled} Enrolled
+                                    </div>
+                                    <div className="border-l border-slate-200 pl-4">
+                                        <span className="font-semibold text-slate-700">{selfMarkedCount}</span> Self ({selfMarkedPercent}%)
+                                    </div>
+                                    <div className="border-l border-slate-200 pl-4">
+                                        <span className="font-semibold text-slate-700">{adminMarkedCount}</span> Admin ({adminMarkedPercent}%)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button className="btn btn-outline py-2 text-sm" onClick={exportToPDF}>
+                            <Download size={16} className="mr-2" /> Export PDF
+                        </button>
+                    </div>
+
                     <div className="card h-full">
                         <h2 className="text-xl font-bold mb-4 flex items-center">
                             <Users size={18} className="mr-2 text-indigo-400" /> 
@@ -158,6 +309,10 @@ const SessionDetails = () => {
                                 <div className="font-medium">{session.courseId?.code}</div>
                             </div>
                             <div>
+                                <div className="text-sm text-slate-400 mb-1">Session Type</div>
+                                <div className="font-medium">{session.lectureType}</div>
+                            </div>
+                            <div>
                                 <div className="text-sm text-slate-400 mb-1">Instructor</div>
                                 <div className="font-medium">{session.instructorId?.userId?.firstName} {session.instructorId?.userId?.lastName}</div>
                             </div>
@@ -165,6 +320,39 @@ const SessionDetails = () => {
                                 <div className="text-sm text-slate-400 mb-1">Confirmation Deadline</div>
                                 <div className="font-medium">{new Date(session.confirmationDeadline).toLocaleString()}</div>
                             </div>
+                            
+                            {session.qrToken ? (
+                                <div className="mt-6 border-t border-slate-100 pt-6">
+                                    <h3 className="font-bold mb-3 text-sm">Attendance QR Code</h3>
+                                    <div className="bg-white p-4 rounded-xl inline-block shadow-sm border border-slate-200 mb-4">
+                                        <QRCodeSVG 
+                                            value={qrUrl}
+                                            size={150}
+                                            level="H"
+                                            includeMargin={false}
+                                        />
+                                    </div>
+                                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-200 flex items-center justify-between">
+                                        <span className="text-xs text-slate-500 truncate mr-3 font-mono">
+                                            {qrUrl}
+                                        </span>
+                                        <button 
+                                            onClick={handleCopy}
+                                            className="text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 p-1.5 rounded transition shrink-0"
+                                            title="Copy link"
+                                        >
+                                            {copied ? <Check size={14} /> : <Copy size={14} />}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-6 border-t border-slate-100 pt-6">
+                                    <h3 className="font-bold mb-3 text-sm">Attendance QR Code</h3>
+                                    <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 text-slate-500 text-sm">
+                                        QR Code is not available for this session (created before system update). Please create a new session.
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {session.status !== 'CONFIRMED' && (
@@ -197,6 +385,16 @@ const SessionDetails = () => {
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModalConfig.isOpen}
+                onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
+                onConfirm={confirmModalConfig.type === 'delete' ? executeDelete : () => {}}
+                title={confirmModalConfig.type === 'delete' ? "Delete Session" : "Confirm"}
+                message={confirmModalConfig.message}
+                type={confirmModalConfig.type}
+                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : "Confirm"}
+            />
         </div>
     );
 };
