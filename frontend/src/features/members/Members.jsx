@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useOrganization } from '../../context/OrganizationContext';
-import { Users, PlusCircle, Upload, Trash2, Mail } from 'lucide-react';
+import { Users, PlusCircle, Upload, Trash2, Mail, Eye } from 'lucide-react';
 import api from '../../services/api';
 import AddMemberModal from './AddMemberModal';
 import ImportMembersModal from './ImportMembersModal';
 import InviteOrganizerModal from './InviteOrganizerModal';
+import ViewMemberModal from './ViewMemberModal';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const Members = () => {
     const { activeOrganization } = useOrganization();
@@ -15,6 +17,8 @@ const Members = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [viewingMember, setViewingMember] = useState(null);
+    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, memberId: null, message: '' });
 
     const fetchMembers = async () => {
         if (!activeOrganization) return;
@@ -33,13 +37,24 @@ const Members = () => {
         fetchMembers();
     }, [activeOrganization]);
 
-    const handleRemove = async (memberId) => {
-        if (!window.confirm("Are you sure you want to remove this member?")) return;
+    const handleRemoveRequest = (member) => {
+        setConfirmModalConfig({
+            isOpen: true,
+            memberId: member._id,
+            message: `Are you sure you want to remove ${member.userId?.firstName} from the organization? Their account will not be deleted.`
+        });
+    };
+
+    const executeRemove = async (memberIdOverride) => {
+        const memberId = memberIdOverride || confirmModalConfig.memberId;
+        if (!memberId) return;
+        
         try {
             await api.delete(`/organizations/${activeOrganization._id}/members/${memberId}`);
             setMembers(prev => prev.filter(m => m._id !== memberId));
         } catch (error) {
             alert(error.response?.data?.message || "Failed to remove member");
+            throw error; // Throw to be caught by modal
         }
     };
 
@@ -145,8 +160,15 @@ const Members = () => {
                                         <td className="text-slate-600">{new Date(member.joinedAt).toLocaleDateString()}</td>
                                         <td className="text-right">
                                             <button 
+                                                className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition mr-1"
+                                                onClick={() => setViewingMember(member)}
+                                                title="View Details"
+                                            >
+                                                <Eye size={18} />
+                                            </button>
+                                            <button 
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" 
-                                                onClick={() => handleRemove(member._id)}
+                                                onClick={() => handleRemoveRequest(member)}
                                                 title="Remove Attendee"
                                             >
                                                 <Trash2 size={18} />
@@ -204,14 +226,25 @@ const Members = () => {
                                         </td>
                                         <td className="text-slate-600">{new Date(member.joinedAt).toLocaleDateString()}</td>
                                         <td className="text-right">
-                                            {member.role !== 'OWNER' && (
-                                                <button 
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" 
-                                                    onClick={() => handleRemove(member._id)}
-                                                    title="Remove Instructor"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
+                                            {activeOrganization?.userRole === 'OWNER' && (
+                                                <>
+                                                    <button 
+                                                        className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition mr-1"
+                                                        onClick={() => setViewingMember(member)}
+                                                        title="View Details"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+                                                    {member.role !== 'OWNER' && (
+                                                        <button 
+                                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" 
+                                                            onClick={() => handleRemoveRequest(member)}
+                                                            title="Remove Instructor"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
+                                                </>
                                             )}
                                         </td>
                                     </tr>
@@ -245,6 +278,29 @@ const Members = () => {
                 }}
             />
         )}
+
+        {viewingMember && (
+            <ViewMemberModal 
+                member={viewingMember}
+                onClose={() => setViewingMember(null)}
+                onUpdated={(updatedMember) => {
+                    setMembers(prev => prev.map(m => m._id === updatedMember._id ? updatedMember : m));
+                }}
+                onDelete={async (member) => {
+                    await executeRemove(member._id);
+                }}
+            />
+        )}
+
+        <ConfirmModal
+            isOpen={confirmModalConfig.isOpen}
+            onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
+            onConfirm={executeRemove}
+            title="Remove Member"
+            message={confirmModalConfig.message}
+            type="delete"
+            confirmText="Remove"
+        />
         </>
     );
 };

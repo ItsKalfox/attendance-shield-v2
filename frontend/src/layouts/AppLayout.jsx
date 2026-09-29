@@ -10,7 +10,8 @@ import {
     Settings, 
     LogOut, 
     ChevronDown,
-    PlusCircle
+    PlusCircle,
+    Building2
 } from 'lucide-react';
 import CreateOrganizationModal from '../features/organizations/CreateOrganizationModal';
 
@@ -33,55 +34,8 @@ const AppLayout = () => {
         <div className="app-container">
             {/* Sidebar */}
             <div className="app-sidebar">
-                <div className="p-6 border-b border-slate-200">
-                    <h2 className="text-xl font-bold text-slate-800 mb-4">Attendance</h2>
-                    
-                    {/* Organization Switcher */}
-                    <div className="relative">
-                        <button 
-                            className="w-full flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 hover:bg-slate-50 transition text-slate-800"
-                            onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-                        >
-                            <span className="truncate mr-2 font-semibold">
-                                {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
-                            </span>
-                            <ChevronDown size={16} className="text-slate-400" />
-                        </button>
-                        
-                        {showOrgDropdown && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)}></div>
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-                                    {organizations.map(org => (
-                                        <button 
-                                            key={org._id}
-                                            className="w-full text-left px-4 py-3 hover:bg-slate-50 transition flex items-center text-slate-700 hover:text-slate-900"
-                                            onClick={() => {
-                                                switchOrganization(org._id);
-                                                setShowOrgDropdown(false);
-                                            }}
-                                        >
-                                            {org._id === activeOrganization?._id && <span className="text-brand-600 mr-2 font-bold">✓</span>}
-                                            <span className={`truncate ${org._id !== activeOrganization?._id ? 'ml-5' : 'font-medium'}`}>
-                                                {org.name}
-                                            </span>
-                                        </button>
-                                    ))}
-                                    <div className="border-t border-slate-100"></div>
-                                    <button 
-                                        className="w-full text-left px-4 py-3 text-brand-600 hover:bg-brand-50 transition flex items-center font-medium"
-                                        onClick={() => {
-                                            setShowOrgDropdown(false);
-                                            setShowCreateOrg(true);
-                                        }}
-                                    >
-                                        <PlusCircle size={16} className="mr-2" />
-                                        Create Organization
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </div>
+                <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
+                    <h2 className="text-xl font-extrabold bg-gradient-to-r from-brand-600 to-indigo-600 bg-clip-text text-transparent">Attendance Shield</h2>
                 </div>
                 
                 <div className="flex-1 py-6 overflow-y-auto">
@@ -106,6 +60,9 @@ const AppLayout = () => {
                                 </NavLink>
                                 <NavLink to="/app/members" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                                     <Users size={20} className="mr-3" /> Members
+                                </NavLink>
+                                <NavLink to="/app/organization" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                    <Building2 size={20} className="mr-3" /> Organization
                                 </NavLink>
                                 <NavLink to="/app/settings" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
                                     <Settings size={20} className="mr-3" /> Settings
@@ -138,13 +95,68 @@ const AppLayout = () => {
                 <header className="app-header justify-between">
                     <div>
                         <h1 className="text-xl font-bold text-slate-800 capitalize">
-                            {window.location.pathname.split('/').pop().replace('-', ' ') || 'Dashboard'}
+                            {(() => {
+                                const pathSegment = window.location.pathname.split('/').pop();
+                                // Check if the segment is a 24-char hex string (MongoDB ID)
+                                if (/^[0-9a-fA-F]{24}$/.test(pathSegment)) {
+                                    return 'Details';
+                                }
+                                return pathSegment.replace('-', ' ') || 'Dashboard';
+                            })()}
                         </h1>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-4">
                         <div className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
                             {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                         </div>
+
+                        {/* Organization Switcher */}
+                        <div className="relative w-56">
+                            <button 
+                                className="w-full flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 hover:bg-slate-50 transition text-slate-800"
+                                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+                            >
+                                <span className="truncate mr-2 font-medium text-sm">
+                                    {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
+                                </span>
+                                <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                            </button>
+                            
+                            {showOrgDropdown && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)}></div>
+                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                                        {organizations.map(org => (
+                                            <button 
+                                                key={org._id}
+                                                className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition flex items-center text-slate-700 hover:text-slate-900 text-sm"
+                                                onClick={() => {
+                                                    switchOrganization(org._id);
+                                                    setShowOrgDropdown(false);
+                                                }}
+                                            >
+                                                {org._id === activeOrganization?._id && <span className="text-brand-600 mr-2 font-bold shrink-0">✓</span>}
+                                                <span className={`truncate ${org._id !== activeOrganization?._id ? 'ml-5' : 'font-medium'}`}>
+                                                    {org.name}
+                                                </span>
+                                            </button>
+                                        ))}
+                                        <div className="border-t border-slate-100"></div>
+                                        <button 
+                                            className="w-full text-left px-4 py-2.5 text-brand-600 hover:bg-brand-50 transition flex items-center font-medium text-sm"
+                                            onClick={() => {
+                                                setShowOrgDropdown(false);
+                                                setShowCreateOrg(true);
+                                            }}
+                                        >
+                                            <PlusCircle size={14} className="mr-2 shrink-0" />
+                                            Create Organization
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                     </div>
                 </header>
                 

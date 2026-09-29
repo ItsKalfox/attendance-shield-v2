@@ -16,10 +16,12 @@ import Sessions from './features/sessions/Sessions';
 import Members from './features/members/Members';
 import CourseDetails from './features/courses/CourseDetails';
 import SessionDetails from './features/sessions/SessionDetails';
-import ScanAttendance from './pages/ScanAttendance';
 import Invitation from './pages/Invitation';
+import PublicAttend from './pages/PublicAttend';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+
+import OrganizationDetails from './features/organization/OrganizationDetails';
 
 // Placeholder Pages
 const Settings = () => <div className="p-4">Settings (TBD)</div>;
@@ -53,6 +55,7 @@ function App() {
 
           {/* Public functional routes */}
           <Route path="/invitation/:token" element={<Invitation />} />
+          <Route path="/attend/:qrToken" element={<PublicAttend />} />
           
           {/* Main App Routes */}
           <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -63,13 +66,9 @@ function App() {
             <Route path="courses" element={<Courses />} />
             <Route path="courses/:courseId" element={<CourseDetails />} />
             <Route path="members" element={<Members />} />
+            <Route path="organization" element={<OrganizationDetails />} />
             <Route path="settings" element={<Settings />} />
           </Route>
-          
-          {/* Scanning flow (might need auth depending on requirements, user needs to be logged in to mark attendance) */}
-          <Route path="/attendance/scan/:token" element={
-            <ProtectedRoute><ScanAttendance /></ProtectedRoute>
-          } />
 
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/app/dashboard" replace />} />

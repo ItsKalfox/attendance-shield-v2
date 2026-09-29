@@ -181,7 +181,6 @@ const importMembers = async (req, res, next) => {
 // @access  Private (INSTRUCTOR/OWNER)
 const removeMember = async (req, res, next) => {
     try {
-        // Can't remove yourself through this endpoint
         const memberToRemove = await OrganizationMember.findOne({
             _id: req.params.memberId,
             organizationId: req.params.organizationId
@@ -196,7 +195,17 @@ const removeMember = async (req, res, next) => {
         }
 
         if (memberToRemove.role === 'OWNER') {
-            return res.status(400).json({ message: 'Cannot remove the organization owner' });
+            return res.status(403).json({ message: 'Cannot remove the organization owner' });
+        }
+
+        const requester = await OrganizationMember.findOne({
+            organizationId: req.params.organizationId,
+            userId: req.user._id
+        });
+
+        // Instructors cannot remove other instructors
+        if (requester.role === 'INSTRUCTOR' && memberToRemove.role === 'INSTRUCTOR') {
+            return res.status(403).json({ message: 'Instructors cannot remove other instructors' });
         }
 
         await OrganizationMember.findByIdAndDelete(req.params.memberId);
@@ -207,9 +216,117 @@ const removeMember = async (req, res, next) => {
     }
 };
 
+// @desc    Update a member's details
+// @route   PATCH /api/organizations/:organizationId/members/:memberId
+// @access  Private (INSTRUCTOR/OWNER)
+const updateMember = async (req, res, next) => {
+    try {
+        const { firstName, lastName, studentId, email } = req.body;
+        
+        const member = await OrganizationMember.findOne({
+            _id: req.params.memberId,
+            organizationId: req.params.organizationId
+        }).populate('userId');
+
+        if (!member) {
+            return res.status(404).json({ message: 'Member not found' });
+        }
+
+        const requester = await OrganizationMember.findOne({
+            organizationId: req.params.organizationId,
+            userId: req.user._id
+        });
+
+        if (member.role === 'OWNER' && requester.role !== 'OWNER') {
+            return res.status(403).json({ message: 'Only owners can edit the owner details' });
+        }
+        if (member.role === 'INSTRUCTOR' && requester.role !== 'OWNER' && member.userId._id.toString() !== req.user._id.toString()) {
+             return res.status(403).json({ message: 'Instructors cannot edit other instructors' });
+        }
+
+        if (studentId !== undefined) {
+            member.studentId = studentId;
+            await member.save();
+        }
+
+        if (firstName || lastName || email) {
+            const user = await User.findById(member.userId._id);
+            if (firstName) user.firstName = firstName;
+            if (lastName) user.lastName = lastName;
+            
+            if (email && email !== user.email) {
+                const existing = await User.findOne({ email });
+                if (existing) {
+                    return res.status(400).json({ message: 'Email already in use' });
+                }
+                user.email = email;
+            }
+            
+            await user.save();
+        }
+
+        const updatedMember = await OrganizationMember.findById(member._id).populate('userId', 'firstName lastName email avatar');
+        res.status(200).json(updatedMember);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Reset a member's password
+// @route   POST /api/organizations/:organizationId/members/:memberId/reset-password
+// @access  Private (INSTRUCTOR/OWNER)
+const resetMemberPassword = async (req, res, next) => {
+    try {
+        const member = await OrganizationMember.findOne({
+            _id: req.params.memberId,
+            organizationId: req.params.organizationId
+        }).populate('userId');
+
+        if (!member) {
+            return res.status(404).json({ message: 'Member not found' });
+        }
+
+        const requester = await OrganizationMember.findOne({
+            organizationId: req.params.organizationId,
+            userId: req.user._id
+        });
+
+        if (member.role === 'OWNER' && requester.role !== 'OWNER') {
+            return res.status(403).json({ message: 'Cannot reset owner password' });
+        }
+        if (member.role === 'INSTRUCTOR' && requester.role !== 'OWNER' && member.userId._id.toString() !== req.user._id.toString()) {
+             return res.status(403).json({ message: 'Instructors cannot reset other instructors passwords' });
+        }
+
+        const user = await User.findById(member.userId._id);
+        
+        const plainPassword = crypto.randomBytes(6).toString('hex');
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(plainPassword, salt);
+        
+        user.passwordHash = passwordHash;
+        await user.save();
+
+        let message = `Your password for the attendance system has been reset by an administrator.\n\n`;
+        message += `Your new temporary password is: ${plainPassword}\n\nPlease log in and change your password immediately.`;
+
+        await sendEmail({
+            email: user.email,
+            subject: 'Password Reset Notification',
+            message
+        });
+
+        res.status(200).json({ message: 'Password reset successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getMembers,
     addMember,
     importMembers,
-    removeMember
+    removeMember,
+    updateMember,
+    resetMemberPassword
 };

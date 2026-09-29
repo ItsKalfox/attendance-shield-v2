@@ -79,7 +79,7 @@ const getOrganizationById = async (req, res, next) => {
 // @access  Private (OWNER only)
 const updateOrganization = async (req, res, next) => {
     try {
-        const { name, avatarUrl } = req.body;
+        const { name, description } = req.body;
         
         const organization = await Organization.findById(req.params.organizationId);
         
@@ -88,7 +88,12 @@ const updateOrganization = async (req, res, next) => {
         }
 
         if (name) organization.name = name;
-        if (avatarUrl) organization.avatarUrl = avatarUrl;
+        if (description !== undefined) organization.description = description;
+        
+        if (req.file) {
+            organization.avatarUrl = req.file.path;
+            organization.avatarPublicId = req.file.filename;
+        }
         
         await organization.save();
 

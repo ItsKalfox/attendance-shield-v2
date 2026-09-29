@@ -14,6 +14,7 @@ const { getSessionAttendance, addManualAttendance, removeAttendance } = require(
 const { getDashboardStats } = require('../controllers/dashboardController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOrganizationRole } = require('../middleware/organizationMiddleware');
+const { upload } = require('../config/cloudinary');
 
 // All organization routes require authentication
 router.use(protect);
@@ -22,7 +23,7 @@ router.post('/', createOrganization);
 router.get('/', getOrganizations);
 
 router.get('/:organizationId', requireOrganizationRole(), getOrganizationById);
-router.patch('/:organizationId', requireOrganizationRole('OWNER'), updateOrganization);
+router.patch('/:organizationId', requireOrganizationRole('OWNER'), upload.single('avatar'), updateOrganization);
 
 // Dashboard route
 router.get('/:organizationId/dashboard', requireOrganizationRole(), getDashboardStats);

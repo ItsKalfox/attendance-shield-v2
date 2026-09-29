@@ -60,9 +60,9 @@ const Dashboard = () => {
                 </div>
                 {!isAttendee && (
                     <div className="flex gap-2">
-                        <button className="btn btn-primary" onClick={() => alert('Create Session TBD')}>
+                        <Link to="/app/sessions" className="btn btn-primary">
                             + Create Session
-                        </button>
+                        </Link>
                     </div>
                 )}
             </div>
@@ -131,9 +131,9 @@ const Dashboard = () => {
                             <p className="text-slate-500 mb-4 text-sm max-w-md mx-auto">
                                 There are currently no active or pending attendance sessions. Create one to start marking attendance.
                             </p>
-                            <button className="btn btn-primary shadow-sm" onClick={() => alert('Create Session TBD')}>
+                            <Link to="/app/sessions" className="btn btn-primary shadow-sm">
                                 Create Session
-                            </button>
+                            </Link>
                         </div>
                     ) : (
                         <div className="table-container">
