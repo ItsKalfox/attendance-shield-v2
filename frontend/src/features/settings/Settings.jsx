@@ -107,16 +107,10 @@ const Settings = () => {
     };
 
     return (
-        <div className="p-6 max-w-4xl mx-auto animate-fade-in space-y-6">
+        <div className="p-6 w-full animate-fade-in space-y-6">
             
-            {/* Background decorative elements for premium feel */}
-            <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-400/20 blur-[120px]"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-400/20 blur-[120px]"></div>
-            </div>
-
             {/* Profile Picture Card */}
-            <div className="card p-8 bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl flex flex-col md:flex-row gap-6 items-center">
+            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl flex flex-col md:flex-row gap-6 items-center">
                 <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-sm border-2 border-white">
                     {avatarPreview ? (
                         <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
@@ -155,7 +149,7 @@ const Settings = () => {
             </div>
 
             {/* Profile Info Card */}
-            <div className="card p-8 bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-slate-800">Profile</h2>
                     <p className="text-sm text-slate-500">Update your first and last name</p>
@@ -194,7 +188,7 @@ const Settings = () => {
             </div>
 
             {/* Email Card */}
-            <div className="card p-8 bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-slate-800">Email</h2>
                     <p className="text-sm text-slate-500">Used to log in to your account</p>
@@ -217,7 +211,7 @@ const Settings = () => {
             </div>
 
             {/* Password Card */}
-            <div className="card p-8 bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800">Password</h2>

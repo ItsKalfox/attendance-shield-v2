@@ -103,7 +103,7 @@ const OrganizationDetails = () => {
     const attendeesCount = members.filter(m => m.role === 'ATTENDEE').length;
 
     return (
-        <div className="p-6 max-w-5xl mx-auto animate-fade-in space-y-6">
+        <div className="p-6 w-full animate-fade-in space-y-6">
             
             {/* Header Details */}
             <div className="card p-8 bg-white border border-slate-200 shadow-sm relative overflow-hidden">
