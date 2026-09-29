@@ -240,11 +240,70 @@ const resetPassword = async (req, res, next) => {
     }
 };
 
+// @desc    Update user profile
+// @route   PATCH /api/auth/me
+// @access  Private
+const updateMe = async (req, res, next) => {
+    try {
+        const { firstName, lastName, email } = req.body;
+        const user = await User.findById(req.user._id);
+
+        if (firstName) user.firstName = firstName;
+        if (lastName) user.lastName = lastName;
+        if (email) {
+            // Check if email is already used by another user
+            const emailExists = await User.findOne({ email });
+            if (emailExists && emailExists._id.toString() !== user._id.toString()) {
+                return res.status(400).json({ message: 'Email already in use' });
+            }
+            user.email = email;
+        }
+
+        if (req.file) {
+            user.avatar = req.file.path;
+        }
+
+        await user.save();
+        res.status(200).json(user);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Update password
+// @route   PATCH /api/auth/me/password
+// @access  Private
+const updatePassword = async (req, res, next) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const user = await User.findById(req.user._id).select('+passwordHash');
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Please provide current and new password' });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Invalid current password' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        user.passwordHash = await bcrypt.hash(newPassword, salt);
+        await user.save();
+
+        res.status(200).json({ message: 'Password updated successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     signup,
     login,
     getMe,
     forgotPassword,
     verifyResetOtp,
-    resetPassword
+    resetPassword,
+    updateMe,
+    updatePassword
 };

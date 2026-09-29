@@ -23,8 +23,7 @@ import ResetPassword from './pages/ResetPassword';
 
 import OrganizationDetails from './features/organization/OrganizationDetails';
 
-// Placeholder Pages
-const Settings = () => <div className="p-4">Settings (TBD)</div>;
+import Settings from './features/settings/Settings';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
