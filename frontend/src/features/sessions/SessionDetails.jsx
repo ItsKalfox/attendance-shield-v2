@@ -7,7 +7,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Download } from 'lucide-react';
 
 const CircleChart = ({ percentage }) => {
@@ -210,7 +210,7 @@ const SessionDetails = () => {
             ];
         });
 
-        doc.autoTable({
+        autoTable(doc, {
             startY: 80,
             head: [['Name', 'Student ID', 'Status', 'Marked By', 'Time']],
             body: tableData,
@@ -235,7 +235,7 @@ const SessionDetails = () => {
             ['End Time', new Date(session.expiresAt).toLocaleString()],
         ];
         
-        doc.autoTable({
+        autoTable(doc, {
             startY: 30,
             body: tableData,
             theme: 'grid',

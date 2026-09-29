@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { X, Copy, Check, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const QRCodeModal = ({ qrToken, session, onClose }) => {
     const [copied, setCopied] = useState(false);
@@ -32,7 +32,7 @@ const QRCodeModal = ({ qrToken, session, onClose }) => {
             ['End Time', new Date(session.expiresAt).toLocaleString()],
         ];
         
-        doc.autoTable({
+        autoTable(doc, {
             startY: 30,
             body: tableData,
             theme: 'grid',
