@@ -174,6 +174,10 @@ const addManualAttendance = async (req, res, next) => {
             return res.status(400).json({ message: 'Cannot modify confirmed session' });
         }
 
+        if (req.member.role === 'INSTRUCTOR' && session.instructorId.toString() !== req.member._id.toString()) {
+            return res.status(403).json({ message: 'You cannot modify attendance for other instructors\' sessions.' });
+        }
+
         const orgMember = await OrganizationMember.findOne({
             organizationId,
             userId,
@@ -223,6 +227,10 @@ const removeAttendance = async (req, res, next) => {
 
         if (session.status === 'CONFIRMED') {
             return res.status(400).json({ message: 'Cannot modify confirmed session' });
+        }
+
+        if (req.member.role === 'INSTRUCTOR' && session.instructorId.toString() !== req.member._id.toString()) {
+            return res.status(403).json({ message: 'You cannot modify attendance for other instructors\' sessions.' });
         }
 
         const record = await AttendanceRecord.findOne({

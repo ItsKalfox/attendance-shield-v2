@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -57,8 +58,9 @@ const SessionDetails = () => {
     const [manualLoading, setManualLoading] = useState(false);
     const [members, setMembers] = useState([]);
     const [copied, setCopied] = useState(false);
-    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '' });
-    const [includeFlagged, setIncludeFlagged] = useState(true);
+    const { user } = useAuth();
+    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '', recordId: null });
+    const [includeFlagged, setIncludeFlagged] = useState(false);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -109,6 +111,26 @@ const SessionDetails = () => {
             navigate('/app/sessions');
         } catch (error) {
             alert(error.response?.data?.message || 'Failed to delete session');
+        }
+    };
+
+    const handleRemoveAttendance = (recordId) => {
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'remove_attendance',
+            message: 'Are you sure you want to remove this attendance record?',
+            recordId: recordId
+        });
+    };
+
+    const executeRemoveAttendance = async () => {
+        try {
+            await api.delete(`/organizations/${activeOrganization._id}/sessions/${sessionId}/attendance/${confirmModalConfig.recordId}`);
+            const recordsRes = await api.get(`/organizations/${activeOrganization._id}/sessions/${sessionId}/attendance`);
+            setAttendanceRecords(recordsRes.data);
+            setConfirmModalConfig({ isOpen: false, type: '', message: '', recordId: null });
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to remove attendance');
         }
     };
 
@@ -198,6 +220,14 @@ const SessionDetails = () => {
     const adminMarkedCount = filteredRecords.filter(r => r.markedBy !== 'SELF').length;
     const selfMarkedPercent = totalMarked > 0 ? Math.round((selfMarkedCount / totalMarked) * 100) : 0;
     const adminMarkedPercent = totalMarked > 0 ? Math.round((adminMarkedCount / totalMarked) * 100) : 0;
+
+    const canModifyAttendance = session && session.status !== 'CONFIRMED' && (
+        activeOrganization?.userRole === 'ADMIN' || 
+        activeOrganization?.userRole === 'OWNER' || 
+        (activeOrganization?.userRole === 'INSTRUCTOR' && session.instructorId?.userId?._id === user?._id)
+    );
+
+    const unmarkedMembers = members.filter(m => !attendanceRecords.some(r => r.userId?._id === m.userId?._id && r.status === 'PRESENT'));
 
     return (
         <div className="animate-fade-in">
@@ -289,6 +319,7 @@ const SessionDetails = () => {
                                             <th>Status</th>
                                             <th>Marked By</th>
                                             <th>Time</th>
+                                            {canModifyAttendance && <th>Actions</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -301,13 +332,26 @@ const SessionDetails = () => {
                                                         <span className={`badge ${r.status === 'PRESENT' ? 'badge-success' : 'badge-danger'}`}>
                                                             {r.status}
                                                         </span>
-                                                        {r.isFlagged && (
+                                                        {r.isFlagged && r.status === 'PRESENT' && (
                                                             <Flag className="text-red-500" size={16} title="The student is flagged for marking outside the attendance area" />
                                                         )}
                                                     </div>
                                                 </td>
                                                 <td className="text-slate-400">{r.markedBy}</td>
                                                 <td className="text-slate-400">{new Date(r.markedAt).toLocaleTimeString()}</td>
+                                                {canModifyAttendance && (
+                                                    <td>
+                                                        {r.status === 'PRESENT' && (
+                                                            <button 
+                                                                onClick={() => handleRemoveAttendance(r._id)} 
+                                                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition"
+                                                                title="Remove Attendance"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -372,7 +416,7 @@ const SessionDetails = () => {
                             )}
                         </div>
 
-                        {session.status !== 'CONFIRMED' && (
+                        {canModifyAttendance && (
                             <div className="border-t border-slate-700 pt-6">
                                 <h3 className="font-bold mb-3">Manual Override</h3>
                                 <form onSubmit={handleManualMark} className="flex flex-col gap-2">
@@ -383,7 +427,7 @@ const SessionDetails = () => {
                                         required
                                     >
                                         <option value="" disabled>Select a member...</option>
-                                        {members.map(m => (
+                                        {unmarkedMembers.map(m => (
                                             <option key={m._id} value={m.userId?._id}>
                                                 {m.userId?.firstName} {m.userId?.lastName} ({m.userId?.email})
                                             </option>
@@ -406,11 +450,11 @@ const SessionDetails = () => {
             <ConfirmModal
                 isOpen={confirmModalConfig.isOpen}
                 onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
-                onConfirm={confirmModalConfig.type === 'delete' ? executeDelete : () => {}}
-                title={confirmModalConfig.type === 'delete' ? "Delete Session" : "Confirm"}
+                onConfirm={confirmModalConfig.type === 'delete' ? executeDelete : confirmModalConfig.type === 'remove_attendance' ? executeRemoveAttendance : () => {}}
+                title={confirmModalConfig.type === 'delete' ? "Delete Session" : "Confirm Remove"}
                 message={confirmModalConfig.message}
-                type={confirmModalConfig.type}
-                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : "Confirm"}
+                type={confirmModalConfig.type === 'delete' ? 'delete' : 'danger'}
+                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : "Remove"}
             />
         </div>
     );
