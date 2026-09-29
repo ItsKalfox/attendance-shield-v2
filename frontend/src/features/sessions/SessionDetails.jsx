@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
 import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag, Trash2 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import jsPDF from 'jspdf';
@@ -211,6 +211,46 @@ const SessionDetails = () => {
         doc.save(`Attendance_${session.courseId?.code}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
     };
 
+    const exportQRToPDF = () => {
+        if (!session) return;
+        
+        const doc = new jsPDF();
+        
+        doc.setFontSize(18);
+        doc.text('Session Attendance QR', 14, 22);
+        
+        const tableData = [
+            ['Module Code', session.courseId?.code || '-'],
+            ['Module Name', session.courseId?.name || '-'],
+            ['Instructor', `${session.instructorId?.userId?.firstName || ''} ${session.instructorId?.userId?.lastName || ''}`.trim()],
+            ['Start Time', new Date(session.startTime).toLocaleString()],
+            ['End Time', new Date(session.expiresAt).toLocaleString()],
+        ];
+        
+        doc.autoTable({
+            startY: 30,
+            body: tableData,
+            theme: 'grid',
+            styles: { fontSize: 11, cellPadding: 5 },
+            columnStyles: {
+                0: { fontStyle: 'bold', fillColor: [241, 245, 249], cellWidth: 50, textColor: [30, 41, 59] },
+                1: { cellWidth: 130, textColor: [71, 85, 105] }
+            }
+        });
+        
+        const canvas = document.getElementById('details-qr-canvas');
+        if (canvas) {
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 14, doc.lastAutoTable.finalY + 15, 70, 70);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(qrUrl, 14, doc.lastAutoTable.finalY + 95);
+        }
+        
+        doc.save(`QR_${session.courseId?.code || 'Session'}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
+    };
+
     const totalEnrolled = members.length;
     const filteredRecords = includeFlagged ? attendanceRecords : attendanceRecords.filter(r => !r.isFlagged);
     const totalMarked = filteredRecords.length;
@@ -387,14 +427,15 @@ const SessionDetails = () => {
                                 <div className="mt-6 border-t border-slate-100 pt-6">
                                     <h3 className="font-bold mb-3 text-sm">Attendance QR Code</h3>
                                     <div className="bg-white p-4 rounded-xl inline-block shadow-sm border border-slate-200 mb-4">
-                                        <QRCodeSVG 
+                                        <QRCodeCanvas 
+                                            id="details-qr-canvas"
                                             value={qrUrl}
                                             size={150}
                                             level="H"
                                             includeMargin={false}
                                         />
                                     </div>
-                                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-200 flex items-center justify-between">
+                                    <div className="bg-slate-50 rounded-lg p-2 border border-slate-200 flex items-center justify-between mb-3">
                                         <span className="text-xs text-slate-500 truncate mr-3 font-mono">
                                             {qrUrl}
                                         </span>
@@ -406,6 +447,13 @@ const SessionDetails = () => {
                                             {copied ? <Check size={14} /> : <Copy size={14} />}
                                         </button>
                                     </div>
+                                    <button 
+                                        className="btn btn-outline w-full text-sm flex items-center justify-center"
+                                        onClick={exportQRToPDF}
+                                    >
+                                        <Download size={16} className="mr-2" />
+                                        Export QR to PDF
+                                    </button>
                                 </div>
                             ) : (
                                 <div className="mt-6 border-t border-slate-100 pt-6">

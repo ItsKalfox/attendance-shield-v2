@@ -12,6 +12,7 @@ const Sessions = () => {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [createdQrToken, setCreatedQrToken] = useState(null);
+    const [createdSession, setCreatedSession] = useState(null);
     const [activeTab, setActiveTab] = useState('active');
 
     useEffect(() => {
@@ -34,6 +35,7 @@ const Sessions = () => {
     const handleSessionCreated = (data) => {
         setSessions(prev => [data.session, ...prev]);
         setCreatedQrToken(data.qrToken);
+        setCreatedSession(data.session);
     };
 
     if (loading) {
@@ -142,8 +144,12 @@ const Sessions = () => {
 
         {createdQrToken && (
             <QRCodeModal 
-                qrToken={createdQrToken} 
-                onClose={() => setCreatedQrToken(null)} 
+                qrToken={createdQrToken}
+                session={createdSession}
+                onClose={() => {
+                    setCreatedQrToken(null);
+                    setCreatedSession(null);
+                }} 
             />
         )}
         </>

@@ -77,7 +77,11 @@ const createSession = async (req, res, next) => {
             sessionData.geofenceRadius = geofenceRadius || 100;
         }
 
-        const session = await AttendanceSession.create(sessionData);
+        let session = await AttendanceSession.create(sessionData);
+        session = await session.populate([
+            { path: 'courseId', select: 'name code' },
+            { path: 'instructorId', populate: { path: 'userId', select: 'firstName lastName email' } }
+        ]);
 
         res.status(201).json({
             session,
