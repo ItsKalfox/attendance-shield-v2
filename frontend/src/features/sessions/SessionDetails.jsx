@@ -86,12 +86,20 @@ const SessionDetails = () => {
         fetchDetails();
     }, [activeOrganization, sessionId]);
 
-    const handleConfirmSession = async () => {
+    const handleConfirmSession = () => {
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'confirm',
+            message: 'Are you sure you want to confirm this session? This will lock attendance and prevent further modifications.'
+        });
+    };
+
+    const executeConfirmSession = async () => {
         try {
             await api.post(`/organizations/${activeOrganization._id}/sessions/${sessionId}/confirm`);
             const sessionRes = await api.get(`/organizations/${activeOrganization._id}/sessions/${sessionId}`);
             setSession(sessionRes.data);
-            alert('Session confirmed successfully!');
+            setConfirmModalConfig({ isOpen: false, type: '', message: '', recordId: null });
         } catch (error) {
             alert(error.response?.data?.message || 'Failed to confirm session');
         }
@@ -499,11 +507,20 @@ const SessionDetails = () => {
             <ConfirmModal
                 isOpen={confirmModalConfig.isOpen}
                 onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
-                onConfirm={confirmModalConfig.type === 'delete' ? executeDelete : confirmModalConfig.type === 'remove_attendance' ? executeRemoveAttendance : () => {}}
-                title={confirmModalConfig.type === 'delete' ? "Delete Session" : "Confirm Remove"}
+                onConfirm={
+                    confirmModalConfig.type === 'delete' ? executeDelete : 
+                    confirmModalConfig.type === 'remove_attendance' ? executeRemoveAttendance : 
+                    confirmModalConfig.type === 'confirm' ? executeConfirmSession : 
+                    () => {}
+                }
+                title={
+                    confirmModalConfig.type === 'delete' ? "Delete Session" : 
+                    confirmModalConfig.type === 'confirm' ? "Confirm Session" : 
+                    "Confirm Remove"
+                }
                 message={confirmModalConfig.message}
-                type={confirmModalConfig.type === 'delete' ? 'delete' : 'danger'}
-                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : "Remove"}
+                type={confirmModalConfig.type === 'delete' ? 'delete' : confirmModalConfig.type === 'confirm' ? 'confirm' : 'danger'}
+                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : confirmModalConfig.type === 'confirm' ? "Confirm" : "Remove"}
             />
         </div>
     );
