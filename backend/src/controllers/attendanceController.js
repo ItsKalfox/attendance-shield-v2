@@ -2,37 +2,61 @@ const AttendanceRecord = require('../models/AttendanceRecord');
 const AttendanceSession = require('../models/AttendanceSession');
 const CourseMember = require('../models/CourseMember');
 const OrganizationMember = require('../models/OrganizationMember');
+const User = require('../models/User');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+
+function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Radius of the earth in m
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1); 
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    return R * c; // Distance in m
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI/180);
+}
 
 // @desc    Scan QR to mark attendance
 // @route   POST /api/attendance/scan
 // @access  Private
 const scanAttendance = async (req, res, next) => {
     try {
-        const { qrToken } = req.body;
+        const { qrToken, email, password, lat, lng } = req.body;
 
-        if (!qrToken) {
-            return res.status(400).json({ message: 'QR token is required' });
+        if (!qrToken || !email || !password) {
+            return res.status(400).json({ message: 'QR token, email, and password are required' });
+        }
+
+        // 1. Authenticate user inline
+        const user = await User.findOne({ email }).select('+passwordHash');
+        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         const tokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
 
-        // 1. Validate session
-        const session = await AttendanceSession.findOne({ qrTokenHash });
+        // 2. Validate session
+        const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash });
         if (!session) {
-            return res.status(404).json({ message: 'Invalid QR code' });
+            return res.status(404).json({ message: 'Invalid or expired QR code.' });
         }
 
-        // 2. Validate session is accepting attendance
+        // 3. Validate session is accepting attendance
         const now = new Date();
         if (session.status !== 'ACTIVE' || now >= session.expiresAt) {
             return res.status(400).json({ message: 'Attendance Session Expired' });
         }
 
-        // 3. Verify user belongs to organization
+        // 4. Verify user belongs to organization
         const orgMember = await OrganizationMember.findOne({
             organizationId: session.organizationId,
-            userId: req.user._id,
+            userId: user._id,
             status: 'ACTIVE'
         });
 
@@ -40,41 +64,73 @@ const scanAttendance = async (req, res, next) => {
             return res.status(403).json({ message: 'You are not a member of this organization' });
         }
 
-        // 4. Verify user is enrolled in course
+        // 5. Verify user is enrolled in course
         const courseMember = await CourseMember.findOne({
             courseId: session.courseId,
-            userId: req.user._id,
+            userId: user._id,
             status: 'ACTIVE'
         });
 
         if (!courseMember) {
-            return res.status(403).json({ message: 'You are not enrolled in this course.' });
+            return res.status(403).json({ message: 'You are not enrolled in the course associated with this session.' });
         }
 
-        // 5. Check if already marked
+        // 6. Check if already marked
         const existingRecord = await AttendanceRecord.findOne({
             sessionId: session._id,
-            userId: req.user._id
+            userId: user._id
         });
 
         if (existingRecord && existingRecord.status === 'PRESENT') {
-            return res.status(400).json({ message: 'Attendance Already Recorded' });
+            return res.status(400).json({ message: 'Attendance already marked.' });
         }
 
-        // 6. Create or update record
+        // 7. Geofence Check
+        let isFlagged = false;
+        let markedLocation = undefined;
+
+        if (session.isGeofenceEnabled && session.geofenceCoordinates && session.geofenceCoordinates.lat != null) {
+            if (lat == null || lng == null) {
+                isFlagged = true; // Flag if location denied or unavailable
+            } else {
+                markedLocation = { lat, lng };
+                const distance = getDistanceFromLatLonInM(
+                    session.geofenceCoordinates.lat,
+                    session.geofenceCoordinates.lng,
+                    lat,
+                    lng
+                );
+                if (distance > session.geofenceRadius) {
+                    isFlagged = true;
+                }
+            }
+        }
+
+        // 8. Create or update record
         if (existingRecord) {
             existingRecord.status = 'PRESENT';
             existingRecord.markedAt = Date.now();
             existingRecord.markedBy = 'SELF';
+            existingRecord.isFlagged = isFlagged;
+            if (markedLocation) existingRecord.markedLocation = markedLocation;
             await existingRecord.save();
         } else {
             await AttendanceRecord.create({
                 organizationId: session.organizationId,
                 courseId: session.courseId,
                 sessionId: session._id,
-                userId: req.user._id,
+                userId: user._id,
                 organizationMemberId: orgMember._id,
-                markedBy: 'SELF'
+                markedBy: 'SELF',
+                isFlagged,
+                markedLocation
+            });
+        }
+
+        if (isFlagged) {
+            return res.status(200).json({ 
+                message: 'You are outside the marking area. This attendance has been recorded but flagged.',
+                flagged: true
             });
         }
 

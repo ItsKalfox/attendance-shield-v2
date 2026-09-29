@@ -21,8 +21,24 @@ const ScanAttendance = () => {
         }
 
         const markAttendance = async () => {
+            setMessage('Acquiring location...');
+            let locationData = { lat: null, lng: null };
             try {
-                const res = await api.post('/attendance/scan', { qrToken: token });
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
+                });
+                locationData.lat = position.coords.latitude;
+                locationData.lng = position.coords.longitude;
+            } catch (err) {
+                console.warn("Location access denied or failed:", err);
+            }
+
+            try {
+                const res = await api.post('/attendance/scan', { 
+                    qrToken: token,
+                    lat: locationData.lat,
+                    lng: locationData.lng 
+                });
                 setStatus('success');
                 setMessage(res.data.message || 'Attendance marked successfully!');
             } catch (error) {

@@ -2,7 +2,37 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useAuth } from '../../context/AuthContext';
-import { X } from 'lucide-react';
+import { X, MapPin, Target } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix leafet marker icon issue
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const MapClickHandler = ({ setCoordinates }) => {
+    useMapEvents({
+        click(e) {
+            setCoordinates({ lat: e.latlng.lat, lng: e.latlng.lng });
+        }
+    });
+    return null;
+};
+
+const CenterToLocation = ({ center }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (center) {
+            map.flyTo([center.lat, center.lng], 16);
+        }
+    }, [center, map]);
+    return null;
+};
 
 const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const { activeOrganization } = useOrganization();
@@ -10,13 +40,17 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const [courses, setCourses] = useState([]);
     const [instructors, setInstructors] = useState([]);
     const [loadingData, setLoadingData] = useState(true);
+    const [mapCenter, setMapCenter] = useState({ lat: 6.9271, lng: 79.8612 }); // default Colombo
     
     const [formData, setFormData] = useState({
         courseId: '',
         instructorId: '',
         lectureType: 'Lecture',
         startTime: '',
-        expiresAt: ''
+        expiresAt: '',
+        isGeofenceEnabled: false,
+        geofenceCoordinates: { lat: 6.9271, lng: 79.8612 },
+        geofenceRadius: 100
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -109,12 +143,20 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
         });
     };
 
+    const handleRecalibrate = () => {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+            setFormData(prev => ({ ...prev, geofenceCoordinates: loc }));
+            setMapCenter(loc);
+        });
+    };
+
     const minDateTime = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16);
 
     return (
         <div className="modal-overlay">
             <div className="modal-container">
-                <div className="modal-content max-w-md">
+                <div className="modal-content max-w-lg">
                     <button 
                         onClick={onClose}
                         className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition bg-slate-100 hover:bg-slate-200 p-1 rounded-full"
@@ -161,7 +203,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                     disabled
                                 >
                                     {instructors.map(i => (
-                                        <option key={i._id} value={i._id}>{i.userId.firstName} {i.userId.lastName}</option>
+                                        <option key={i._id} value={i._id}>{i.userId?.firstName} {i.userId?.lastName}</option>
                                     ))}
                                 </select>
                             </div>
@@ -209,6 +251,66 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                         required
                                     />
                                 </div>
+                            </div>
+
+                            {/* Geolocation Section */}
+                            <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                            <MapPin size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-800 text-sm">Enforce Location Geofence</h3>
+                                            <p className="text-xs text-slate-500">Restrict check-ins to a GPS-defined radius</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={formData.isGeofenceEnabled} onChange={(e) => setFormData({...formData, isGeofenceEnabled: e.target.checked})} />
+                                        <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                                    </label>
+                                </div>
+
+                                {formData.isGeofenceEnabled && (
+                                    <div className="mt-4 animate-fade-in">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium text-slate-600">Center geofence marker:</span>
+                                            <button type="button" onClick={handleRecalibrate} className="text-xs btn btn-secondary py-1 px-3">
+                                                My Location
+                                            </button>
+                                        </div>
+                                        <div className="h-48 w-full rounded-lg overflow-hidden border border-slate-300 mb-4 z-0 relative">
+                                            <MapContainer center={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]} zoom={16} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+                                                <TileLayer
+                                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                />
+                                                <Marker position={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]} />
+                                                <MapClickHandler setCoordinates={(loc) => setFormData(prev => ({...prev, geofenceCoordinates: loc}))} />
+                                                <CenterToLocation center={mapCenter} />
+                                            </MapContainer>
+                                        </div>
+                                        
+                                        <div className="mt-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-sm font-semibold text-slate-700">Geofence Radius</span>
+                                                <span className="text-sm font-bold text-slate-800">{formData.geofenceRadius} m</span>
+                                            </div>
+                                            <input 
+                                                type="range" 
+                                                min="10" 
+                                                max="1000" 
+                                                step="10"
+                                                value={formData.geofenceRadius}
+                                                onChange={(e) => setFormData({...formData, geofenceRadius: parseInt(e.target.value)})}
+                                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                                            />
+                                            <div className="flex justify-between text-xs text-slate-400 mt-1">
+                                                <span>10 m</span>
+                                                <span>1000 m</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">

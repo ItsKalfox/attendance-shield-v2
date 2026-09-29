@@ -43,6 +43,18 @@ const attendanceSessionSchema = new mongoose.Schema({
         enum: ['ACTIVE', 'PENDING_CONFIRMATION', 'CONFIRMED', 'CANCELLED'],
         default: 'ACTIVE'
     },
+    isGeofenceEnabled: {
+        type: Boolean,
+        default: false
+    },
+    geofenceCoordinates: {
+        lat: { type: Number },
+        lng: { type: Number }
+    },
+    geofenceRadius: {
+        type: Number,
+        default: 100 // meters
+    },
     confirmedAt: {
         type: Date
     },

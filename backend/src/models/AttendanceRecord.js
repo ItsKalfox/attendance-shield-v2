@@ -39,6 +39,14 @@ const attendanceRecordSchema = new mongoose.Schema({
         type: String,
         enum: ['PRESENT', 'REMOVED'],
         default: 'PRESENT'
+    },
+    isFlagged: {
+        type: Boolean,
+        default: false
+    },
+    markedLocation: {
+        lat: { type: Number },
+        lng: { type: Number }
     }
 }, {
     timestamps: true

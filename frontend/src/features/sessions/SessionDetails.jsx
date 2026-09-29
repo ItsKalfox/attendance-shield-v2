@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import ConfirmModal from '../../components/ConfirmModal';
 import jsPDF from 'jspdf';
@@ -58,6 +58,7 @@ const SessionDetails = () => {
     const [members, setMembers] = useState([]);
     const [copied, setCopied] = useState(false);
     const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '' });
+    const [includeFlagged, setIncludeFlagged] = useState(true);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -162,14 +163,14 @@ const SessionDetails = () => {
         doc.text(`Instructor: ${session.instructorId?.userId?.firstName} ${session.instructorId?.userId?.lastName}`, 14, 44);
         doc.text(`Date & Time: ${new Date(session.startTime).toLocaleString()} - ${new Date(session.expiresAt).toLocaleString()}`, 14, 50);
         
-        const totalEnrolled = members.length;
-        const totalMarked = attendanceRecords.length;
+        const filteredRecordsForPDF = includeFlagged ? attendanceRecords : attendanceRecords.filter(r => !r.isFlagged);
+        const totalMarkedPDF = filteredRecordsForPDF.length;
         doc.text(`Total Enrolled: ${totalEnrolled}`, 14, 60);
-        doc.text(`Total Present: ${totalMarked}`, 14, 66);
-        doc.text(`Total Absent: ${totalEnrolled - totalMarked}`, 14, 72);
+        doc.text(`Total Present: ${totalMarkedPDF}`, 14, 66);
+        doc.text(`Total Absent: ${totalEnrolled - totalMarkedPDF}`, 14, 72);
         
         const tableData = members.map(m => {
-            const record = attendanceRecords.find(r => r.userId?._id === m.userId?._id);
+            const record = filteredRecordsForPDF.find(r => r.userId?._id === m.userId?._id);
             return [
                 `${m.userId?.firstName} ${m.userId?.lastName}`,
                 m.studentId || '-',
@@ -189,11 +190,12 @@ const SessionDetails = () => {
     };
 
     const totalEnrolled = members.length;
-    const totalMarked = attendanceRecords.length;
+    const filteredRecords = includeFlagged ? attendanceRecords : attendanceRecords.filter(r => !r.isFlagged);
+    const totalMarked = filteredRecords.length;
     const percentMarked = totalEnrolled > 0 ? Math.round((totalMarked / totalEnrolled) * 100) : 0;
     
-    const selfMarkedCount = attendanceRecords.filter(r => r.markedBy === 'SELF').length;
-    const adminMarkedCount = attendanceRecords.filter(r => r.markedBy !== 'SELF').length;
+    const selfMarkedCount = filteredRecords.filter(r => r.markedBy === 'SELF').length;
+    const adminMarkedCount = filteredRecords.filter(r => r.markedBy !== 'SELF').length;
     const selfMarkedPercent = totalMarked > 0 ? Math.round((selfMarkedCount / totalMarked) * 100) : 0;
     const adminMarkedPercent = totalMarked > 0 ? Math.round((adminMarkedCount / totalMarked) * 100) : 0;
 
@@ -252,9 +254,19 @@ const SessionDetails = () => {
                                 </div>
                             </div>
                         </div>
-                        <button className="btn btn-outline py-2 text-sm" onClick={exportToPDF}>
-                            <Download size={16} className="mr-2" /> Export PDF
-                        </button>
+                        
+                        <div className="flex flex-col items-end gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <span className="text-xs font-semibold text-slate-600">Include flagged</span>
+                                <div className="relative inline-flex items-center">
+                                    <input type="checkbox" className="sr-only peer" checked={includeFlagged} onChange={(e) => setIncludeFlagged(e.target.checked)} />
+                                    <div className="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-600"></div>
+                                </div>
+                            </label>
+                            <button className="btn btn-outline py-2 text-sm" onClick={exportToPDF}>
+                                <Download size={16} className="mr-2" /> Export PDF
+                            </button>
+                        </div>
                     </div>
 
                     <div className="card h-full">
@@ -285,9 +297,14 @@ const SessionDetails = () => {
                                                 <td>{r.userId?.firstName} {r.userId?.lastName}</td>
                                                 <td className="text-slate-400">{r.organizationMemberId?.studentId || '-'}</td>
                                                 <td>
-                                                    <span className={`badge ${r.status === 'PRESENT' ? 'badge-success' : 'badge-danger'}`}>
-                                                        {r.status}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`badge ${r.status === 'PRESENT' ? 'badge-success' : 'badge-danger'}`}>
+                                                            {r.status}
+                                                        </span>
+                                                        {r.isFlagged && (
+                                                            <Flag className="text-red-500" size={16} title="The student is flagged for marking outside the attendance area" />
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="text-slate-400">{r.markedBy}</td>
                                                 <td className="text-slate-400">{new Date(r.markedAt).toLocaleTimeString()}</td>

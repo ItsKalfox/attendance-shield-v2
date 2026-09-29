@@ -32,7 +32,7 @@ const getSessions = async (req, res, next) => {
 // @access  Private (ADMIN/OWNER/INSTRUCTOR)
 const createSession = async (req, res, next) => {
     try {
-        const { courseId, instructorId, lectureType, startTime, expiresAt } = req.body;
+        const { courseId, instructorId, lectureType, startTime, expiresAt, isGeofenceEnabled, geofenceCoordinates, geofenceRadius } = req.body;
         const organizationId = req.params.organizationId;
 
         // confirmationDeadline = expiresAt + 30 mins
@@ -43,7 +43,7 @@ const createSession = async (req, res, next) => {
         const qrToken = crypto.randomBytes(32).toString('hex');
         const qrTokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
 
-        const session = await AttendanceSession.create({
+        const sessionData = {
             organizationId,
             courseId,
             instructorId,
@@ -51,8 +51,17 @@ const createSession = async (req, res, next) => {
             startTime,
             expiresAt: expiresAtDate,
             confirmationDeadline,
+            qrToken,
             qrTokenHash
-        });
+        };
+
+        if (isGeofenceEnabled) {
+            sessionData.isGeofenceEnabled = true;
+            sessionData.geofenceCoordinates = geofenceCoordinates;
+            sessionData.geofenceRadius = geofenceRadius || 100;
+        }
+
+        const session = await AttendanceSession.create(sessionData);
 
         res.status(201).json({
             session,
@@ -153,10 +162,34 @@ const cancelSession = async (req, res, next) => {
     }
 };
 
+// @desc    Delete a session
+// @route   DELETE /api/organizations/:organizationId/sessions/:sessionId
+// @access  Private (OWNER only)
+const deleteSession = async (req, res, next) => {
+    try {
+        const session = await AttendanceSession.findOneAndDelete({
+            _id: req.params.sessionId,
+            organizationId: req.params.organizationId
+        });
+
+        if (!session) {
+            return res.status(404).json({ message: 'Session not found' });
+        }
+
+        // We could also delete AttendanceRecords linked to this session if needed
+        // await AttendanceRecord.deleteMany({ sessionId: req.params.sessionId });
+
+        res.status(200).json({ message: 'Session deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getSessions,
     createSession,
     getSessionById,
     confirmSession,
-    cancelSession
+    cancelSession,
+    deleteSession
 };
