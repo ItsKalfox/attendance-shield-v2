@@ -152,7 +152,9 @@ const getCourseMembers = async (req, res, next) => {
         const members = await CourseMember.find({
             courseId: req.params.courseId,
             organizationId: req.params.organizationId
-        }).populate('userId', 'firstName lastName email studentId');
+        })
+        .populate('userId', 'firstName lastName email')
+        .populate('organizationMemberId', 'studentId');
 
         res.status(200).json(members);
     } catch (error) {

@@ -221,7 +221,7 @@ const SessionDetails = () => {
         doc.text(`Attendance Rate: ${pdfPercentMarked}%`, 14, doc.lastAutoTable.finalY + 22);
         
         const tableData = presentItems.map(item => [
-            item.member.studentId || '-',
+            item.member.organizationMemberId?.studentId || '-',
             `${item.member.userId?.firstName} ${item.member.userId?.lastName}`,
             new Date(item.record.markedAt).toLocaleTimeString()
         ]);
