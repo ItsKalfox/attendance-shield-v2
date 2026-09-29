@@ -82,7 +82,7 @@ const Courses = () => {
                             </p>
                             <div className="flex justify-between items-center border-t border-slate-100 pt-3">
                                 <div className="text-sm font-medium text-slate-500">
-                                    Instructors: <span className="text-slate-800">{course.instructors?.length || 0}</span>
+                                    Attendees: <span className="text-slate-800">{course.enrolledMembers?.length || 0}</span>
                                 </div>
                                 <div className="text-xs font-semibold px-2 py-1 bg-green-50 text-green-600 rounded-md">
                                     {course.status || 'ACTIVE'}

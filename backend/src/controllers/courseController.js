@@ -208,11 +208,84 @@ const enrollMembers = async (req, res, next) => {
     }
 };
 
+// @desc    Delete course
+// @route   DELETE /api/organizations/:organizationId/courses/:courseId
+// @access  Private (ADMIN/OWNER/INSTRUCTOR)
+const deleteCourse = async (req, res, next) => {
+    try {
+        const course = await Course.findOne({
+            _id: req.params.courseId,
+            organizationId: req.params.organizationId
+        });
+
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        // If requester is an INSTRUCTOR, they must be in the course's instructors list
+        const requesterRole = req.member.role;
+        if (requesterRole === 'INSTRUCTOR' && !course.instructors.includes(req.member._id)) {
+            return res.status(403).json({ message: 'Only course instructors or organization owners can delete this course' });
+        }
+
+        await Course.findByIdAndDelete(course._id);
+
+        // Cleanup related data
+        await CourseMember.deleteMany({ courseId: req.params.courseId });
+        
+        // Cascade delete sessions
+        const AttendanceSession = require('../models/AttendanceSession');
+        await AttendanceSession.deleteMany({ courseId: req.params.courseId });
+
+        res.status(200).json({ message: 'Course deleted successfully' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Remove member from course
+// @route   DELETE /api/organizations/:organizationId/courses/:courseId/members/:memberId
+// @access  Private (ADMIN/OWNER/INSTRUCTOR)
+const removeMemberFromCourse = async (req, res, next) => {
+    try {
+        const { organizationId, courseId, memberId } = req.params;
+
+        const course = await Course.findOne({ _id: courseId, organizationId });
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        // If requester is an INSTRUCTOR, they must be in the course's instructors list
+        const requesterRole = req.member.role;
+        if (requesterRole === 'INSTRUCTOR' && !course.instructors.includes(req.member._id) && !course.instructors.some(id => id.toString() === req.member._id.toString())) {
+            return res.status(403).json({ message: 'Only course instructors or organization owners can remove members from this course' });
+        }
+
+        const courseMember = await CourseMember.findOne({
+            _id: memberId,
+            courseId,
+            organizationId
+        });
+
+        if (!courseMember) {
+            return res.status(404).json({ message: 'Member not found in course' });
+        }
+
+        await CourseMember.findByIdAndDelete(memberId);
+
+        res.status(200).json({ message: 'Member removed from course' });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getCourses,
     createCourse,
     getCourseById,
     updateCourse,
     getCourseMembers,
-    enrollMembers
+    enrollMembers,
+    deleteCourse,
+    removeMemberFromCourse
 };

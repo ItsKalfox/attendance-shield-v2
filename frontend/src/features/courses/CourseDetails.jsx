@@ -1,36 +1,45 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
+import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { ArrowLeft, Users, UserPlus } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, Trash2 } from 'lucide-react';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const CourseDetails = () => {
     const { courseId } = useParams();
     const { activeOrganization } = useOrganization();
+    const { user } = useAuth();
+    const navigate = useNavigate();
     
     const [course, setCourse] = useState(null);
     const [members, setMembers] = useState([]);
     const [orgMembers, setOrgMembers] = useState([]);
+    const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [enrolling, setEnrolling] = useState(false);
     
     // Quick and dirty multi-select state
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [showEnrollModal, setShowEnrollModal] = useState(false);
+    
+    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '' });
 
     useEffect(() => {
         const fetchDetails = async () => {
             if (!activeOrganization) return;
             try {
                 setLoading(true);
-                const [courseRes, courseMembersRes, orgMembersRes] = await Promise.all([
+                const [courseRes, courseMembersRes, orgMembersRes, sessionsRes] = await Promise.all([
                     api.get(`/organizations/${activeOrganization._id}/courses/${courseId}`),
                     api.get(`/organizations/${activeOrganization._id}/courses/${courseId}/members`),
-                    api.get(`/organizations/${activeOrganization._id}/members`)
+                    api.get(`/organizations/${activeOrganization._id}/members`),
+                    api.get(`/organizations/${activeOrganization._id}/sessions?courseId=${courseId}`)
                 ]);
                 
                 setCourse(courseRes.data);
                 setMembers(courseMembersRes.data);
+                setSessions(sessionsRes.data);
                 
                 // Filter out those already in the course
                 const enrolledIds = courseMembersRes.data.map(m => m.userId?._id);
@@ -79,10 +88,46 @@ const CourseDetails = () => {
         );
     };
 
+    const handleRemoveMember = async (memberId) => {
+        if (!window.confirm("Are you sure you want to remove this student from the course?")) return;
+        try {
+            await api.delete(`/organizations/${activeOrganization._id}/courses/${courseId}/members/${memberId}`);
+            setMembers(prev => prev.filter(m => m._id !== memberId));
+            
+            // Reload org members to add them back to the enroll list
+            const orgMembersRes = await api.get(`/organizations/${activeOrganization._id}/members`);
+            const enrolledIds = members.filter(m => m._id !== memberId).map(m => m.userId?._id);
+            setOrgMembers(orgMembersRes.data.filter(m => !enrolledIds.includes(m.userId?._id)));
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to remove member');
+        }
+    };
+
+    const handleDeleteCourse = async () => {
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'delete',
+            message: `Are you sure you want to delete ${course.code}? This will also delete all related course enrollments.`
+        });
+    };
+
+    const executeDelete = async () => {
+        try {
+            await api.delete(`/organizations/${activeOrganization._id}/courses/${courseId}`);
+            navigate('/app/courses');
+        } catch (error) {
+            alert(error.response?.data?.message || 'Failed to delete course');
+        }
+    };
+
     if (loading) return <div className="p-4">Loading course details...</div>;
     if (!course) return <div className="p-4">Course not found</div>;
 
     const isAttendee = activeOrganization?.userRole === 'ATTENDEE';
+    
+    const isOwner = activeOrganization?.userRole === 'OWNER';
+    const isCourseInstructor = course.instructors?.some(inst => inst.userId?._id === user?._id);
+    const canDelete = isOwner || isCourseInstructor;
 
     return (
         <div className="animate-fade-in">
@@ -99,9 +144,16 @@ const CourseDetails = () => {
                     <p className="text-slate-500 max-w-2xl">{course.description || 'No description'}</p>
                 </div>
                 {!isAttendee && (
-                    <button className="btn btn-primary shadow-sm" onClick={() => setShowEnrollModal(true)}>
-                        <UserPlus size={18} className="mr-2" /> Enroll Students
-                    </button>
+                    <div className="flex gap-2">
+                        <button className="btn btn-primary shadow-sm" onClick={() => setShowEnrollModal(true)}>
+                            <UserPlus size={18} className="mr-2" /> Enroll Students
+                        </button>
+                        {canDelete && (
+                            <button className="btn btn-danger shadow-sm" onClick={handleDeleteCourse}>
+                                <Trash2 size={18} className="mr-2" /> Delete Course
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
 
@@ -126,6 +178,7 @@ const CourseDetails = () => {
                                             <th>Email</th>
                                             <th>Student ID</th>
                                             <th>Status</th>
+                                            {!isAttendee && canDelete && <th>Actions</th>}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -137,6 +190,17 @@ const CourseDetails = () => {
                                                 <td>
                                                     <span className="badge badge-success">Active</span>
                                                 </td>
+                                                {!isAttendee && canDelete && (
+                                                    <td>
+                                                        <button 
+                                                            className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                                                            onClick={() => handleRemoveMember(m._id)}
+                                                            title="Remove from course"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -148,19 +212,39 @@ const CourseDetails = () => {
 
                 <div>
                     <div className="card h-full">
-                        <h2 className="text-xl font-bold mb-4">Instructors</h2>
+                        <h2 className="text-xl font-bold mb-4">Course Details</h2>
                         <div className="space-y-4">
-                            {course.instructors?.map(inst => (
-                                <div key={inst._id} className="flex items-center">
-                                    <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold mr-3 border border-brand-200">
-                                        {inst.userId?.firstName?.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium text-slate-800">{inst.userId?.firstName} {inst.userId?.lastName}</div>
-                                        <div className="text-xs text-slate-500">{inst.userId?.email}</div>
+                            <div>
+                                <div className="text-xs text-slate-500 mb-1">Description</div>
+                                <div className="text-sm text-slate-800">{course.description || 'No description provided.'}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-slate-500 mb-1">Created</div>
+                                <div className="text-sm text-slate-800">{new Date(course.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-slate-500 mb-1">Enrolled Attendees</div>
+                                <div className="text-sm text-slate-800">{members.length}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-slate-500 mb-1">Attendance Sessions</div>
+                                <div className="text-sm text-slate-800">{sessions.length}</div>
+                            </div>
+                            
+                            {course.instructors && course.instructors.length > 0 && (
+                                <div className="pt-4 border-t border-slate-100">
+                                    <h3 className="text-sm font-bold text-slate-700 mb-3">Instructor</h3>
+                                    <div className="flex items-center">
+                                        <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center font-bold mr-3 border border-brand-200">
+                                            {course.instructors[0].userId?.firstName?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <div className="font-medium text-slate-800">{course.instructors[0].userId?.firstName} {course.instructors[0].userId?.lastName}</div>
+                                            <div className="text-xs text-slate-500">{course.instructors[0].userId?.email}</div>
+                                        </div>
                                     </div>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </div>
@@ -213,6 +297,16 @@ const CourseDetails = () => {
                     </div>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={confirmModalConfig.isOpen}
+                onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
+                onConfirm={confirmModalConfig.type === 'delete' ? executeDelete : () => {}}
+                title={confirmModalConfig.type === 'delete' ? "Delete Course" : "Confirm"}
+                message={confirmModalConfig.message}
+                type={confirmModalConfig.type}
+                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : "Confirm"}
+            />
         </div>
     );
 };
