@@ -10,5 +10,12 @@ export default defineConfig({
   ],
   server: {
     host: true, // This allows LAN connections
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 })
