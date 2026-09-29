@@ -23,7 +23,7 @@ const CourseDetails = () => {
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [showEnrollModal, setShowEnrollModal] = useState(false);
     
-    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '' });
+    const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '', action: null, data: null });
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -88,8 +88,20 @@ const CourseDetails = () => {
         );
     };
 
-    const handleRemoveMember = async (memberId) => {
-        if (!window.confirm("Are you sure you want to remove this student from the course?")) return;
+    const handleRemoveMemberClick = (memberId) => {
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'delete',
+            action: 'remove_member',
+            message: "Are you sure you want to remove this member from this course?",
+            data: { memberId }
+        });
+    };
+
+    const executeRemoveMember = async () => {
+        const memberId = confirmModalConfig.data?.memberId;
+        if (!memberId) return;
+        
         try {
             await api.delete(`/organizations/${activeOrganization._id}/courses/${courseId}/members/${memberId}`);
             setMembers(prev => prev.filter(m => m._id !== memberId));
@@ -107,6 +119,7 @@ const CourseDetails = () => {
         setConfirmModalConfig({
             isOpen: true,
             type: 'delete',
+            action: 'delete_course',
             message: `Are you sure you want to delete ${course.code}? This will also delete all related course enrollments.`
         });
     };
@@ -194,7 +207,7 @@ const CourseDetails = () => {
                                                     <td>
                                                         <button 
                                                             className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
-                                                            onClick={() => handleRemoveMember(m._id)}
+                                                            onClick={() => handleRemoveMemberClick(m._id)}
                                                             title="Remove from course"
                                                         >
                                                             <Trash2 size={16} />
@@ -301,11 +314,11 @@ const CourseDetails = () => {
             <ConfirmModal
                 isOpen={confirmModalConfig.isOpen}
                 onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
-                onConfirm={confirmModalConfig.type === 'delete' ? executeDelete : () => {}}
-                title={confirmModalConfig.type === 'delete' ? "Delete Course" : "Confirm"}
+                onConfirm={confirmModalConfig.action === 'delete_course' ? executeDelete : confirmModalConfig.action === 'remove_member' ? executeRemoveMember : () => {}}
+                title={confirmModalConfig.action === 'delete_course' ? "Delete Course" : confirmModalConfig.action === 'remove_member' ? "Remove Member" : "Confirm"}
                 message={confirmModalConfig.message}
                 type={confirmModalConfig.type}
-                confirmText={confirmModalConfig.type === 'delete' ? "Delete" : "Confirm"}
+                confirmText={confirmModalConfig.action === 'delete_course' ? "Delete" : confirmModalConfig.action === 'remove_member' ? "Remove" : "Confirm"}
             />
         </div>
     );

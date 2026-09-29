@@ -27,7 +27,12 @@ const getCourses = async (req, res, next) => {
             .populate({
                 path: 'instructors',
                 populate: { path: 'userId', select: 'firstName lastName email' }
-            });
+            })
+            .lean();
+
+        for (let course of courses) {
+            course.attendeesCount = await CourseMember.countDocuments({ courseId: course._id });
+        }
 
         res.status(200).json(courses);
     } catch (error) {
