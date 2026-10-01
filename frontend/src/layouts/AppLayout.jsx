@@ -34,8 +34,12 @@ const AppLayout = () => {
         <div className="app-container">
             {/* Sidebar */}
             <div className="app-sidebar border-none text-slate-300">
-                <div className="flex items-center px-6 shrink-0 pt-8 pb-8">
+                <div className="flex items-center px-6 shrink-0 pt-8 pb-6">
                     <img src="/logo.png" alt="Attendance Shield" className="w-44 h-auto drop-shadow-md object-contain" />
+                </div>
+                
+                <div className="px-6 mb-4">
+                    <div className="border-b border-brand-800/50"></div>
                 </div>
 
                 <div className="flex-1 pb-6 overflow-y-auto">
@@ -73,21 +77,23 @@ const AppLayout = () => {
                     </nav>
                 </div>
 
-                <div className="p-4 border-t border-brand-800/40 bg-brand-950/40">
-                    <div className="px-2 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">User Account</div>
-                    <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center truncate">
-                            <div className="w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0">
-                                {user?.firstName?.charAt(0) || 'U'}
+                <div className="mt-auto px-6 pb-6">
+                    <div className="border-t border-brand-800/50 pt-5">
+                        <div className="px-2 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">User Account</div>
+                        <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center truncate">
+                                <div className="w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0">
+                                    {user?.firstName?.charAt(0) || 'U'}
+                                </div>
+                                <div className="truncate">
+                                    <p className="text-sm font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
+                                    <p className="text-xs text-brand-300/60 truncate">{user?.email}</p>
+                                </div>
                             </div>
-                            <div className="truncate">
-                                <p className="text-sm font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
-                                <p className="text-xs text-brand-300/60 truncate">{user?.email}</p>
-                            </div>
+                            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition" title="Log Out">
+                                <LogOut size={18} />
+                            </button>
                         </div>
-                        <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition" title="Log Out">
-                            <LogOut size={18} />
-                        </button>
                     </div>
                 </div>
             </div>
