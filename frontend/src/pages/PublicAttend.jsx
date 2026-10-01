@@ -88,9 +88,7 @@ const PublicAttend = () => {
             
             <div className="card max-w-md w-full p-8 shadow-2xl bg-white border border-slate-100 relative z-10">
                 <div className="text-center mb-10 flex flex-col items-center">
-                    <div className="w-16 h-16 rounded-2xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30 mb-6">
-                        <span className="text-white font-bold text-3xl">A</span>
-                    </div>
+                    <img src="/logo.png" alt="Attendance Shield" className="w-52 h-auto mb-8 object-contain" />
                     <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
                     <p className="text-slate-500 text-sm">Enter your credentials to confirm your attendance for this session.</p>
                 </div>

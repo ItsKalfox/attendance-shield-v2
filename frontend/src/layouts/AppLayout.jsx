@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useOrganization } from '../context/OrganizationContext';
-import { 
-    LayoutDashboard, 
-    CalendarClock, 
-    BookOpen, 
-    Users, 
-    Settings, 
-    LogOut, 
+import {
+    LayoutDashboard,
+    CalendarClock,
+    BookOpen,
+    Users,
+    Settings,
+    LogOut,
     ChevronDown,
     PlusCircle,
     Building2
@@ -29,55 +29,50 @@ const AppLayout = () => {
 
     // If no orgs and not loading, show empty state or create org modal
     // (We will handle this better in the dashboard or via a modal)
-    
+
     return (
         <div className="app-container">
             {/* Sidebar */}
             <div className="app-sidebar border-none text-slate-300">
-                <div className="h-20 flex items-center px-6 shrink-0 pt-2">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
-                            <span className="text-white font-bold text-lg">A</span>
-                        </div>
-                        <h2 className="text-xl font-extrabold text-white tracking-tight">Attendance</h2>
-                    </div>
+                <div className="flex items-center px-6 shrink-0 pt-8 pb-8">
+                    <img src="/logo.png" alt="Attendance Shield" className="w-44 h-auto drop-shadow-md object-contain" />
                 </div>
-                
-                <div className="flex-1 py-6 overflow-y-auto">
+
+                <div className="flex-1 pb-6 overflow-y-auto">
                     <div className="px-6 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">Navigation</div>
                     <nav className="px-4 space-y-1.5">
-                        <NavLink to="/app/dashboard" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                        <NavLink to="/app/dashboard" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                             <LayoutDashboard size={20} className="mr-3" /> Dashboard
                         </NavLink>
-                        
+
                         {activeOrganization?.userRole === 'ATTENDEE' ? (
                             <>
-                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                                <NavLink to="/app/courses" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <BookOpen size={20} className="mr-3" /> My Courses
                                 </NavLink>
                             </>
                         ) : (
                             <>
-                                <NavLink to="/app/sessions" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                                <NavLink to="/app/sessions" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <CalendarClock size={20} className="mr-3" /> Sessions
                                 </NavLink>
-                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                                <NavLink to="/app/courses" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <BookOpen size={20} className="mr-3" /> Courses
                                 </NavLink>
-                                <NavLink to="/app/members" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                                <NavLink to="/app/members" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <Users size={20} className="mr-3" /> Members
                                 </NavLink>
-                                <NavLink to="/app/organization" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                                <NavLink to="/app/organization" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <Building2 size={20} className="mr-3" /> Organization
                                 </NavLink>
-                                <NavLink to="/app/settings" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
+                                <NavLink to="/app/settings" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <Settings size={20} className="mr-3" /> Settings
                                 </NavLink>
                             </>
                         )}
                     </nav>
                 </div>
-                
+
                 <div className="p-4 border-t border-brand-800/40 bg-brand-950/40">
                     <div className="px-2 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">User Account</div>
                     <div className="flex items-center justify-between px-2">
@@ -119,7 +114,7 @@ const AppLayout = () => {
 
                         {/* Organization Switcher */}
                         <div className="relative w-56">
-                            <button 
+                            <button
                                 className="w-full flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 hover:bg-slate-50 transition text-slate-800"
                                 onClick={() => setShowOrgDropdown(!showOrgDropdown)}
                             >
@@ -128,13 +123,13 @@ const AppLayout = () => {
                                 </span>
                                 <ChevronDown size={14} className="text-slate-400 shrink-0" />
                             </button>
-                            
+
                             {showOrgDropdown && (
                                 <>
                                     <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)}></div>
                                     <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
                                         {organizations.map(org => (
-                                            <button 
+                                            <button
                                                 key={org._id}
                                                 className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition flex items-center text-slate-700 hover:text-slate-900 text-sm"
                                                 onClick={() => {
@@ -149,7 +144,7 @@ const AppLayout = () => {
                                             </button>
                                         ))}
                                         <div className="border-t border-slate-100"></div>
-                                        <button 
+                                        <button
                                             className="w-full text-left px-4 py-2.5 text-brand-600 hover:bg-brand-50 transition flex items-center font-medium text-sm"
                                             onClick={() => {
                                                 setShowOrgDropdown(false);
@@ -166,7 +161,7 @@ const AppLayout = () => {
 
                     </div>
                 </header>
-                
+
                 <main className="app-content relative">
                     {!activeOrganization && !loadingOrg ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
