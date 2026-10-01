@@ -68,11 +68,7 @@ const Members = () => {
     return (
         <>
         <div className="animate-fade-in space-y-6">
-            <div className="flex justify-between items-center mb-2">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Organization Members</h2>
-                    <p className="text-slate-500 text-sm">Manage users and their roles in your organization.</p>
-                </div>
+            <div className="flex justify-end items-center mb-2">
                 <div className="flex gap-3">
                     {activeTab === 'ATTENDEES' ? (
                         <>

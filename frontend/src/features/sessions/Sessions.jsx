@@ -53,11 +53,7 @@ const Sessions = () => {
     return (
         <>
         <div className="animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold flex items-center">
-                    <CalendarClock className="mr-3 text-indigo-400" /> 
-                    Sessions
-                </h1>
+            <div className="flex justify-end items-center mb-6">
                 <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
                     <PlusCircle size={18} className="mr-2" />
                     Create Session

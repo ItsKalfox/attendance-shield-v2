@@ -39,17 +39,80 @@ const getDashboardStats = async (req, res, next) => {
             
         } else {
             // Stats for organizers
-            const totalMembers = await OrganizationMember.countDocuments({ organizationId, status: 'ACTIVE' });
+            const totalAttendees = await OrganizationMember.countDocuments({ organizationId, role: 'ATTENDEE', status: 'ACTIVE' });
             const activeCourses = await Course.countDocuments({ organizationId, status: 'ACTIVE' });
             const activeSessions = await AttendanceSession.countDocuments({
                 organizationId,
                 status: { $in: ['ACTIVE', 'PENDING_CONFIRMATION'] }
             });
 
+            // Handle query filters for overview
+            const { courseId, timeRange } = req.query;
+            let sessionQuery = { organizationId };
+            
+            if (courseId && courseId !== 'all') {
+                sessionQuery.courseId = courseId;
+            }
+
+            if (timeRange) {
+                const now = new Date();
+                if (timeRange === 'month') {
+                    sessionQuery.startTime = { $gte: new Date(now.setMonth(now.getMonth() - 1)) };
+                } else if (timeRange === 'week') {
+                    sessionQuery.startTime = { $gte: new Date(now.setDate(now.getDate() - 7)) };
+                }
+            }
+
+            const sessions = await AttendanceSession.find(sessionQuery).select('_id courseId');
+            
+            let presentCount = 0;
+            let absentCount = 0;
+            let topAttendees = [];
+            
+            if (sessions.length > 0) {
+                const sessionIds = sessions.map(s => s._id);
+                const courseIds = [...new Set(sessions.map(s => s.courseId.toString()))];
+                
+                const AttendanceRecord = require('../models/AttendanceRecord');
+                const CourseMember = require('../models/CourseMember');
+
+                // Get total present across these sessions
+                presentCount = await AttendanceRecord.countDocuments({
+                    sessionId: { $in: sessionIds },
+                    status: 'PRESENT'
+                });
+
+                // Calculate expected attendees for each session
+                let totalExpected = 0;
+                for (const cid of courseIds) {
+                    const enrolled = await CourseMember.countDocuments({ courseId: cid, status: 'ACTIVE' });
+                    const sessionCount = sessions.filter(s => s.courseId.toString() === cid).length;
+                    totalExpected += enrolled * sessionCount;
+                }
+                
+                absentCount = Math.max(0, totalExpected - presentCount);
+
+                // Calculate top attendees
+                topAttendees = await AttendanceRecord.aggregate([
+                    { $match: { sessionId: { $in: sessionIds }, status: 'PRESENT' } },
+                    { $group: { _id: '$userId', attendanceCount: { $sum: 1 } } },
+                    { $sort: { attendanceCount: -1 } },
+                    { $limit: 5 },
+                    { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+                    { $unwind: '$user' },
+                    { $project: { _id: 1, attendanceCount: 1, 'user.firstName': 1, 'user.lastName': 1, 'user.email': 1 } }
+                ]);
+            }
+
             stats = {
-                totalMembers,
+                totalAttendees,
                 activeCourses,
-                activeSessions
+                activeSessions,
+                attendanceOverview: {
+                    present: presentCount,
+                    absent: absentCount
+                },
+                topAttendees
             };
 
             recentSessions = await AttendanceSession.find({
