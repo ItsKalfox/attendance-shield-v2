@@ -57,8 +57,13 @@ const PublicAttend = () => {
 
     if (status === 'SUCCESS') {
         return (
-            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-                <div className="card max-w-md w-full text-center py-12 px-6 shadow-xl border-emerald-200 bg-white">
+            <div className="min-h-screen bg-brand-950 flex items-center justify-center p-4 relative overflow-hidden">
+                {/* Background decorative elements */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-500/20 blur-[120px]"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-brand-700/20 blur-[120px]"></div>
+                </div>
+                <div className="card max-w-md w-full text-center py-12 px-6 shadow-2xl border-emerald-200 bg-white relative z-10">
                     <div className="mx-auto w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
                         <CheckCircle size={40} />
                     </div>
@@ -74,9 +79,18 @@ const PublicAttend = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-            <div className="card max-w-md w-full p-8 shadow-xl bg-white border border-slate-200">
-                <div className="text-center mb-8">
+        <div className="min-h-screen bg-brand-950 flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Background decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-500/20 blur-[120px]"></div>
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-brand-700/20 blur-[120px]"></div>
+            </div>
+            
+            <div className="card max-w-md w-full p-8 shadow-2xl bg-white border border-slate-100 relative z-10">
+                <div className="text-center mb-10 flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-2xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30 mb-6">
+                        <span className="text-white font-bold text-3xl">A</span>
+                    </div>
                     <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
                     <p className="text-slate-500 text-sm">Enter your credentials to confirm your attendance for this session.</p>
                 </div>
@@ -117,7 +131,7 @@ const PublicAttend = () => {
 
                     <button 
                         type="submit" 
-                        className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-sm transition active:scale-[0.98] mt-4"
+                        className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-brand-500/30 shadow-lg transition active:scale-[0.98] mt-4"
                         disabled={status === 'LOADING'}
                     >
                         {status === 'LOADING' ? 'Verifying...' : 'Mark Attendance'}

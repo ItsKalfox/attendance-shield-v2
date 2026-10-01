@@ -54,7 +54,7 @@ const Login = () => {
                 <div>
                     <div className="flex justify-between items-center mb-2">
                         <label className="form-label !mb-0">Password</label>
-                        <Link to="/forgot-password" className="text-sm text-brand-400 hover:text-brand-300 font-medium transition-colors">
+                        <Link to="/forgot-password" className="text-sm text-brand-600 hover:text-brand-700 font-semibold transition-colors">
                             Forgot password?
                         </Link>
                     </div>
@@ -69,14 +69,14 @@ const Login = () => {
                 </div>
 
                 <div className="pt-2">
-                    <button type="submit" className="btn btn-primary btn-block py-3 text-base" disabled={loading}>
+                    <button type="submit" className="btn btn-primary btn-block py-3 text-base shadow-brand-500/30 shadow-lg" disabled={loading}>
                         {loading ? 'Signing in...' : 'Sign In'}
                     </button>
                 </div>
             </form>
 
-            <div className="mt-8 text-center text-sm text-slate-400">
-                Don't have an account? <Link to="/signup" className="text-brand-400 font-semibold hover:text-brand-300 ml-1 transition-colors">Create one</Link>
+            <div className="mt-8 text-center text-sm text-slate-500 font-medium">
+                Don't have an account? <Link to="/signup" className="text-brand-600 font-bold hover:text-brand-700 ml-1 transition-colors">Create one</Link>
             </div>
         </div>
     );

@@ -33,38 +33,44 @@ const AppLayout = () => {
     return (
         <div className="app-container">
             {/* Sidebar */}
-            <div className="app-sidebar">
-                <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
-                    <h2 className="text-xl font-extrabold bg-gradient-to-r from-brand-600 to-indigo-600 bg-clip-text text-transparent">Attendance Shield</h2>
+            <div className="app-sidebar border-none text-slate-300">
+                <div className="h-20 flex items-center px-6 shrink-0 pt-2">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                            <span className="text-white font-bold text-lg">A</span>
+                        </div>
+                        <h2 className="text-xl font-extrabold text-white tracking-tight">Attendance</h2>
+                    </div>
                 </div>
                 
                 <div className="flex-1 py-6 overflow-y-auto">
-                    <nav className="px-4 space-y-2">
-                        <NavLink to="/app/dashboard" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                    <div className="px-6 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">Navigation</div>
+                    <nav className="px-4 space-y-1.5">
+                        <NavLink to="/app/dashboard" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                             <LayoutDashboard size={20} className="mr-3" /> Dashboard
                         </NavLink>
                         
                         {activeOrganization?.userRole === 'ATTENDEE' ? (
                             <>
-                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <BookOpen size={20} className="mr-3" /> My Courses
                                 </NavLink>
                             </>
                         ) : (
                             <>
-                                <NavLink to="/app/sessions" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <NavLink to="/app/sessions" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <CalendarClock size={20} className="mr-3" /> Sessions
                                 </NavLink>
-                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <NavLink to="/app/courses" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <BookOpen size={20} className="mr-3" /> Courses
                                 </NavLink>
-                                <NavLink to="/app/members" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <NavLink to="/app/members" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <Users size={20} className="mr-3" /> Members
                                 </NavLink>
-                                <NavLink to="/app/organization" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <NavLink to="/app/organization" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <Building2 size={20} className="mr-3" /> Organization
                                 </NavLink>
-                                <NavLink to="/app/settings" className={({isActive}) => `flex items-center px-4 py-3 rounded-xl font-medium transition border ${isActive ? 'bg-brand-50 border-brand-200 text-brand-700 shadow-sm' : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}>
+                                <NavLink to="/app/settings" className={({isActive}) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
                                     <Settings size={20} className="mr-3" /> Settings
                                 </NavLink>
                             </>
@@ -72,18 +78,19 @@ const AppLayout = () => {
                     </nav>
                 </div>
                 
-                <div className="p-4 border-t border-slate-200 bg-slate-50/50">
-                    <div className="flex items-center justify-between">
+                <div className="p-4 border-t border-brand-800/40 bg-brand-950/40">
+                    <div className="px-2 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">User Account</div>
+                    <div className="flex items-center justify-between px-2">
                         <div className="flex items-center truncate">
-                            <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold mr-3 flex-shrink-0 shadow-sm border border-brand-200">
+                            <div className="w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0">
                                 {user?.firstName?.charAt(0) || 'U'}
                             </div>
                             <div className="truncate">
-                                <p className="text-sm font-bold text-slate-800 truncate">{user?.firstName} {user?.lastName}</p>
-                                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                                <p className="text-sm font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
+                                <p className="text-xs text-brand-300/60 truncate">{user?.email}</p>
                             </div>
                         </div>
-                        <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="Log Out">
+                        <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition" title="Log Out">
                             <LogOut size={18} />
                         </button>
                     </div>
@@ -94,7 +101,7 @@ const AppLayout = () => {
             <div className="app-main">
                 <header className="app-header justify-between">
                     <div>
-                        <h1 className="text-xl font-bold text-slate-800 capitalize">
+                        <h1 className="text-3xl font-extrabold text-slate-900 capitalize tracking-tight">
                             {(() => {
                                 const pathSegment = window.location.pathname.split('/').pop();
                                 // Check if the segment is a 24-char hex string (MongoDB ID)
@@ -160,7 +167,7 @@ const AppLayout = () => {
                     </div>
                 </header>
                 
-                <main className="app-content relative bg-slate-50/50">
+                <main className="app-content relative">
                     {!activeOrganization && !loadingOrg ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
                             <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 border border-slate-700">
