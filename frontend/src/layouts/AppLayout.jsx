@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useOrganization } from '../context/OrganizationContext';
 import {
@@ -19,8 +19,24 @@ const AppLayout = () => {
     const { user, logout } = useAuth();
     const { organizations, activeOrganization, switchOrganization, loadingOrg } = useOrganization();
     const navigate = useNavigate();
+    const location = useLocation();
     const [showOrgDropdown, setShowOrgDropdown] = useState(false);
     const [showCreateOrg, setShowCreateOrg] = useState(false);
+
+    // Dynamic Navigation Items
+    const navItems = activeOrganization?.userRole === 'ATTENDEE' ? [
+        { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/app/courses', label: 'My Courses', icon: BookOpen },
+    ] : [
+        { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/app/sessions', label: 'Sessions', icon: CalendarClock },
+        { path: '/app/courses', label: 'Courses', icon: BookOpen },
+        { path: '/app/members', label: 'Members', icon: Users },
+        { path: '/app/organization', label: 'Organization', icon: Building2 },
+        { path: '/app/settings', label: 'Settings', icon: Settings },
+    ];
+
+    const activeIndex = navItems.findIndex(item => location.pathname.startsWith(item.path));
 
     const handleLogout = () => {
         logout();
@@ -44,36 +60,24 @@ const AppLayout = () => {
 
                 <div className="flex-1 pb-6 overflow-y-auto">
                     <div className="px-6 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">Navigation</div>
-                    <nav className="px-4 space-y-1.5">
-                        <NavLink to="/app/dashboard" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                            <LayoutDashboard size={20} className="mr-3" /> Dashboard
-                        </NavLink>
-
-                        {activeOrganization?.userRole === 'ATTENDEE' ? (
-                            <>
-                                <NavLink to="/app/courses" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                                    <BookOpen size={20} className="mr-3" /> My Courses
-                                </NavLink>
-                            </>
-                        ) : (
-                            <>
-                                <NavLink to="/app/sessions" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                                    <CalendarClock size={20} className="mr-3" /> Sessions
-                                </NavLink>
-                                <NavLink to="/app/courses" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                                    <BookOpen size={20} className="mr-3" /> Courses
-                                </NavLink>
-                                <NavLink to="/app/members" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                                    <Users size={20} className="mr-3" /> Members
-                                </NavLink>
-                                <NavLink to="/app/organization" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                                    <Building2 size={20} className="mr-3" /> Organization
-                                </NavLink>
-                                <NavLink to="/app/settings" className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition ${isActive ? 'bg-brand-800/60 text-white shadow-sm' : 'text-slate-400 hover:bg-brand-800/30 hover:text-slate-200'}`}>
-                                    <Settings size={20} className="mr-3" /> Settings
-                                </NavLink>
-                            </>
+                    <nav className="px-4 space-y-1.5 relative">
+                        {/* Floating glass background */}
+                        {activeIndex !== -1 && (
+                            <div 
+                                className="absolute left-4 right-4 h-[48px] rounded-full bg-white/10 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.15)] transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] pointer-events-none" 
+                                style={{ transform: `translateY(${activeIndex * (48 + 6)}px)` }} 
+                            />
                         )}
+
+                        {navItems.map((item) => (
+                            <NavLink 
+                                key={item.path}
+                                to={item.path} 
+                                className={({ isActive }) => `flex items-center px-4 py-3 rounded-full font-medium transition-colors relative z-10 ${isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'}`}
+                            >
+                                <item.icon size={20} className="mr-3" /> {item.label}
+                            </NavLink>
+                        ))}
                     </nav>
                 </div>
 
