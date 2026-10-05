@@ -4,6 +4,10 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
+
 // Generate JWT
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -297,6 +301,55 @@ const updatePassword = async (req, res, next) => {
     }
 };
 
+// @desc    Authenticate with Google
+// @route   POST /api/auth/google
+// @access  Public
+const googleAuth = async (req, res, next) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return res.status(400).json({ message: 'Google token is required' });
+        }
+
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.VITE_GOOGLE_CLIENT_ID
+        });
+        
+        const payload = ticket.getPayload();
+        const { email, given_name, family_name, picture } = payload;
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Generate a random secure password for the user
+            const randomPassword = crypto.randomBytes(32).toString('hex');
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+            user = await User.create({
+                firstName: given_name || 'User',
+                lastName: family_name || '',
+                email,
+                passwordHash,
+                avatar: picture || ''
+            });
+        }
+
+        res.status(200).json({
+            _id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            avatar: user.avatar,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        console.error("Google Auth Error:", error);
+        res.status(400).json({ message: 'Invalid Google token' });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -305,5 +358,6 @@ module.exports = {
     verifyResetOtp,
     resetPassword,
     updateMe,
-    updatePassword
+    updatePassword,
+    googleAuth
 };

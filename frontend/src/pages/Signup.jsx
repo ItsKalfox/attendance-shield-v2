@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 const Signup = () => {
     const [step, setStep] = useState(1);
@@ -14,7 +15,7 @@ const Signup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     
-    const { signup } = useAuth();
+    const { signup, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -169,6 +170,40 @@ const Signup = () => {
                     </div>
                 )}
             </form>
+
+            <div className="mt-6">
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-slate-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white text-slate-500 font-medium">Or continue with</span>
+                    </div>
+                </div>
+
+                <div className="mt-6 flex justify-center w-full">
+                    <GoogleLogin
+                        onSuccess={async (credentialResponse) => {
+                            try {
+                                setError('');
+                                setLoading(true);
+                                await loginWithGoogle(credentialResponse.credential);
+                                navigate('/app/dashboard');
+                            } catch (err) {
+                                setError(err.response?.data?.message || 'Google Login failed');
+                                setLoading(false);
+                            }
+                        }}
+                        onError={() => {
+                            setError('Google Login failed');
+                        }}
+                        size="large"
+                        theme="outline"
+                        text="continue_with"
+                        width="100%"
+                    />
+                </div>
+            </div>
 
             <div className="mt-8 text-center text-sm text-slate-500 font-medium">
                 Already have an account? <Link to="/login" className="text-brand-600 font-bold hover:text-brand-700 ml-1 transition-colors">Log in</Link>
