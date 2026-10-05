@@ -129,24 +129,41 @@ const PublicAttend = () => {
             </div>
             
             <div className="card max-w-md w-full p-8 shadow-2xl bg-white border border-slate-100 relative z-10">
-                <div className="text-center mb-6 flex flex-col items-center">
-                    <img src="/logo-dark.png" alt="Attendance Shield" className="w-32 h-auto mb-6 object-contain" />
-                    <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
-                    <p className="text-slate-500 text-sm">Enter your credentials to confirm your attendance for this session.</p>
-                </div>
-
-                {sessionInfo && sessionInfo.course && (
-                    <div className="mb-6 p-4 rounded-xl bg-brand-50/50 border border-brand-100/50 flex flex-col gap-1 text-left">
-                        <div className="text-base font-bold text-slate-800 leading-tight">
-                            <span className="text-brand-600 mr-2">{sessionInfo.course.code}</span>
-                            -
-                            <span className="ml-2">{sessionInfo.course.name}</span>
-                        </div>
-                        <div className="text-xs font-medium text-slate-500 mt-2">
-                            Lecturer: <span className="font-semibold text-slate-700">{sessionInfo.instructor?.firstName} {sessionInfo.instructor?.lastName}</span>
-                        </div>
+                <div className="mb-8 flex flex-col">
+                    <div className="flex w-full items-center justify-between mb-8">
+                        {sessionInfo && sessionInfo.organization ? (
+                            <div className="flex items-center gap-3">
+                                {sessionInfo.organization.logoUrl ? (
+                                    <img src={sessionInfo.organization.logoUrl} alt={sessionInfo.organization.name} className="w-8 h-8 rounded-md object-contain" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs">
+                                        {sessionInfo.organization.name.substring(0, 2).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="font-bold text-slate-700 text-sm truncate max-w-[150px]">{sessionInfo.organization.name}</span>
+                            </div>
+                        ) : (
+                            <div></div>
+                        )}
+                        <img src="/logo-dark.png" alt="Attendance Shield" className="h-6 w-auto object-contain" />
                     </div>
-                )}
+
+                    <div className="text-center">
+                        {sessionInfo && sessionInfo.course ? (
+                            <>
+                                <h1 className="text-2xl font-extrabold text-slate-800 leading-tight">
+                                    {sessionInfo.course.code}
+                                </h1>
+                                <h2 className="text-xl font-bold text-slate-600 mt-1 mb-2">
+                                    {sessionInfo.course.name}
+                                </h2>
+                            </>
+                        ) : (
+                            <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
+                        )}
+                        <p className="text-slate-500 text-sm">Mark your attendance by entering your credentials below.</p>
+                    </div>
+                </div>
 
                 {status === 'ERROR' && (
                     <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-xl mb-6 flex items-start gap-3 text-sm font-medium">

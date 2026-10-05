@@ -262,8 +262,9 @@ const getSessionInfo = async (req, res, next) => {
     try {
         const tokenHash = crypto.createHash('sha256').update(req.params.qrToken).digest('hex');
         const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash })
-            .select('isGeofenceEnabled status startTime expiresAt courseId instructorId')
+            .select('isGeofenceEnabled status startTime expiresAt courseId instructorId organizationId')
             .populate('courseId', 'name code')
+            .populate('organizationId', 'name avatarUrl')
             .populate({
                 path: 'instructorId',
                 populate: { path: 'userId', select: 'firstName lastName' }
@@ -276,6 +277,10 @@ const getSessionInfo = async (req, res, next) => {
         res.status(200).json({ 
             isGeofenceEnabled: session.isGeofenceEnabled,
             status: session.status,
+            organization: session.organizationId ? {
+                name: session.organizationId.name,
+                logoUrl: session.organizationId.avatarUrl
+            } : null,
             course: session.courseId ? {
                 name: session.courseId.name,
                 code: session.courseId.code
