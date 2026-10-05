@@ -18,32 +18,32 @@ const AuthLayout = () => {
             {/* Ambient Background Blobs */}
             <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-brand-500/30 blur-[120px] pointer-events-none"></div>
             <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-500/20 blur-[120px] pointer-events-none"></div>
-            
+
             {/* Main Container */}
-            <div className="w-full max-w-6xl bg-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border border-white/20 overflow-hidden flex flex-col lg:flex-row relative z-10 min-h-[700px]">
-                
+            <div className="w-full max-w-6xl bg-white/10 backdrop-blur-xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row relative z-10 min-h-[800px]">
+
                 {/* Left Side - Branding (Hidden on very small screens, visible on lg) */}
-                <div className="w-full lg:w-[55%] p-10 lg:p-16 flex flex-col relative order-2 lg:order-1 hidden sm:flex">
-                    
+                <div className="w-full lg:w-[45%] p-10 lg:p-16 flex flex-col relative order-2 lg:order-1 hidden sm:flex">
+
                     {/* Header/Logo */}
-                    <div className="mb-auto">
+                    <div className="mb-auto mt-8">
                         <img src="/logo.png" alt="Attendance Shield" className="h-10 w-auto object-contain drop-shadow-md" />
                     </div>
 
                     {/* Marketing Content */}
                     <div className="mt-auto">
-                        <h1 className="text-4xl lg:text-5xl font-extrabold text-white leading-[1.15] mb-6 tracking-tight drop-shadow-sm">
-                            Fast, Efficient <br className="hidden lg:block" /> and Productive
+                        <h1 className="text-3xl lg:text-4xl font-extrabold text-white leading-[1.15] mb-6 tracking-tight drop-shadow-sm">
+                            Smart, Accurate <br className="hidden lg:block" /> and Secure
                         </h1>
-                        <p className="text-slate-200 text-lg max-w-[400px] leading-relaxed font-medium">
+                        <p className="text-white/60 text-base max-w-[400px] leading-relaxed font-medium">
                             Manage your organization's attendance seamlessly with geofencing and real-time tracking.
                         </p>
                     </div>
                 </div>
 
                 {/* Right Side - Form Container */}
-                <div className="w-full lg:w-[45%] p-4 sm:p-6 lg:p-6 xl:p-8 flex items-stretch order-1 lg:order-2 bg-white/40 lg:bg-transparent">
-                    <div className="w-full h-full max-w-md mx-auto bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 p-8 sm:p-10 flex flex-col justify-center">
+                <div className="w-full lg:w-[55%] p-4 sm:p-6 lg:p-6 flex items-stretch order-1 lg:order-2 bg-white/40 lg:bg-transparent">
+                    <div className="w-full h-full max-w-[580px] mx-auto bg-white rounded-2xl shadow-2xl border border-slate-100 px-10 sm:px-20 lg:px-32 py-8 sm:py-10 flex flex-col justify-center">
                         <div className="sm:hidden mb-8 text-center flex justify-center">
                             <img src="/logo-dark.png" alt="Attendance Shield" className="h-8 w-auto object-contain" />
                         </div>
@@ -52,7 +52,7 @@ const AuthLayout = () => {
                         </div>
                     </div>
                 </div>
-                
+
             </div>
         </div>
     );

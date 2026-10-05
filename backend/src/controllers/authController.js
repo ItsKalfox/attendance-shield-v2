@@ -311,13 +311,33 @@ const googleAuth = async (req, res, next) => {
             return res.status(400).json({ message: 'Google token is required' });
         }
 
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: process.env.VITE_GOOGLE_CLIENT_ID
-        });
-        
-        const payload = ticket.getPayload();
-        const { email, given_name, family_name, picture } = payload;
+        let email, given_name, family_name, picture;
+
+        try {
+            // First try treating the token as an ID token
+            const ticket = await client.verifyIdToken({
+                idToken: token,
+                audience: process.env.VITE_GOOGLE_CLIENT_ID
+            });
+            const payload = ticket.getPayload();
+            email = payload.email;
+            given_name = payload.given_name;
+            family_name = payload.family_name;
+            picture = payload.picture;
+        } catch (err) {
+            // If it fails, fallback to using it as an access token
+            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch user profile with access token');
+            }
+            const data = await response.json();
+            email = data.email;
+            given_name = data.given_name;
+            family_name = data.family_name;
+            picture = data.picture;
+        }
 
         let user = await User.findOne({ email });
 
