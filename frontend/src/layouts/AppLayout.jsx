@@ -123,15 +123,24 @@ const AppLayout = () => {
                         </div>
 
                         {/* Organization Switcher */}
-                        <div className="relative w-56">
+                        <div className="relative">
                             <button
-                                className="w-full flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 hover:bg-slate-50 transition text-slate-800"
+                                className="flex items-center gap-2 hover:opacity-80 transition text-slate-800"
                                 onClick={() => setShowOrgDropdown(!showOrgDropdown)}
                             >
-                                <span className="truncate mr-2 font-medium text-sm">
-                                    {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
-                                </span>
-                                <ChevronDown size={14} className="text-slate-400 shrink-0" />
+                                <div className="flex items-center">
+                                    {activeOrganization?.avatarUrl && !loadingOrg ? (
+                                        <img src={activeOrganization.avatarUrl} alt={activeOrganization.name} className="w-8 h-8 rounded-md object-contain shrink-0 bg-slate-50 shadow-sm" />
+                                    ) : activeOrganization && !loadingOrg ? (
+                                        <div className="w-8 h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0 shadow-sm">
+                                            {activeOrganization.name.substring(0, 2).toUpperCase()}
+                                        </div>
+                                    ) : null}
+                                    <span className="truncate font-bold text-base ml-3 max-w-[200px] text-left">
+                                        {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
+                                    </span>
+                                </div>
+                                <ChevronDown size={16} className="text-slate-500 shrink-0 ml-1" />
                             </button>
 
                             {showOrgDropdown && (
@@ -147,8 +156,19 @@ const AppLayout = () => {
                                                     setShowOrgDropdown(false);
                                                 }}
                                             >
-                                                {org._id === activeOrganization?._id && <span className="text-brand-600 mr-2 font-bold shrink-0">✓</span>}
-                                                <span className={`truncate ${org._id !== activeOrganization?._id ? 'ml-5' : 'font-medium'}`}>
+                                                {org._id === activeOrganization?._id ? (
+                                                    <span className="text-brand-600 mr-2 font-bold shrink-0">✓</span>
+                                                ) : (
+                                                    <span className="w-4 mr-2 shrink-0"></span> // Placeholder for alignment
+                                                )}
+                                                {org.avatarUrl ? (
+                                                    <img src={org.avatarUrl} alt={org.name} className="w-5 h-5 rounded-md object-contain mr-2 shrink-0 bg-slate-50" />
+                                                ) : (
+                                                    <div className="w-5 h-5 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-[10px] mr-2 shrink-0">
+                                                        {org.name.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <span className={`truncate ${org._id === activeOrganization?._id ? 'font-medium' : ''}`}>
                                                     {org.name}
                                                 </span>
                                             </button>
