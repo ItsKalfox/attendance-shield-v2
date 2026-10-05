@@ -78,6 +78,12 @@ const PublicAttend = () => {
                 setLocationData(currentLoc);
              } catch (err) {}
              setMessage('');
+             
+             if (!currentLoc.lat || !currentLoc.lng) {
+                 setStatus('ERROR');
+                 setMessage('You must allow location services to mark your attendance for this session. If you cannot enable location services, please talk to your lecturer.');
+                 return;
+             }
         }
 
         try {
@@ -161,7 +167,7 @@ const PublicAttend = () => {
                         ) : (
                             <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
                         )}
-                        <p className="text-slate-500 text-sm">Mark your attendance by entering your credentials below.</p>
+                        <p className="text-slate-500 text-sm">Mark your attendance by entering your credentials below. Ensure your location services are enabled if required.</p>
                     </div>
                 </div>
 

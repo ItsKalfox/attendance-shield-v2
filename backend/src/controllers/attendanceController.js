@@ -132,7 +132,7 @@ const scanAttendance = async (req, res, next) => {
 
         if (isFlagged) {
             return res.status(200).json({ 
-                message: 'You are outside the marking area. This attendance has been recorded but flagged.',
+                message: 'Attendance marked successfully.',
                 flagged: true
             });
         }
