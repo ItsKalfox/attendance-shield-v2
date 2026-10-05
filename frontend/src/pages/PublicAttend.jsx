@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, MapPin, Loader2, Navigation } from 'lucide-react';
+import { CheckCircle, XCircle, MapPin, Loader2, Navigation, BookOpen } from 'lucide-react';
 import api from '../services/api';
 
 const PublicAttend = () => {
@@ -18,6 +18,7 @@ const PublicAttend = () => {
     const [locationData, setLocationData] = useState({ lat: null, lng: null });
     const [isLocating, setIsLocating] = useState(false);
     const [locationError, setLocationError] = useState('');
+    const [showLocationSuccess, setShowLocationSuccess] = useState(false);
 
     useEffect(() => {
         const fetchSessionInfo = async () => {
@@ -33,16 +34,20 @@ const PublicAttend = () => {
             }
         };
         fetchSessionInfo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [qrToken]);
 
     const fetchLocation = async () => {
         setIsLocating(true);
         setLocationError('');
+        setShowLocationSuccess(false);
         try {
             const position = await new Promise((resolve, reject) => {
                 navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
             });
             setLocationData({ lat: position.coords.latitude, lng: position.coords.longitude });
+            setShowLocationSuccess(true);
+            setTimeout(() => setShowLocationSuccess(false), 3000);
         } catch (err) {
             console.warn("Location access denied or failed:", err);
             setLocationError('Failed to get precise location. Please ensure location services are enabled.');
@@ -63,7 +68,7 @@ const PublicAttend = () => {
 
         // If geofence is enabled but we don't have location yet, try one more time
         let currentLoc = { ...locationData };
-        if (sessionInfo?.isGeofenceEnabled && !currentLoc.lat && !currentLoc.lat) {
+        if (sessionInfo?.isGeofenceEnabled && !currentLoc.lat && !currentLoc.lng) {
              setMessage('Acquiring location...');
              try {
                 const position = await new Promise((resolve, reject) => {
@@ -124,40 +129,21 @@ const PublicAttend = () => {
             </div>
             
             <div className="card max-w-md w-full p-8 shadow-2xl bg-white border border-slate-100 relative z-10">
-                <div className="text-center mb-8 flex flex-col items-center">
-                    <img src="/logo.png" alt="Attendance Shield" className="w-52 h-auto mb-6 object-contain" />
+                <div className="text-center mb-6 flex flex-col items-center">
+                    <img src="/logo-dark.png" alt="Attendance Shield" className="w-32 h-auto mb-6 object-contain" />
                     <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
                     <p className="text-slate-500 text-sm">Enter your credentials to confirm your attendance for this session.</p>
                 </div>
 
-                {sessionInfo && sessionInfo.isGeofenceEnabled && (
-                    <div className="mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center text-sm font-semibold text-slate-700">
-                                <MapPin size={16} className="text-brand-500 mr-2" />
-                                Geolocation Shield Active
-                            </div>
-                            <button 
-                                type="button" 
-                                onClick={fetchLocation} 
-                                disabled={isLocating}
-                                className="flex items-center text-xs font-bold text-brand-600 hover:text-brand-700 transition"
-                            >
-                                {isLocating ? (
-                                    <><Loader2 size={12} className="animate-spin mr-1" /> Locating...</>
-                                ) : (
-                                    <><Navigation size={12} className="mr-1" /> Recalibrate GPS</>
-                                )}
-                            </button>
+                {sessionInfo && sessionInfo.course && (
+                    <div className="mb-6 p-4 rounded-xl bg-brand-50/50 border border-brand-100/50 flex flex-col gap-1 text-left">
+                        <div className="text-base font-bold text-slate-800 leading-tight">
+                            <span className="text-brand-600 mr-2">{sessionInfo.course.code}</span>
+                            -
+                            <span className="ml-2">{sessionInfo.course.name}</span>
                         </div>
-                        <div className="text-xs text-slate-500">
-                            {locationData.lat ? (
-                                <span className="text-emerald-600 font-medium">Location acquired successfully.</span>
-                            ) : locationError ? (
-                                <span className="text-red-500">{locationError}</span>
-                            ) : (
-                                <span>Waiting for location...</span>
-                            )}
+                        <div className="text-xs font-medium text-slate-500 mt-2">
+                            Lecturer: <span className="font-semibold text-slate-700">{sessionInfo.instructor?.firstName} {sessionInfo.instructor?.lastName}</span>
                         </div>
                     </div>
                 )}
@@ -197,6 +183,38 @@ const PublicAttend = () => {
                             disabled={!sessionInfo}
                         />
                     </div>
+
+                    {sessionInfo && sessionInfo.isGeofenceEnabled && (
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 mt-2">
+                            <div className="flex items-center text-sm font-semibold text-slate-700 mb-1">
+                                <MapPin size={16} className="text-brand-500 mr-2" />
+                                Geofence Active
+                            </div>
+                            <div className="text-xs text-slate-500 mb-3 ml-6">
+                                {isLocating ? (
+                                    <span>Locating...</span>
+                                ) : showLocationSuccess ? (
+                                    <span className="text-emerald-600 font-medium">Location acquired successfully.</span>
+                                ) : locationError ? (
+                                    <span className="text-red-500">{locationError}</span>
+                                ) : (
+                                    <span>Your location will be verified.</span>
+                                )}
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={fetchLocation} 
+                                disabled={isLocating}
+                                className="w-full py-2 px-4 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 rounded-lg text-xs font-bold transition flex items-center justify-center disabled:opacity-50"
+                            >
+                                {isLocating ? (
+                                    <><Loader2 size={14} className="animate-spin mr-2" /> Locating...</>
+                                ) : (
+                                    <><Navigation size={14} className="mr-2" /> Recalibrate GPS</>
+                                )}
+                            </button>
+                        </div>
+                    )}
 
                     <button 
                         type="submit" 

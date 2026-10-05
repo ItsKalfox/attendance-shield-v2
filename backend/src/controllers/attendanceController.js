@@ -261,7 +261,13 @@ const removeAttendance = async (req, res, next) => {
 const getSessionInfo = async (req, res, next) => {
     try {
         const tokenHash = crypto.createHash('sha256').update(req.params.qrToken).digest('hex');
-        const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash }).select('isGeofenceEnabled status startTime expiresAt');
+        const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash })
+            .select('isGeofenceEnabled status startTime expiresAt courseId instructorId')
+            .populate('courseId', 'name code')
+            .populate({
+                path: 'instructorId',
+                populate: { path: 'userId', select: 'firstName lastName' }
+            });
         
         if (!session) {
             return res.status(404).json({ message: 'Invalid or expired QR code.' });
@@ -269,7 +275,15 @@ const getSessionInfo = async (req, res, next) => {
 
         res.status(200).json({ 
             isGeofenceEnabled: session.isGeofenceEnabled,
-            status: session.status
+            status: session.status,
+            course: session.courseId ? {
+                name: session.courseId.name,
+                code: session.courseId.code
+            } : null,
+            instructor: session.instructorId?.userId ? {
+                firstName: session.instructorId.userId.firstName,
+                lastName: session.instructorId.userId.lastName
+            } : null
         });
     } catch (error) {
         next(error);
