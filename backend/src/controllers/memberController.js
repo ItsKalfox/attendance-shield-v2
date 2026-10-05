@@ -2,7 +2,8 @@ const OrganizationMember = require('../models/OrganizationMember');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const sendEmail = require('../utils/sendEmail');
+const mongoose = require('mongoose');
+const dns = require('dns').promises;
 
 // @desc    Get all members of an organization
 // @route   GET /api/organizations/:organizationId/members
@@ -36,10 +37,10 @@ const addMember = async (req, res, next) => {
         let plainPassword = '';
 
         if (!user) {
-            // Generate password
-            plainPassword = crypto.randomBytes(6).toString('hex');
+            // Generate secure 64 character password
+            const securePassword = crypto.randomBytes(32).toString('hex');
             const salt = await bcrypt.genSalt(10);
-            const passwordHash = await bcrypt.hash(plainPassword, salt);
+            const passwordHash = await bcrypt.hash(securePassword, salt);
 
             user = await User.create({
                 firstName,
@@ -67,19 +68,7 @@ const addMember = async (req, res, next) => {
             studentId: studentId || ''
         });
 
-        // Send Email
-        let message = `You have been added to the organization.\n\n`;
-        if (isNewUser) {
-            message += `An account was created for you.\nEmail: ${email}\nTemporary Password: ${plainPassword}\n\nPlease change your password after logging in.`;
-        } else {
-            message += `You can log in using your existing credentials.`;
-        }
 
-        await sendEmail({
-            email,
-            subject: 'Added to Organization',
-            message
-        });
 
         res.status(201).json(member);
     } catch (error) {
@@ -91,11 +80,16 @@ const addMember = async (req, res, next) => {
 // @route   POST /api/organizations/:organizationId/members/import
 // @access  Private (INSTRUCTOR/OWNER)
 const importMembers = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    
     try {
         const { members } = req.body; // Array of { firstName, lastName, email, studentId }
         const organizationId = req.params.organizationId;
 
         if (!members || !Array.isArray(members)) {
+            await session.abortTransaction();
+            session.endSession();
             return res.status(400).json({ message: 'Invalid members data' });
         }
 
@@ -118,21 +112,21 @@ const importMembers = async (req, res, next) => {
                     continue;
                 }
 
-                let user = await User.findOne({ email });
+                let user = await User.findOne({ email }).session(session);
                 let isNewUser = false;
-                let plainPassword = '';
 
                 if (!user) {
-                    plainPassword = crypto.randomBytes(6).toString('hex');
+                    const securePassword = crypto.randomBytes(32).toString('hex');
                     const salt = await bcrypt.genSalt(10);
-                    const passwordHash = await bcrypt.hash(plainPassword, salt);
+                    const passwordHash = await bcrypt.hash(securePassword, salt);
 
-                    user = await User.create({
+                    const createdUsers = await User.create([{
                         firstName: firstName || 'Unknown',
                         lastName: lastName || 'Unknown',
                         email,
                         passwordHash
-                    });
+                    }], { session });
+                    user = createdUsers[0];
                     isNewUser = true;
                     results.createdAccounts++;
                 }
@@ -140,38 +134,35 @@ const importMembers = async (req, res, next) => {
                 const existingMember = await OrganizationMember.findOne({
                     organizationId,
                     userId: user._id
-                });
+                }).session(session);
 
                 if (existingMember) {
                     results.alreadyMembers++;
                     continue;
                 }
 
-                await OrganizationMember.create({
+                await OrganizationMember.create([{
                     organizationId,
                     userId: user._id,
                     role: 'ATTENDEE',
                     studentId: studentId || ''
-                });
+                }], { session });
 
                 if (!isNewUser) {
                     results.existingAdded++;
                 }
-
-                // Send email for newly created accounts
-                if (isNewUser) {
-                    let message = `You have been added to the organization as an Attendee.\n\n`;
-                    message += `An account was created for you.\nEmail: ${email}\nTemporary Password: ${plainPassword}\n\nPlease change your password after logging in.`;
-                    await sendEmail({ email, subject: 'Added to Organization', message });
-                }
             } catch (err) {
-                results.failed++;
-                results.errors.push(`Error processing ${data.email}: ${err.message}`);
+                // Instantly throw to trigger the fail-safe rollback for the entire transaction
+                throw err;
             }
         }
 
+        await session.commitTransaction();
+        session.endSession();
         res.status(200).json(results);
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
         next(error);
     }
 };
@@ -322,11 +313,54 @@ const resetMemberPassword = async (req, res, next) => {
     }
 };
 
+// @desc    Validate emails via MX records
+// @route   POST /api/organizations/:organizationId/members/validate-emails
+// @access  Private (INSTRUCTOR/OWNER)
+const validateEmails = async (req, res, next) => {
+    try {
+        const { emails } = req.body;
+        if (!emails || !Array.isArray(emails)) {
+            return res.status(400).json({ message: 'Invalid emails array' });
+        }
+
+        const validGoogleMx = ['google.com', 'googlemail.com'];
+        const validMicrosoftMx = ['outlook.com', 'protection.outlook.com'];
+
+        const results = await Promise.all(emails.map(async (email) => {
+            const domain = email.split('@')[1];
+            if (!domain) return { email, valid: false, provider: null };
+
+            // For common public domains, skip dns lookup to save time
+            if (['gmail.com'].includes(domain)) return { email, valid: true, provider: 'Google' };
+            if (['hotmail.com', 'outlook.com', 'live.com'].includes(domain)) return { email, valid: true, provider: 'Microsoft' };
+
+            try {
+                const mxRecords = await dns.resolveMx(domain);
+                
+                const isGoogle = mxRecords.some(mx => validGoogleMx.some(g => mx.exchange.toLowerCase().includes(g)));
+                if (isGoogle) return { email, valid: true, provider: 'Google' };
+
+                const isMicrosoft = mxRecords.some(mx => validMicrosoftMx.some(m => mx.exchange.toLowerCase().includes(m)));
+                if (isMicrosoft) return { email, valid: true, provider: 'Microsoft' };
+
+                return { email, valid: false, provider: null };
+            } catch (err) {
+                return { email, valid: false, provider: null };
+            }
+        }));
+
+        res.status(200).json(results);
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getMembers,
     addMember,
     importMembers,
     removeMember,
     updateMember,
-    resetMemberPassword
+    resetMemberPassword,
+    validateEmails
 };

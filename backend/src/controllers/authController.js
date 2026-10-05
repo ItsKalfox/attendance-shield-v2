@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const { OAuth2Client } = require('google-auth-library');
+const axios = require('axios');
 
 const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
@@ -370,6 +371,62 @@ const googleAuth = async (req, res, next) => {
     }
 };
 
+// @desc    Authenticate with Microsoft
+// @route   POST /api/auth/microsoft
+// @access  Public
+const microsoftAuth = async (req, res, next) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return res.status(400).json({ message: 'Microsoft token is required' });
+        }
+
+        // Verify the token by fetching user profile from Microsoft Graph API
+        const response = await axios.get('https://graph.microsoft.com/v1.0/me', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = response.data;
+        // email can be in mail or userPrincipalName
+        const email = data.mail || data.userPrincipalName;
+        const given_name = data.givenName || 'User';
+        const family_name = data.surname || '';
+
+        if (!email) {
+            return res.status(400).json({ message: 'Could not extract email from Microsoft account' });
+        }
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Generate a random secure password for the user
+            const randomPassword = crypto.randomBytes(32).toString('hex');
+            const salt = await bcrypt.genSalt(10);
+            const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+            user = await User.create({
+                firstName: given_name,
+                lastName: family_name,
+                email,
+                passwordHash,
+                avatar: ''
+            });
+        }
+
+        res.status(200).json({
+            _id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            avatar: user.avatar,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        console.error("Microsoft Auth Error:", error.response?.data || error.message);
+        res.status(400).json({ message: 'Invalid Microsoft token' });
+    }
+};
+
 module.exports = {
     signup,
     login,
@@ -379,5 +436,6 @@ module.exports = {
     resetPassword,
     updateMe,
     updatePassword,
-    googleAuth
+    googleAuth,
+    microsoftAuth
 };

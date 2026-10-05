@@ -48,6 +48,13 @@ export const AuthProvider = ({ children }) => {
         return res.data;
     };
 
+    const loginWithMicrosoft = async (token) => {
+        const res = await api.post('/auth/microsoft', { token });
+        localStorage.setItem('token', res.data.token);
+        setUser(res.data);
+        return res.data;
+    };
+
     const logout = () => {
         localStorage.removeItem('token');
         setUser(null);
@@ -56,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, login, signup, loginWithGoogle, logout, loading, setUser }}>
+        <AuthContext.Provider value={{ user, login, signup, loginWithGoogle, loginWithMicrosoft, logout, loading, setUser }}>
             {children}
         </AuthContext.Provider>
     );

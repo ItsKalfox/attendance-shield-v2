@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { signup, login, getMe, forgotPassword, verifyResetOtp, resetPassword, updateMe, updatePassword, googleAuth } = require('../controllers/authController');
+const { signup, login, getMe, forgotPassword, verifyResetOtp, resetPassword, updateMe, updatePassword, googleAuth, microsoftAuth } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/signup', signup);
 router.post('/login', login);
 router.post('/google', googleAuth);
+router.post('/microsoft', microsoftAuth);
 router.post('/forgot-password', forgotPassword);
 router.post('/verify-reset-otp', verifyResetOtp);
 router.post('/reset-password', resetPassword);

@@ -5,6 +5,9 @@ const OrganizationMember = require('../models/OrganizationMember');
 const User = require('../models/User');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
     const R = 6371000; // Radius of the earth in m
@@ -27,16 +30,53 @@ function deg2rad(deg) {
 // @access  Private
 const scanAttendance = async (req, res, next) => {
     try {
-        const { qrToken, email, password, lat, lng } = req.body;
+        const { qrToken, email, password, googleToken, microsoftToken, lat, lng } = req.body;
 
-        if (!qrToken || !email || !password) {
-            return res.status(400).json({ message: 'QR token, email, and password are required' });
+        if (!qrToken) {
+            return res.status(400).json({ message: 'QR token is required' });
         }
 
-        // 1. Authenticate user inline
-        const user = await User.findOne({ email }).select('+passwordHash');
-        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+        let userEmail = email;
+
+        // 1. Authenticate user inline via Token or Password
+        if (googleToken) {
+            try {
+                const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${googleToken}` }
+                });
+                if (!response.ok) throw new Error('Invalid Google token');
+                const data = await response.json();
+                userEmail = data.email;
+            } catch (err) {
+                return res.status(401).json({ message: 'Google Authentication failed' });
+            }
+        } else if (microsoftToken) {
+            try {
+                const response = await axios.get('https://graph.microsoft.com/v1.0/me', {
+                    headers: { Authorization: `Bearer ${microsoftToken}` }
+                });
+                userEmail = response.data.mail || response.data.userPrincipalName;
+            } catch (err) {
+                return res.status(401).json({ message: 'Microsoft Authentication failed' });
+            }
+        } else if (!email || !password) {
+            return res.status(400).json({ message: 'Authentication required to mark attendance' });
+        }
+
+        if (!userEmail) {
+            return res.status(401).json({ message: 'Could not extract email from authentication provider' });
+        }
+
+        const user = await User.findOne({ email: userEmail }).select('+passwordHash');
+        if (!user) {
+            return res.status(401).json({ message: 'User not found in system' });
+        }
+
+        // If they logged in with email/password, verify password
+        if (!googleToken && !microsoftToken) {
+            if (!(await bcrypt.compare(password, user.passwordHash))) {
+                return res.status(401).json({ message: 'Invalid credentials' });
+            }
         }
 
         const tokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');

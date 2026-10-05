@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
+import { useMsal } from '@azure/msal-react';
 
 const Signup = () => {
     const [step, setStep] = useState(1);
@@ -15,8 +16,9 @@ const Signup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     
-    const { signup, loginWithGoogle } = useAuth();
+    const { signup, loginWithGoogle, loginWithMicrosoft } = useAuth();
     const navigate = useNavigate();
+    const { instance } = useMsal();
 
     const googleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
@@ -32,6 +34,22 @@ const Signup = () => {
         },
         onError: () => setError('Google Login failed')
     });
+
+    const microsoftLogin = async () => {
+        try {
+            setError('');
+            setLoading(true);
+            const loginResponse = await instance.loginPopup({
+                scopes: ["user.read"]
+            });
+            await loginWithMicrosoft(loginResponse.accessToken);
+            navigate('/app/dashboard');
+        } catch (err) {
+            console.error(err);
+            setError(err.response?.data?.message || 'Microsoft Login failed');
+            setLoading(false);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({
@@ -209,6 +227,21 @@ const Signup = () => {
                         <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                     </svg>
                     Continue with Google
+                </button>
+
+                <button 
+                    type="button" 
+                    onClick={microsoftLogin}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2.5 bg-white border border-slate-200 rounded-xl py-2 text-sm text-slate-600 font-semibold hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 mt-3"
+                >
+                    <svg className="w-5 h-5" viewBox="0 0 21 21">
+                        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                    </svg>
+                    Continue with Microsoft
                 </button>
             </div>
 

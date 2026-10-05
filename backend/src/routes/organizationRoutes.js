@@ -6,7 +6,7 @@ const {
     getOrganizationById, 
     updateOrganization 
 } = require('../controllers/organizationController');
-const { getMembers, addMember, importMembers, removeMember, updateMember, resetMemberPassword } = require('../controllers/memberController');
+const { getMembers, addMember, importMembers, removeMember, updateMember, resetMemberPassword, validateEmails } = require('../controllers/memberController');
 const { inviteStaff, getInvitations } = require('../controllers/invitationController');
 const { getCourses, createCourse, getCourseById, updateCourse, getCourseMembers, enrollMembers, deleteCourse, removeMemberFromCourse } = require('../controllers/courseController');
 const { getSessions, createSession, getSessionById, confirmSession, cancelSession, deleteSession } = require('../controllers/sessionController');
@@ -35,6 +35,7 @@ router.post('/:organizationId/members/import', requireOrganizationRole('OWNER', 
 router.delete('/:organizationId/members/:memberId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), removeMember);
 router.patch('/:organizationId/members/:memberId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), updateMember);
 router.post('/:organizationId/members/:memberId/reset-password', requireOrganizationRole('OWNER', 'INSTRUCTOR'), resetMemberPassword);
+router.post('/:organizationId/members/validate-emails', requireOrganizationRole('OWNER', 'INSTRUCTOR'), validateEmails);
 
 // Invitation routes
 router.get('/:organizationId/invitations', requireOrganizationRole('OWNER', 'INSTRUCTOR'), getInvitations);
