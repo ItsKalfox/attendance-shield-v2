@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { CheckCircle, XCircle, MapPin, Loader2, Navigation } from 'lucide-react';
 import api from '../services/api';
 
 const PublicAttend = () => {
@@ -14,6 +14,42 @@ const PublicAttend = () => {
     
     const [status, setStatus] = useState('IDLE'); // IDLE, LOADING, SUCCESS, ERROR
     const [message, setMessage] = useState('');
+    const [sessionInfo, setSessionInfo] = useState(null);
+    const [locationData, setLocationData] = useState({ lat: null, lng: null });
+    const [isLocating, setIsLocating] = useState(false);
+    const [locationError, setLocationError] = useState('');
+
+    useEffect(() => {
+        const fetchSessionInfo = async () => {
+            try {
+                const res = await api.get(`/attendance/session-info/${qrToken}`);
+                setSessionInfo(res.data);
+                if (res.data.isGeofenceEnabled) {
+                    fetchLocation();
+                }
+            } catch (err) {
+                setStatus('ERROR');
+                setMessage(err.response?.data?.message || 'Invalid or expired QR code.');
+            }
+        };
+        fetchSessionInfo();
+    }, [qrToken]);
+
+    const fetchLocation = async () => {
+        setIsLocating(true);
+        setLocationError('');
+        try {
+            const position = await new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
+            });
+            setLocationData({ lat: position.coords.latitude, lng: position.coords.longitude });
+        } catch (err) {
+            console.warn("Location access denied or failed:", err);
+            setLocationError('Failed to get precise location. Please ensure location services are enabled.');
+        } finally {
+            setIsLocating(false);
+        }
+    };
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -23,28 +59,29 @@ const PublicAttend = () => {
         e.preventDefault();
         
         setStatus('LOADING');
-        setMessage('Acquiring location...');
-
-        let locationData = { lat: null, lng: null };
-        try {
-            const position = await new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-            });
-            locationData.lat = position.coords.latitude;
-            locationData.lng = position.coords.longitude;
-        } catch (err) {
-            console.warn("Location access denied or failed:", err);
-        }
-
         setMessage('');
+
+        // If geofence is enabled but we don't have location yet, try one more time
+        let currentLoc = { ...locationData };
+        if (sessionInfo?.isGeofenceEnabled && !currentLoc.lat && !currentLoc.lat) {
+             setMessage('Acquiring location...');
+             try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
+                });
+                currentLoc = { lat: position.coords.latitude, lng: position.coords.longitude };
+                setLocationData(currentLoc);
+             } catch (err) {}
+             setMessage('');
+        }
 
         try {
             const res = await api.post('/attendance/scan', {
                 email: formData.email,
                 password: formData.password,
                 qrToken,
-                lat: locationData.lat,
-                lng: locationData.lng
+                lat: currentLoc.lat,
+                lng: currentLoc.lng
             });
             
             setStatus('SUCCESS');
@@ -87,11 +124,43 @@ const PublicAttend = () => {
             </div>
             
             <div className="card max-w-md w-full p-8 shadow-2xl bg-white border border-slate-100 relative z-10">
-                <div className="text-center mb-10 flex flex-col items-center">
-                    <img src="/logo.png" alt="Attendance Shield" className="w-52 h-auto mb-8 object-contain" />
+                <div className="text-center mb-8 flex flex-col items-center">
+                    <img src="/logo.png" alt="Attendance Shield" className="w-52 h-auto mb-6 object-contain" />
                     <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
                     <p className="text-slate-500 text-sm">Enter your credentials to confirm your attendance for this session.</p>
                 </div>
+
+                {sessionInfo && sessionInfo.isGeofenceEnabled && (
+                    <div className="mb-6 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center text-sm font-semibold text-slate-700">
+                                <MapPin size={16} className="text-brand-500 mr-2" />
+                                Geolocation Shield Active
+                            </div>
+                            <button 
+                                type="button" 
+                                onClick={fetchLocation} 
+                                disabled={isLocating}
+                                className="flex items-center text-xs font-bold text-brand-600 hover:text-brand-700 transition"
+                            >
+                                {isLocating ? (
+                                    <><Loader2 size={12} className="animate-spin mr-1" /> Locating...</>
+                                ) : (
+                                    <><Navigation size={12} className="mr-1" /> Recalibrate GPS</>
+                                )}
+                            </button>
+                        </div>
+                        <div className="text-xs text-slate-500">
+                            {locationData.lat ? (
+                                <span className="text-emerald-600 font-medium">Location acquired successfully.</span>
+                            ) : locationError ? (
+                                <span className="text-red-500">{locationError}</span>
+                            ) : (
+                                <span>Waiting for location...</span>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {status === 'ERROR' && (
                     <div className="bg-red-50 text-red-600 border border-red-200 p-4 rounded-xl mb-6 flex items-start gap-3 text-sm font-medium">
@@ -111,6 +180,7 @@ const PublicAttend = () => {
                             placeholder="student@example.com"
                             value={formData.email}
                             onChange={handleChange}
+                            disabled={!sessionInfo}
                         />
                     </div>
                     
@@ -124,14 +194,16 @@ const PublicAttend = () => {
                             placeholder="••••••••"
                             value={formData.password}
                             onChange={handleChange}
+                            disabled={!sessionInfo}
                         />
                     </div>
 
                     <button 
                         type="submit" 
-                        className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-brand-500/30 shadow-lg transition active:scale-[0.98] mt-4"
-                        disabled={status === 'LOADING'}
+                        className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold shadow-brand-500/30 shadow-lg transition active:scale-[0.98] mt-4 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed"
+                        disabled={status === 'LOADING' || !sessionInfo}
                     >
+                        {status === 'LOADING' && <Loader2 size={18} className="animate-spin mr-2" />}
                         {status === 'LOADING' ? 'Verifying...' : 'Mark Attendance'}
                     </button>
                 </form>

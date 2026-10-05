@@ -255,9 +255,31 @@ const removeAttendance = async (req, res, next) => {
     }
 };
 
+// @desc    Get session info for public scan page
+// @route   GET /api/attendance/session-info/:qrToken
+// @access  Public
+const getSessionInfo = async (req, res, next) => {
+    try {
+        const tokenHash = crypto.createHash('sha256').update(req.params.qrToken).digest('hex');
+        const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash }).select('isGeofenceEnabled status startTime expiresAt');
+        
+        if (!session) {
+            return res.status(404).json({ message: 'Invalid or expired QR code.' });
+        }
+
+        res.status(200).json({ 
+            isGeofenceEnabled: session.isGeofenceEnabled,
+            status: session.status
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     scanAttendance,
     getSessionAttendance,
     addManualAttendance,
-    removeAttendance
+    removeAttendance,
+    getSessionInfo
 };
