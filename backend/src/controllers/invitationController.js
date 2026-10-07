@@ -1,5 +1,6 @@
 const OrganizationInvitation = require('../models/OrganizationInvitation');
 const OrganizationMember = require('../models/OrganizationMember');
+const Organization = require('../models/Organization');
 const User = require('../models/User');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
@@ -20,6 +21,10 @@ const inviteStaff = async (req, res, next) => {
         if (!validRoles.includes(role)) {
             return res.status(400).json({ message: 'Invalid role' });
         }
+
+        // Get organization info
+        const organization = await Organization.findById(organizationId);
+        const orgName = organization?.name || 'Organization';
 
         // Check if user is already a member
         const user = await User.findOne({ email });
@@ -51,12 +56,38 @@ const inviteStaff = async (req, res, next) => {
 
         // Send Email
         const inviteLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/invitation/${token}`;
-        const message = `You have been invited to join an organization.\n\nRole: ${role}\n\nClick here to accept: ${inviteLink}`;
+        const message = `You have been invited to join ${orgName} as an Instructor.\n\nClick here to accept: ${inviteLink}`;
+        const html = `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <h2 style="color: #1e293b; margin: 0; font-size: 24px;">Organization Invitation</h2>
+                    <p style="color: #64748b; font-size: 14px; margin-top: 6px;">Attendance Shield Platform</p>
+                </div>
+                <div style="padding: 20px; background-color: #f8fafc; border-radius: 8px; margin-bottom: 24px;">
+                    <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 12px 0;">
+                        Hello,
+                    </p>
+                    <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0;">
+                        You have been invited to join <strong>${orgName}</strong> as an <strong>Instructor</strong>.
+                    </p>
+                </div>
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <a href="${inviteLink}" style="background-color: #4f46e5; color: #ffffff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; display: inline-block;">
+                        Accept Invitation
+                    </a>
+                </div>
+                <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0; text-align: center;">
+                    If the button does not work, copy and paste this link in your browser:<br/>
+                    <a href="${inviteLink}" style="color: #4f46e5; word-break: break-all;">${inviteLink}</a>
+                </p>
+            </div>
+        `;
 
         await sendEmail({
             email,
-            subject: 'Organization Invitation',
-            message
+            subject: `Invitation to join ${orgName} as an Instructor`,
+            message,
+            html
         });
 
         res.status(201).json({ message: 'Invitation sent' });
@@ -77,7 +108,7 @@ const getInvitation = async (req, res, next) => {
             tokenHash,
             status: 'PENDING',
             expiresAt: { $gt: Date.now() }
-        }).populate('organizationId', 'name');
+        }).populate('organizationId', 'name avatarUrl description');
 
         if (!invitation) {
             return res.status(400).json({ message: 'Invalid or expired invitation' });
@@ -86,7 +117,13 @@ const getInvitation = async (req, res, next) => {
         res.status(200).json({
             email: invitation.email,
             role: invitation.role,
-            organization: invitation.organizationId.name
+            status: invitation.status,
+            organization: invitation.organizationId ? {
+                _id: invitation.organizationId._id,
+                name: invitation.organizationId.name,
+                avatarUrl: invitation.organizationId.avatarUrl || '',
+                description: invitation.organizationId.description || ''
+            } : { name: 'Unknown Organization' }
         });
     } catch (error) {
         next(error);

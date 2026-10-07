@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { X, Send } from 'lucide-react';
@@ -34,8 +35,8 @@ const InviteOrganizerModal = ({ onClose, onInvited }) => {
         }
     };
 
-    return (
-        <div className="modal-overlay">
+    return createPortal(
+        <div className="modal-overlay z-[100]">
             <div className="modal-container">
                 <div className="modal-content max-w-md">
                     <button 
@@ -46,8 +47,8 @@ const InviteOrganizerModal = ({ onClose, onInvited }) => {
                     </button>
                     
                     <div className="mb-6">
-                        <h2 className="text-xl font-bold text-slate-800">Invite Organizer</h2>
-                        <p className="text-sm text-slate-500 mt-1">Send an email invitation to join the organization as an Instructor.</p>
+                        <h2 className="text-xl font-bold text-slate-800">Invite Instructor</h2>
+                        <p className="text-sm text-slate-500 mt-1">Send an email invitation to join {activeOrganization?.name || 'this organization'} as an Instructor.</p>
                     </div>
                     
                     {error && (
@@ -58,7 +59,7 @@ const InviteOrganizerModal = ({ onClose, onInvited }) => {
                     
                     <form onSubmit={handleSubmit}>
                         <div className="form-group mb-6">
-                            <label className="form-label">Email Address</label>
+                            <label className="form-label">Instructor's Email Address</label>
                             <input 
                                 type="email" 
                                 name="email"
@@ -67,6 +68,7 @@ const InviteOrganizerModal = ({ onClose, onInvited }) => {
                                 value={formData.email}
                                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                 autoFocus
+                                required
                             />
                         </div>
 
@@ -86,7 +88,8 @@ const InviteOrganizerModal = ({ onClose, onInvited }) => {
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

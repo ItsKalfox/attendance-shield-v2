@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
+    const [searchParams] = useSearchParams();
+    const redirectUrl = searchParams.get('redirect') || '/app/dashboard';
+    const emailParam = searchParams.get('email') || '';
+
+    const [email, setEmail] = useState(emailParam);
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,7 +23,7 @@ const Login = () => {
                 setError('');
                 setLoading(true);
                 await loginWithGoogle(tokenResponse.access_token);
-                navigate('/app/dashboard');
+                navigate(redirectUrl);
             } catch (err) {
                 setError(err.response?.data?.message || 'Google Login failed');
                 setLoading(false);
@@ -36,7 +40,7 @@ const Login = () => {
                 scopes: ["user.read"]
             });
             await loginWithMicrosoft(loginResponse.accessToken);
-            navigate('/app/dashboard');
+            navigate(redirectUrl);
         } catch (err) {
             console.error(err);
             setError(err.response?.data?.message || 'Microsoft Login failed');
@@ -51,7 +55,7 @@ const Login = () => {
 
         try {
             await login(email, password);
-            navigate('/app/dashboard');
+            navigate(redirectUrl);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to login');
         } finally {
@@ -152,7 +156,7 @@ const Login = () => {
             </div>
 
             <div className="mt-8 text-center text-sm text-slate-500 font-medium">
-                Don't have an account? <Link to="/signup" className="text-brand-600 font-bold hover:text-brand-700 ml-1 transition-colors">Create one</Link>
+                Don't have an account? <Link to={`/signup${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-brand-600 font-bold hover:text-brand-700 ml-1 transition-colors">Create one</Link>
             </div>
         </div>
     );

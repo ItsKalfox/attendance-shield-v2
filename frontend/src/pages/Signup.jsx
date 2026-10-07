@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 
 const Signup = () => {
+    const [searchParams] = useSearchParams();
+    const redirectUrl = searchParams.get('redirect') || '/app/dashboard';
+    const emailParam = searchParams.get('email') || '';
+
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         firstName: '',
         lastName: '',
-        email: '',
+        email: emailParam,
         password: '',
         confirmPassword: ''
     });
@@ -26,7 +30,7 @@ const Signup = () => {
                 setError('');
                 setLoading(true);
                 await loginWithGoogle(tokenResponse.access_token);
-                navigate('/app/dashboard');
+                navigate(redirectUrl);
             } catch (err) {
                 setError(err.response?.data?.message || 'Google Login failed');
                 setLoading(false);
@@ -43,7 +47,7 @@ const Signup = () => {
                 scopes: ["user.read"]
             });
             await loginWithMicrosoft(loginResponse.accessToken);
-            navigate('/app/dashboard');
+            navigate(redirectUrl);
         } catch (err) {
             console.error(err);
             setError(err.response?.data?.message || 'Microsoft Login failed');
@@ -96,7 +100,7 @@ const Signup = () => {
                 email: formData.email,
                 password: formData.password
             });
-            navigate('/app/dashboard');
+            navigate(redirectUrl);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to register');
         } finally {
@@ -246,7 +250,7 @@ const Signup = () => {
             </div>
 
             <div className="mt-8 text-center text-sm text-slate-500 font-medium">
-                Already have an account? <Link to="/login" className="text-brand-600 font-bold hover:text-brand-700 ml-1 transition-colors">Log in</Link>
+                Already have an account? <Link to={`/login${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-brand-600 font-bold hover:text-brand-700 ml-1 transition-colors">Log in</Link>
             </div>
         </div>
     );
