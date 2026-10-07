@@ -326,22 +326,34 @@ const googleAuth = async (req, res, next) => {
             });
             const payload = ticket.getPayload();
             email = payload.email;
-            given_name = payload.given_name;
-            family_name = payload.family_name;
-            picture = payload.picture;
+            given_name = payload.given_name || payload.name?.split(' ')[0];
+            family_name = payload.family_name || (payload.name?.split(' ').slice(1).join(' ') || '');
+            picture = payload.picture || payload.avatar_url;
         } catch (err) {
-            // If it fails, fallback to using it as an access token
+            // Fallback to fetching userinfo with access token
             const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (!response.ok) {
-                throw new Error('Failed to fetch user profile with access token');
+                // Secondary fallback
+                const altResponse = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!altResponse.ok) {
+                    throw new Error('Failed to fetch user profile with access token');
+                }
+                const altData = await altResponse.json();
+                email = altData.email;
+                given_name = altData.given_name || altData.name?.split(' ')[0];
+                family_name = altData.family_name || (altData.name?.split(' ').slice(1).join(' ') || '');
+                picture = altData.picture || altData.avatar_url;
+            } else {
+                const data = await response.json();
+                email = data.email;
+                given_name = data.given_name || data.name?.split(' ')[0];
+                family_name = data.family_name || (data.name?.split(' ').slice(1).join(' ') || '');
+                picture = data.picture || data.avatar_url || data.photo || data.picture_url;
             }
-            const data = await response.json();
-            email = data.email;
-            given_name = data.given_name;
-            family_name = data.family_name;
-            picture = data.picture;
         }
 
         let user = await User.findOne({ email });
@@ -363,7 +375,15 @@ const googleAuth = async (req, res, next) => {
         } else {
             // Update existing user's avatar and provider
             user.authProvider = 'GOOGLE';
-            if (picture) user.avatar = picture;
+            if (picture) {
+                user.avatar = picture;
+            }
+            if (given_name && (!user.firstName || user.firstName === 'Unknown' || user.firstName === 'User')) {
+                user.firstName = given_name;
+            }
+            if (family_name && (!user.lastName || user.lastName === 'Unknown')) {
+                user.lastName = family_name;
+            }
             await user.save();
         }
 

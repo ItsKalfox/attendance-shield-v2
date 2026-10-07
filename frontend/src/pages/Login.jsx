@@ -18,6 +18,8 @@ const Login = () => {
     const { instance } = useMsal();
 
     const googleLogin = useGoogleLogin({
+        scope: 'openid email profile',
+        prompt: 'select_account',
         onSuccess: async (tokenResponse) => {
             try {
                 setError('');

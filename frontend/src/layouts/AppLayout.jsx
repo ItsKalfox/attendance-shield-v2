@@ -118,12 +118,22 @@ const AppLayout = () => {
                         <div className="flex items-center justify-between px-2">
                             <div className="flex items-center truncate">
                                 {user?.avatar ? (
-                                    <img src={user.avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover mr-3 flex-shrink-0 border border-brand-700 shadow-sm bg-white" />
-                                ) : (
-                                    <div className="w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0 shadow-sm">
-                                        {user?.firstName?.charAt(0) || 'U'}
-                                    </div>
-                                )}
+                                    <img 
+                                        src={user.avatar} 
+                                        alt="Avatar" 
+                                        referrerPolicy="no-referrer"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                        }}
+                                        className="w-10 h-10 rounded-full object-cover mr-3 flex-shrink-0 border border-brand-700 shadow-sm bg-white" 
+                                    />
+                                ) : null}
+                                <div 
+                                    className={`w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0 shadow-sm ${user?.avatar ? 'hidden' : ''}`}
+                                >
+                                    {user?.firstName?.charAt(0) || 'U'}
+                                </div>
                                 <div className="truncate">
                                     <p className="text-sm font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
                                     <p className="text-xs text-brand-300/60 truncate">{user?.email}</p>

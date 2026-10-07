@@ -65,10 +65,18 @@ const Settings = () => {
             <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl flex flex-col md:flex-row gap-6 items-center">
                 <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-sm border-2 border-slate-100">
                     {user?.avatar ? (
-                        <img src={user.avatar} alt="Profile" className="w-full h-full object-cover" />
-                    ) : (
-                        <UserIcon size={40} className="text-slate-400" />
-                    )}
+                        <img 
+                            src={user.avatar} 
+                            alt="Profile" 
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'block';
+                            }}
+                            className="w-full h-full object-cover" 
+                        />
+                    ) : null}
+                    <UserIcon size={40} className={`text-slate-400 ${user?.avatar ? 'hidden' : ''}`} />
                 </div>
                 <div className="flex-1 text-center md:text-left">
                     <h2 className="text-xl font-bold text-slate-800">{user?.firstName} {user?.lastName}</h2>
