@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios');
+const { cloudinary } = require('../config/cloudinary');
 
 const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
@@ -406,6 +407,46 @@ const microsoftAuth = async (req, res, next) => {
             return res.status(400).json({ message: 'Could not extract email from Microsoft account' });
         }
 
+        // Attempt to fetch profile photo from Microsoft Graph API
+        let avatarUrl = '';
+        try {
+            const photoResponse = await axios.get('https://graph.microsoft.com/v1.0/me/photo/$value', {
+                headers: { Authorization: `Bearer ${token}` },
+                responseType: 'arraybuffer'
+            });
+
+            if (photoResponse.status === 200 && photoResponse.data) {
+                const contentType = photoResponse.headers['content-type'] || 'image/jpeg';
+                const buffer = Buffer.from(photoResponse.data);
+
+                if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+                    try {
+                        const uploadResult = await new Promise((resolve, reject) => {
+                            const stream = cloudinary.uploader.upload_stream(
+                                {
+                                    folder: 'attendance_shield/avatars',
+                                    resource_type: 'image'
+                                },
+                                (error, result) => {
+                                    if (result) resolve(result);
+                                    else reject(error);
+                                }
+                            );
+                            stream.end(buffer);
+                        });
+                        avatarUrl = uploadResult.secure_url;
+                    } catch (cloudErr) {
+                        console.warn("Cloudinary upload failed for Microsoft avatar, falling back to data URI:", cloudErr.message);
+                        avatarUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
+                    }
+                } else {
+                    avatarUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
+                }
+            }
+        } catch (photoErr) {
+            console.log("Microsoft profile photo not available or not accessible:", photoErr.response?.status || photoErr.message);
+        }
+
         let user = await User.findOne({ email });
 
         if (!user) {
@@ -419,12 +460,15 @@ const microsoftAuth = async (req, res, next) => {
                 lastName: family_name,
                 email,
                 passwordHash,
-                avatar: '',
+                avatar: avatarUrl || '',
                 authProvider: 'MICROSOFT'
             });
         } else {
-            // Update existing user's provider
+            // Update existing user's provider and avatar if newly fetched
             user.authProvider = 'MICROSOFT';
+            if (avatarUrl) {
+                user.avatar = avatarUrl;
+            }
             await user.save();
         }
 
