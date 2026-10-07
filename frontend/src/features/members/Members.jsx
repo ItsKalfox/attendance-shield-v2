@@ -285,9 +285,6 @@ const Members = () => {
         {showInviteModal && (
             <InviteOrganizerModal 
                 onClose={() => setShowInviteModal(false)}
-                onInvited={() => {
-                    alert('Invitation sent successfully!');
-                }}
             />
         )}
 
