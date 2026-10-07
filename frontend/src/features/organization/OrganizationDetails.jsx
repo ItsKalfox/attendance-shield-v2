@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { Building2, Users, Shield, Save, Upload, Activity, ChevronDown, ChevronUp } from 'lucide-react';
+import { Building2, Users, Shield, Save, Upload, Activity, ChevronDown, ChevronUp, PlusCircle } from 'lucide-react';
+import CreateOrganizationModal from '../organizations/CreateOrganizationModal';
 
 const OrganizationDetails = () => {
     const { activeOrganization, switchOrganization } = useOrganization();
@@ -23,21 +24,30 @@ const OrganizationDetails = () => {
     
     const fileInputRef = useRef(null);
 
+    const [showCreateModal, setShowCreateModal] = useState(false);
+
     useEffect(() => {
         const fetchDetails = async () => {
-            if (!activeOrganization) return;
+            if (!activeOrganization) {
+                setLoading(false);
+                return;
+            }
             try {
                 setLoading(true);
-                const [orgRes, membersRes] = await Promise.all([
-                    api.get(`/organizations/${activeOrganization._id}`),
-                    api.get(`/organizations/${activeOrganization._id}/members`)
-                ]);
+                const isAttendee = activeOrganization.userRole === 'ATTENDEE';
                 
+                const orgRes = await api.get(`/organizations/${activeOrganization._id}`);
                 setOrganization(orgRes.data);
                 setEditName(orgRes.data.name);
                 setEditDescription(orgRes.data.description || '');
                 setAvatarPreview(orgRes.data.avatarUrl || '');
-                setMembers(membersRes.data);
+
+                if (!isAttendee) {
+                    const membersRes = await api.get(`/organizations/${activeOrganization._id}/members`);
+                    setMembers(membersRes.data);
+                } else {
+                    setMembers([]);
+                }
             } catch (error) {
                 console.error("Failed to fetch organization details", error);
             } finally {
@@ -110,9 +120,27 @@ const OrganizationDetails = () => {
     };
 
     if (loading) return <div className="p-6">Loading organization details...</div>;
-    if (!organization) return <div className="p-6">Organization not found.</div>;
+    
+    if (!organization) {
+        return (
+            <div className="p-6 w-full animate-fade-in flex flex-col items-center justify-center py-16">
+                <div className="card max-w-md w-full text-center p-8 bg-white border border-slate-200 shadow-sm rounded-2xl">
+                    <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-100">
+                        <Building2 size={32} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">No Organization Selected</h3>
+                    <p className="text-xs text-slate-500 mb-6">Create an organization to begin managing courses, sessions, and attendance.</p>
+                    <button className="btn btn-primary w-full py-2.5 font-bold text-xs" onClick={() => setShowCreateModal(true)}>
+                        <PlusCircle size={15} className="mr-2" />
+                        Create Organization
+                    </button>
+                </div>
+                {showCreateModal && <CreateOrganizationModal onClose={() => setShowCreateModal(false)} />}
+            </div>
+        );
+    }
 
-    const userRole = activeOrganization.userRole;
+    const userRole = activeOrganization?.userRole;
     const canEdit = userRole === 'OWNER' || userRole === 'ADMIN';
     const canSeeStats = userRole === 'OWNER' || userRole === 'ADMIN' || userRole === 'INSTRUCTOR';
 

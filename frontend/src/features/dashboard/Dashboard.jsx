@@ -2,14 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { Users, BookOpen, CalendarClock, Activity, ArrowRight, PieChart } from 'lucide-react';
+import { Users, BookOpen, CalendarClock, Activity, ArrowRight, PieChart, PlusCircle, CheckCircle2, ChevronRight } from 'lucide-react';
+import CreateOrganizationModal from '../organizations/CreateOrganizationModal';
 
 const Dashboard = () => {
-    const { activeOrganization } = useOrganization();
+    const { activeOrganization, loadingOrg } = useOrganization();
     const [stats, setStats] = useState(null);
     const [recentSessions, setRecentSessions] = useState([]);
     const [coursesList, setCoursesList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showCreateOrgModal, setShowCreateOrgModal] = useState(false);
     
     const [courseId, setCourseId] = useState('all');
     const [timeRange, setTimeRange] = useState('month');
@@ -18,7 +20,10 @@ const Dashboard = () => {
 
     useEffect(() => {
         const fetchDashboardData = async () => {
-            if (!activeOrganization) return;
+            if (!activeOrganization) {
+                setLoading(false);
+                return;
+            }
             
             try {
                 setLoading(true);
@@ -26,7 +31,7 @@ const Dashboard = () => {
                     params: { courseId, timeRange }
                 });
                 setStats(res.data.stats);
-                setRecentSessions(res.data.recentSessions);
+                setRecentSessions(res.data.recentSessions || []);
 
                 if (activeOrganization.userRole !== 'ATTENDEE' && coursesList.length === 0) {
                     const coursesRes = await api.get(`/organizations/${activeOrganization._id}/courses`);
@@ -42,7 +47,29 @@ const Dashboard = () => {
         fetchDashboardData();
     }, [activeOrganization, courseId, timeRange]);
 
-    if (!activeOrganization) return null;
+    if (!activeOrganization && !loadingOrg) {
+        return (
+            <div className="animate-fade-in flex flex-col items-center justify-center py-16 px-4">
+                <div className="card max-w-lg w-full text-center p-10 bg-white border border-slate-200/80 shadow-xl rounded-3xl">
+                    <div className="w-20 h-20 bg-brand-50 text-brand-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-brand-100">
+                        <PlusCircle size={36} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Welcome to Attendance Shield</h2>
+                    <p className="text-sm text-slate-500 mb-8 leading-relaxed">
+                        You do not have an active organization selected. Create a new organization to start managing courses, instructors, and secure attendance sessions.
+                    </p>
+                    <button 
+                        className="btn btn-primary w-full py-3.5 shadow-lg shadow-brand-500/25 flex items-center justify-center font-bold text-sm"
+                        onClick={() => setShowCreateOrgModal(true)}
+                    >
+                        <PlusCircle size={18} className="mr-2" />
+                        Create Organization to Get Started
+                    </button>
+                </div>
+                {showCreateOrgModal && <CreateOrganizationModal onClose={() => setShowCreateOrgModal(false)} />}
+            </div>
+        );
+    }
 
     if (loading && !stats) {
         return (
@@ -140,45 +167,139 @@ const Dashboard = () => {
     return (
         <div className="animate-fade-in space-y-8 pb-8">
             {isAttendee ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="card relative overflow-hidden flex items-center p-6 bg-white">
-                        <div className="bg-brand-50 p-4 rounded-2xl mr-5 text-brand-600 border border-brand-100">
-                            <Activity size={26} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <div className="text-4xl font-extrabold text-slate-800 tracking-tight">
-                                {stats?.attendedSessions || 0}
+                <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+                            <div className="bg-brand-50 p-4 rounded-2xl mr-5 text-brand-600 border border-brand-100">
+                                <Activity size={26} strokeWidth={2.5} />
                             </div>
-                            <div className="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-1">
-                                Attended Sessions
+                            <div>
+                                <div className="text-4xl font-extrabold text-slate-800 tracking-tight">
+                                    {stats?.attendedSessions || 0}
+                                </div>
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                                    Attended Sessions
+                                </div>
+                            </div>
+                        </div>
+                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+                            <div className="bg-emerald-50 p-4 rounded-2xl mr-5 text-emerald-600 border border-emerald-100">
+                                <BookOpen size={26} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <div className="text-4xl font-extrabold text-slate-800 tracking-tight">
+                                    {stats?.enrolledCourses || 0}
+                                </div>
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                                    Enrolled Courses
+                                </div>
+                            </div>
+                        </div>
+                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+                            <div className="bg-amber-50 p-4 rounded-2xl mr-5 text-amber-600 border border-amber-100">
+                                <Users size={26} strokeWidth={2.5} />
+                            </div>
+                            <div>
+                                <div className="text-4xl font-extrabold text-slate-800 tracking-tight">
+                                    {stats?.overallAttendance || '100%'}
+                                </div>
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mt-1">
+                                    Overall Attendance
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="card relative overflow-hidden flex items-center p-6 bg-white">
-                        <div className="bg-emerald-50 p-4 rounded-2xl mr-5 text-emerald-600 border border-emerald-100">
-                            <BookOpen size={26} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <div className="text-4xl font-extrabold text-slate-800 tracking-tight">
-                                {stats?.enrolledCourses || 0}
+
+                    {/* Quick Access Action Cards for Student */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Link 
+                            to="/app/courses"
+                            className="card p-6 bg-white border border-slate-200/80 hover:border-brand-400 hover:shadow-lg transition-all rounded-2xl flex items-center justify-between group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                    <BookOpen size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-base group-hover:text-brand-600 transition">My Enrolled Courses</h3>
+                                    <p className="text-xs text-slate-500">View course syllabus, lecturers, and class schedules</p>
+                                </div>
                             </div>
-                            <div className="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-1">
-                                Enrolled Courses
+                            <ChevronRight size={20} className="text-slate-400 group-hover:translate-x-1 group-hover:text-brand-600 transition" />
+                        </Link>
+
+                        <Link 
+                            to="/app/attendance"
+                            className="card p-6 bg-white border border-slate-200/80 hover:border-emerald-400 hover:shadow-lg transition-all rounded-2xl flex items-center justify-between group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                                    <CalendarClock size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-800 text-base group-hover:text-emerald-600 transition">Attendance History & Eligibility</h3>
+                                    <p className="text-xs text-slate-500">Check eligibility percentages and detailed scan records</p>
+                                </div>
                             </div>
-                        </div>
+                            <ChevronRight size={20} className="text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition" />
+                        </Link>
                     </div>
-                    <div className="card relative overflow-hidden flex items-center p-6 bg-white">
-                        <div className="bg-amber-50 p-4 rounded-2xl mr-5 text-amber-600 border border-amber-100">
-                            <Users size={26} strokeWidth={2.5} />
-                        </div>
-                        <div>
-                            <div className="text-4xl font-extrabold text-slate-800 tracking-tight">
-                                {stats?.overallAttendance || 'N/A'}
+
+                    {/* Recent Attended Sessions Log */}
+                    <div className="card bg-white p-0 overflow-hidden shadow-sm border border-slate-200 rounded-2xl">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-800 flex items-center">
+                                    <CheckCircle2 size={18} className="mr-2 text-emerald-600" />
+                                    Recent Attendance Activity
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Classes you recently scanned or attended</p>
                             </div>
-                            <div className="text-sm font-semibold text-slate-500 uppercase tracking-wider mt-1">
-                                Overall Attendance
-                            </div>
+                            <Link to="/app/attendance" className="text-xs font-bold text-brand-600 hover:text-brand-700">
+                                View Full History →
+                            </Link>
                         </div>
+
+                        {recentSessions.length === 0 ? (
+                            <div className="text-center py-12 text-slate-400">
+                                <CalendarClock size={28} className="mx-auto mb-2 opacity-50 text-slate-300" />
+                                <p className="text-xs font-medium text-slate-500">No attendance records found yet.</p>
+                            </div>
+                        ) : (
+                            <div className="table-container">
+                                <table className="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Course</th>
+                                            <th>Session Name</th>
+                                            <th>Marked Time</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recentSessions.map(record => (
+                                            <tr key={record._id} className="hover:bg-slate-50/50 transition">
+                                                <td>
+                                                    <div className="font-bold text-slate-800 text-sm">{record.courseId?.name || 'Course'}</div>
+                                                    <div className="text-xs font-mono text-slate-400">{record.courseId?.code || ''}</div>
+                                                </td>
+                                                <td className="text-slate-700 text-sm font-medium">
+                                                    {record.sessionId?.sessionName || 'Lecture Session'}
+                                                </td>
+                                                <td className="text-slate-600 text-xs">
+                                                    {new Date(record.markedAt || record.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                </td>
+                                                <td>
+                                                    <span className="badge badge-success text-xs font-semibold">
+                                                        {record.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </div>
             ) : (

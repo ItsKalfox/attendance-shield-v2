@@ -48,9 +48,16 @@ const AppLayout = () => {
     };
 
     // Dynamic Navigation Items
-    const navItems = activeOrganization?.userRole === 'ATTENDEE' ? [
+    const navItems = !activeOrganization ? [
+        { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { path: '/app/organization', label: 'Organization', icon: Building2 },
+        { path: '/app/settings', label: 'Settings', icon: Settings },
+    ] : activeOrganization.userRole === 'ATTENDEE' ? [
         { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/app/courses', label: 'My Courses', icon: BookOpen },
+        { path: '/app/attendance', label: 'My Attendance', icon: CalendarClock },
+        { path: '/app/organization', label: 'Organization', icon: Building2 },
+        { path: '/app/settings', label: 'Settings', icon: Settings },
     ] : [
         { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/app/sessions', label: 'Sessions', icon: CalendarClock },
@@ -150,94 +157,92 @@ const AppLayout = () => {
                             {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                         </div>
 
-                        {/* Organization Switcher */}
-                        <div className="relative">
-                            <button
-                                className="flex items-center gap-2 hover:opacity-80 transition text-slate-800"
-                                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-                            >
-                                <div className="flex items-center">
-                                    {activeOrganization?.avatarUrl && !loadingOrg ? (
-                                        <img src={activeOrganization.avatarUrl} alt={activeOrganization.name} className="w-8 h-8 rounded-md object-contain shrink-0 bg-slate-50 shadow-sm" />
-                                    ) : activeOrganization && !loadingOrg ? (
-                                        <div className="w-8 h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0 shadow-sm">
-                                            {activeOrganization.name.substring(0, 2).toUpperCase()}
-                                        </div>
-                                    ) : null}
-                                    <span className="truncate font-bold text-base ml-3 max-w-[200px] text-left">
-                                        {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
-                                    </span>
-                                </div>
-                                <ChevronDown size={16} className="text-slate-500 shrink-0 ml-1" />
-                            </button>
+                        {/* Organization Switcher & Role Badge */}
+                        <div className="flex items-center gap-2">
+                            {activeOrganization?.userRole && !loadingOrg && (
+                                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                                    activeOrganization.userRole === 'OWNER' 
+                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs' 
+                                        : activeOrganization.userRole === 'INSTRUCTOR'
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-xs'
+                                            : 'bg-slate-100 text-slate-700 border border-slate-200/80 shadow-xs'
+                                }`}>
+                                    {activeOrganization.userRole === 'OWNER' ? 'Owner' : activeOrganization.userRole === 'INSTRUCTOR' ? 'Instructor' : 'Student'}
+                                </span>
+                            )}
 
-                            {showOrgDropdown && (
-                                <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)}></div>
-                                    <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
-                                        {organizations.map(org => (
+                            <div className="relative">
+                                <button
+                                    className="flex items-center gap-2 hover:opacity-80 transition text-slate-800"
+                                    onClick={() => setShowOrgDropdown(!showOrgDropdown)}
+                                >
+                                    <div className="flex items-center">
+                                        {activeOrganization?.avatarUrl && !loadingOrg ? (
+                                            <img src={activeOrganization.avatarUrl} alt={activeOrganization.name} className="w-8 h-8 rounded-md object-contain shrink-0 bg-slate-50 shadow-sm" />
+                                        ) : activeOrganization && !loadingOrg ? (
+                                            <div className="w-8 h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0 shadow-sm">
+                                                {activeOrganization.name.substring(0, 2).toUpperCase()}
+                                            </div>
+                                        ) : null}
+                                        <span className="truncate font-bold text-base ml-3 max-w-[200px] text-left">
+                                            {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
+                                        </span>
+                                    </div>
+                                    <ChevronDown size={16} className="text-slate-500 shrink-0 ml-1" />
+                                </button>
+
+                                {showOrgDropdown && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)}></div>
+                                        <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                                            {organizations.map(org => (
+                                                <button
+                                                    key={org._id}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition flex items-center text-slate-700 hover:text-slate-900 text-sm"
+                                                    onClick={() => {
+                                                        switchOrganization(org._id);
+                                                        setShowOrgDropdown(false);
+                                                    }}
+                                                >
+                                                    {org._id === activeOrganization?._id ? (
+                                                        <span className="text-brand-600 mr-2 font-bold shrink-0">✓</span>
+                                                    ) : (
+                                                        <span className="w-4 mr-2 shrink-0"></span> // Placeholder for alignment
+                                                    )}
+                                                    {org.avatarUrl ? (
+                                                        <img src={org.avatarUrl} alt={org.name} className="w-5 h-5 rounded-md object-contain mr-2 shrink-0 bg-slate-50" />
+                                                    ) : (
+                                                        <div className="w-5 h-5 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-[10px] mr-2 shrink-0">
+                                                            {org.name.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <span className={`truncate ${org._id === activeOrganization?._id ? 'font-medium' : ''}`}>
+                                                        {org.name}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                            <div className="border-t border-slate-100"></div>
                                             <button
-                                                key={org._id}
-                                                className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition flex items-center text-slate-700 hover:text-slate-900 text-sm"
+                                                className="w-full text-left px-4 py-2.5 text-brand-600 hover:bg-brand-50 transition flex items-center font-medium text-sm"
                                                 onClick={() => {
-                                                    switchOrganization(org._id);
                                                     setShowOrgDropdown(false);
+                                                    setShowCreateOrg(true);
                                                 }}
                                             >
-                                                {org._id === activeOrganization?._id ? (
-                                                    <span className="text-brand-600 mr-2 font-bold shrink-0">✓</span>
-                                                ) : (
-                                                    <span className="w-4 mr-2 shrink-0"></span> // Placeholder for alignment
-                                                )}
-                                                {org.avatarUrl ? (
-                                                    <img src={org.avatarUrl} alt={org.name} className="w-5 h-5 rounded-md object-contain mr-2 shrink-0 bg-slate-50" />
-                                                ) : (
-                                                    <div className="w-5 h-5 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-[10px] mr-2 shrink-0">
-                                                        {org.name.substring(0, 2).toUpperCase()}
-                                                    </div>
-                                                )}
-                                                <span className={`truncate ${org._id === activeOrganization?._id ? 'font-medium' : ''}`}>
-                                                    {org.name}
-                                                </span>
+                                                <PlusCircle size={14} className="mr-2 shrink-0" />
+                                                Create Organization
                                             </button>
-                                        ))}
-                                        <div className="border-t border-slate-100"></div>
-                                        <button
-                                            className="w-full text-left px-4 py-2.5 text-brand-600 hover:bg-brand-50 transition flex items-center font-medium text-sm"
-                                            onClick={() => {
-                                                setShowOrgDropdown(false);
-                                                setShowCreateOrg(true);
-                                            }}
-                                        >
-                                            <PlusCircle size={14} className="mr-2 shrink-0" />
-                                            Create Organization
-                                        </button>
-                                    </div>
-                                </>
-                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
                     </div>
                 </header>
 
                 <main className="app-content relative">
-                    {!activeOrganization && !loadingOrg ? (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-                            <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mb-6 border border-slate-700">
-                                <PlusCircle size={40} className="text-indigo-400" />
-                            </div>
-                            <h2 className="text-2xl font-bold mb-2">Welcome to Attendance Platform!</h2>
-                            <p className="text-slate-400 max-w-md mx-auto mb-8">
-                                You don't belong to any organization yet. Create one to start managing courses, sessions, and attendance.
-                            </p>
-                            <button className="btn btn-primary" onClick={() => setShowCreateOrg(true)}>
-                                <PlusCircle size={18} className="mr-2" />
-                                Create Organization
-                            </button>
-                        </div>
-                    ) : (
-                        <Outlet />
-                    )}
+                    <Outlet />
                 </main>
             </div>
             {showCreateOrg && <CreateOrganizationModal onClose={() => setShowCreateOrg(false)} />}

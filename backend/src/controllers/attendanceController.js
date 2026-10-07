@@ -335,10 +335,117 @@ const getSessionInfo = async (req, res, next) => {
     }
 };
 
+// @desc    Get logged-in attendee attendance overview and logs
+// @route   GET /api/organizations/:organizationId/my-attendance
+// @access  Private (ATTENDEE/MEMBER)
+const getMyAttendance = async (req, res, next) => {
+    try {
+        const organizationId = req.params.organizationId;
+        const userId = req.user._id;
+
+        // 1. Get all courses the user is enrolled in
+        const enrollments = await CourseMember.find({
+            organizationId,
+            userId,
+            status: 'ACTIVE'
+        }).populate({
+            path: 'courseId',
+            populate: {
+                path: 'instructor',
+                populate: { path: 'userId', select: 'firstName lastName email avatar' }
+            }
+        });
+
+        const courseSummaries = [];
+        let totalConductedAcrossCourses = 0;
+        let totalAttendedAcrossCourses = 0;
+
+        for (const enrollment of enrollments) {
+            const course = enrollment.courseId;
+            if (!course) continue;
+
+            const sessions = await AttendanceSession.find({
+                courseId: course._id,
+                organizationId,
+                status: { $in: ['ACTIVE', 'CONFIRMED'] }
+            });
+
+            const sessionIds = sessions.map(s => s._id);
+
+            const attendedCount = await AttendanceRecord.countDocuments({
+                sessionId: { $in: sessionIds },
+                userId,
+                status: 'PRESENT'
+            });
+
+            const conductedCount = sessions.length;
+            const percentage = conductedCount > 0
+                ? Number(((attendedCount / conductedCount) * 100).toFixed(1))
+                : 0;
+
+            totalConductedAcrossCourses += conductedCount;
+            totalAttendedAcrossCourses += attendedCount;
+
+            courseSummaries.push({
+                course: {
+                    _id: course._id,
+                    name: course.name,
+                    code: course.code,
+                    batch: course.batch,
+                    semester: course.semester,
+                    instructor: course.instructor ? {
+                        name: `${course.instructor.userId?.firstName || ''} ${course.instructor.userId?.lastName || ''}`.trim(),
+                        email: course.instructor.userId?.email || ''
+                    } : null
+                },
+                conducted: conductedCount,
+                attended: attendedCount,
+                absent: Math.max(0, conductedCount - attendedCount),
+                percentage,
+                isEligible: percentage >= 80
+            });
+        }
+
+        // 2. Fetch detailed attendance log records for the user
+        const records = await AttendanceRecord.find({
+            organizationId,
+            userId
+        })
+        .populate({
+            path: 'sessionId',
+            select: 'sessionName startTime expiresAt status isGeofenceEnabled'
+        })
+        .populate({
+            path: 'courseId',
+            select: 'name code'
+        })
+        .sort({ markedAt: -1, createdAt: -1 });
+
+        const overallPercentage = totalConductedAcrossCourses > 0
+            ? Number(((totalAttendedAcrossCourses / totalConductedAcrossCourses) * 100).toFixed(1))
+            : 0;
+
+        res.status(200).json({
+            summary: {
+                enrolledCourses: courseSummaries.length,
+                totalConducted: totalConductedAcrossCourses,
+                totalAttended: totalAttendedAcrossCourses,
+                totalAbsent: Math.max(0, totalConductedAcrossCourses - totalAttendedAcrossCourses),
+                overallPercentage
+            },
+            courses: courseSummaries,
+            records
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     scanAttendance,
     getSessionAttendance,
     addManualAttendance,
     removeAttendance,
-    getSessionInfo
+    getSessionInfo,
+    getMyAttendance
 };

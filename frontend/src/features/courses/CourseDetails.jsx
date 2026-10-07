@@ -49,24 +49,51 @@ const CourseDetails = () => {
         data: null 
     });
 
+    const [studentCourseStats, setStudentCourseStats] = useState(null);
+
     const fetchDetails = async () => {
         if (!activeOrganization) return;
         try {
             setLoading(true);
-            const [courseRes, courseMembersRes, orgMembersRes, sessionsRes] = await Promise.all([
-                api.get(`/organizations/${activeOrganization._id}/courses/${courseId}`),
-                api.get(`/organizations/${activeOrganization._id}/courses/${courseId}/members`),
-                api.get(`/organizations/${activeOrganization._id}/members`),
-                api.get(`/organizations/${activeOrganization._id}/sessions?courseId=${courseId}`)
-            ]);
-            
-            setCourse(courseRes.data);
-            setMembers(courseMembersRes.data);
-            setSessions(sessionsRes.data);
-            
-            // Filter out those already in the course and non-attendees
-            const enrolledUserIds = courseMembersRes.data.map(m => m.userId?._id);
-            setOrgMembers(orgMembersRes.data.filter(m => !enrolledUserIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
+            const isStudent = activeOrganization.userRole === 'ATTENDEE';
+
+            if (isStudent) {
+                const [courseRes, myAttendanceRes] = await Promise.all([
+                    api.get(`/organizations/${activeOrganization._id}/courses/${courseId}`),
+                    api.get(`/organizations/${activeOrganization._id}/my-attendance`)
+                ]);
+                
+                setCourse(courseRes.data);
+                
+                const currentCourseData = (myAttendanceRes.data.courses || []).find(c => c.course._id === courseId);
+                const currentCourseRecords = (myAttendanceRes.data.records || []).filter(r => (r.courseId?._id === courseId || r.courseId === courseId));
+                
+                setStudentCourseStats({
+                    summary: currentCourseData || {
+                        conducted: 0,
+                        attended: 0,
+                        absent: 0,
+                        percentage: 0,
+                        isEligible: false
+                    },
+                    records: currentCourseRecords
+                });
+            } else {
+                const [courseRes, courseMembersRes, orgMembersRes, sessionsRes] = await Promise.all([
+                    api.get(`/organizations/${activeOrganization._id}/courses/${courseId}`),
+                    api.get(`/organizations/${activeOrganization._id}/courses/${courseId}/members`),
+                    api.get(`/organizations/${activeOrganization._id}/members`),
+                    api.get(`/organizations/${activeOrganization._id}/sessions?courseId=${courseId}`)
+                ]);
+                
+                setCourse(courseRes.data);
+                setMembers(courseMembersRes.data);
+                setSessions(sessionsRes.data);
+                
+                // Filter out those already in the course and non-attendees
+                const enrolledUserIds = courseMembersRes.data.map(m => m.userId?._id);
+                setOrgMembers(orgMembersRes.data.filter(m => !enrolledUserIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
+            }
         } catch (error) {
             console.error("Failed to load course details", error);
         } finally {
@@ -294,8 +321,124 @@ const CourseDetails = () => {
             {/* Main Layout: 2 Columns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* Left/Main Column: Enrolled Students List */}
+                {/* Left/Main Column */}
                 <div className="lg:col-span-2 space-y-4">
+                    {isAttendee ? (
+                        <div className="space-y-6">
+                            {/* Student Attendance Stats for this Course */}
+                            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-100">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-slate-900 flex items-center">
+                                            <CheckCircle2 size={20} className="mr-2 text-brand-600" />
+                                            My Course Attendance
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Your personal participation record for {course.code}</p>
+                                    </div>
+                                    <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                                        studentCourseStats?.summary?.isEligible 
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                                    }`}>
+                                        {studentCourseStats?.summary?.isEligible ? 'Eligible for Exam' : 'Attendance At Risk'}
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-4 mb-6">
+                                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-center">
+                                        <div className="text-2xl font-black text-slate-800">
+                                            {studentCourseStats?.summary?.conducted || 0}
+                                        </div>
+                                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                                            Total Classes
+                                        </div>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-100 text-center">
+                                        <div className="text-2xl font-black text-emerald-600">
+                                            {studentCourseStats?.summary?.attended || 0}
+                                        </div>
+                                        <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mt-0.5">
+                                            Attended
+                                        </div>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-rose-50/60 border border-rose-100 text-center">
+                                        <div className="text-2xl font-black text-rose-600">
+                                            {studentCourseStats?.summary?.absent || 0}
+                                        </div>
+                                        <div className="text-[11px] font-bold text-rose-700 uppercase tracking-wider mt-0.5">
+                                            Missed
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-semibold text-slate-700">
+                                        <span>Course Attendance Rate</span>
+                                        <span className="text-brand-700">{studentCourseStats?.summary?.percentage || 0}%</span>
+                                    </div>
+                                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full rounded-full transition-all duration-500 ${
+                                                (studentCourseStats?.summary?.percentage || 0) >= 80 ? 'bg-emerald-500' : 'bg-amber-500'
+                                            }`} 
+                                            style={{ width: `${Math.min(100, studentCourseStats?.summary?.percentage || 0)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Student Session Attendance Log for this Course */}
+                            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+                                <div className="p-5 border-b border-slate-100 bg-slate-50/40">
+                                    <h3 className="text-base font-bold text-slate-900 flex items-center">
+                                        <Calendar size={18} className="mr-2 text-brand-600" />
+                                        Session Log & Records
+                                    </h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Recorded attendances for this course</p>
+                                </div>
+
+                                {(!studentCourseStats?.records || studentCourseStats.records.length === 0) ? (
+                                    <div className="text-center py-12 text-slate-400">
+                                        <Clock size={28} className="mx-auto mb-2 opacity-50 text-slate-300" />
+                                        <p className="text-xs font-medium text-slate-500">No session attendance recorded for this course yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-xs">
+                                            <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200">
+                                                <tr>
+                                                    <th className="py-3 px-5">Session Name</th>
+                                                    <th className="py-3 px-4">Date & Time</th>
+                                                    <th className="py-3 px-4">Verification</th>
+                                                    <th className="py-3 px-5 text-right">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 font-medium">
+                                                {studentCourseStats.records.map(r => (
+                                                    <tr key={r._id} className="hover:bg-slate-50/60 transition">
+                                                        <td className="py-3 px-5 font-semibold text-slate-800">
+                                                            {r.sessionId?.sessionName || 'Lecture Session'}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-slate-600">
+                                                            {new Date(r.markedAt || r.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-slate-600">
+                                                            {r.markedBy === 'SELF' ? 'QR Code' : 'Lecturer Verified'}
+                                                        </td>
+                                                        <td className="py-3 px-5 text-right">
+                                                            <span className="badge badge-success text-xs font-semibold">
+                                                                Present
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
                     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
                         {/* Table Header / Action Bar */}
                         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40">
@@ -324,7 +467,7 @@ const CourseDetails = () => {
                             <div className="relative">
                                 <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
-                                    type="text"
+                                    type="text" 
                                     placeholder="Search student by name, email, or Student ID..."
                                     value={memberSearch}
                                     onChange={(e) => setMemberSearch(e.target.value)}
@@ -365,7 +508,7 @@ const CourseDetails = () => {
                                             const studentName = `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`.trim() || 'Student';
                                             const studentOrgMemberId = m.organizationMemberId?._id || m._id;
 
-                                            return (
+                                             return (
                                                 <tr key={m._id} className="hover:bg-slate-50/60 transition group">
                                                     <td className="py-3.5 px-5">
                                                         <div className="flex items-center space-x-3">
@@ -432,6 +575,7 @@ const CourseDetails = () => {
                             </div>
                         )}
                     </div>
+                    )}
                 </div>
 
                 {/* Right Column: Course Specifications & Lecturer Info */}

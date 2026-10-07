@@ -10,7 +10,7 @@ const { getMembers, addMember, importMembers, removeMember, updateMember, resetM
 const { inviteStaff, getInvitations } = require('../controllers/invitationController');
 const { getCourses, createCourse, getCourseById, updateCourse, getCourseMembers, enrollMembers, deleteCourse, removeMemberFromCourse, getCourseStudentAttendance } = require('../controllers/courseController');
 const { getSessions, createSession, getSessionById, confirmSession, cancelSession, deleteSession } = require('../controllers/sessionController');
-const { getSessionAttendance, addManualAttendance, removeAttendance } = require('../controllers/attendanceController');
+const { getSessionAttendance, addManualAttendance, removeAttendance, getMyAttendance } = require('../controllers/attendanceController');
 const { getDashboardStats } = require('../controllers/dashboardController');
 const { protect } = require('../middleware/authMiddleware');
 const { requireOrganizationRole } = require('../middleware/organizationMiddleware');
@@ -61,6 +61,7 @@ router.post('/:organizationId/sessions/:sessionId/cancel', requireOrganizationRo
 router.delete('/:organizationId/sessions/:sessionId', requireOrganizationRole('OWNER'), deleteSession);
 
 // Attendance routes (Organization scope)
+router.get('/:organizationId/my-attendance', requireOrganizationRole(), getMyAttendance);
 router.get('/:organizationId/sessions/:sessionId/attendance', requireOrganizationRole('OWNER', 'INSTRUCTOR'), getSessionAttendance);
 router.post('/:organizationId/sessions/:sessionId/attendance/manual', requireOrganizationRole('OWNER', 'INSTRUCTOR'), addManualAttendance);
 router.delete('/:organizationId/sessions/:sessionId/attendance/:attendanceId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), removeAttendance);

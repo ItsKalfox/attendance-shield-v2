@@ -17,25 +17,45 @@ const getDashboardStats = async (req, res, next) => {
             const CourseMember = require('../models/CourseMember');
             const AttendanceRecord = require('../models/AttendanceRecord');
 
-            const enrolledCoursesCount = await CourseMember.countDocuments({
+            const enrollments = await CourseMember.find({
                 organizationId,
-                userId: req.user._id
+                userId: req.user._id,
+                status: 'ACTIVE'
+            });
+
+            const enrolledCourseIds = enrollments.map(e => e.courseId);
+
+            const totalConductedSessions = await AttendanceSession.countDocuments({
+                courseId: { $in: enrolledCourseIds },
+                organizationId,
+                status: { $in: ['ACTIVE', 'CONFIRMED'] }
             });
 
             const attendedSessionsCount = await AttendanceRecord.countDocuments({
+                organizationId,
                 userId: req.user._id,
                 status: 'PRESENT'
             });
 
+            const overallPct = totalConductedSessions > 0
+                ? `${((attendedSessionsCount / totalConductedSessions) * 100).toFixed(1)}%`
+                : '100%';
+
             stats = {
-                enrolledCourses: enrolledCoursesCount,
+                enrolledCourses: enrolledCourseIds.length,
                 attendedSessions: attendedSessionsCount,
-                overallAttendance: 'N/A' // To be calculated properly later if needed
+                totalSessions: totalConductedSessions,
+                overallAttendance: overallPct
             };
             
-            // Attendees don't need to see all recent sessions, just their recent records maybe,
-            // but for now we'll pass an empty array to not break the frontend
-            recentSessions = [];
+            recentSessions = await AttendanceRecord.find({
+                organizationId,
+                userId: req.user._id
+            })
+            .sort({ markedAt: -1, createdAt: -1 })
+            .limit(5)
+            .populate('courseId', 'name code')
+            .populate('sessionId', 'sessionName startTime expiresAt status');
             
         } else {
             // Stats for organizers

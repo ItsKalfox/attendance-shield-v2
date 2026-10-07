@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { OrganizationProvider } from './context/OrganizationContext';
+import { OrganizationProvider, useOrganization } from './context/OrganizationContext';
 import { Toaster } from 'react-hot-toast';
 
 // Layouts
@@ -17,13 +17,13 @@ import Sessions from './features/sessions/Sessions';
 import Members from './features/members/Members';
 import CourseDetails from './features/courses/CourseDetails';
 import SessionDetails from './features/sessions/SessionDetails';
+import MyAttendance from './features/attendance/MyAttendance';
 import Invitation from './pages/Invitation';
 import PublicAttend from './pages/PublicAttend';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 
 import OrganizationDetails from './features/organization/OrganizationDetails';
-
 import Settings from './features/settings/Settings';
 
 const ProtectedRoute = ({ children }) => {
@@ -37,6 +37,28 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
+  return children;
+};
+
+const RoleRoute = ({ allowedRoles, children }) => {
+  const { activeOrganization, loadingOrg } = useOrganization();
+  
+  if (loadingOrg) {
+    return (
+      <div className="flex items-center justify-center p-12 text-slate-400">
+        <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+  
+  if (!activeOrganization) {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+
+  if (allowedRoles && !allowedRoles.includes(activeOrganization.userRole)) {
+    return <Navigate to="/app/dashboard" replace />;
+  }
+
   return children;
 };
 
@@ -63,11 +85,12 @@ function App() {
           <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="/app/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="sessions" element={<Sessions />} />
-            <Route path="sessions/:sessionId" element={<SessionDetails />} />
-            <Route path="courses" element={<Courses />} />
-            <Route path="courses/:courseId" element={<CourseDetails />} />
-            <Route path="members" element={<Members />} />
+            <Route path="sessions" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Sessions /></RoleRoute>} />
+            <Route path="sessions/:sessionId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><SessionDetails /></RoleRoute>} />
+            <Route path="courses" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><Courses /></RoleRoute>} />
+            <Route path="courses/:courseId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><CourseDetails /></RoleRoute>} />
+            <Route path="attendance" element={<RoleRoute allowedRoles={['ATTENDEE', 'OWNER', 'INSTRUCTOR']}><MyAttendance /></RoleRoute>} />
+            <Route path="members" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Members /></RoleRoute>} />
             <Route path="organization" element={<OrganizationDetails />} />
             <Route path="settings" element={<Settings />} />
           </Route>
