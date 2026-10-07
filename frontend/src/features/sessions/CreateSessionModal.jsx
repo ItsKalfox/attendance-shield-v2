@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useAuth } from '../../context/AuthContext';
@@ -62,7 +64,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                     api.get(`/organizations/${activeOrganization._id}/courses`),
                     api.get(`/organizations/${activeOrganization._id}/members`)
                 ]);
-                setCourses(coursesRes.data);
+                const loadedCourses = coursesRes.data || [];
+                setCourses(loadedCourses);
                 
                 // Filter members for instructors (or admins/owners)
                 const instructorMembers = membersRes.data.filter(m => 
@@ -70,22 +73,19 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                 );
                 setInstructors(instructorMembers);
                 
-                let defaultInstructorId = '';
-                // Auto-select the currently logged-in user
                 const myMember = instructorMembers.find(m => m.userId?._id === user?._id || m.userId === user?._id);
-                if (myMember) {
-                    defaultInstructorId = myMember._id;
-                } else if (instructorMembers.length > 0) {
-                    defaultInstructorId = instructorMembers[0]._id;
-                }
-                
-                // Set defaults
-                if (coursesRes.data.length > 0) {
-                    setFormData(prev => ({ ...prev, courseId: coursesRes.data[0]._id }));
-                }
-                
-                if (defaultInstructorId) {
-                    setFormData(prev => ({ ...prev, instructorId: defaultInstructorId }));
+
+                // Set course and instructor
+                if (loadedCourses.length > 0) {
+                    const firstCourse = loadedCourses[0];
+                    const courseInstructorId = firstCourse.instructor?._id || firstCourse.instructor || (firstCourse.instructors && firstCourse.instructors[0]?._id) || myMember?._id || '';
+                    setFormData(prev => ({
+                        ...prev,
+                        courseId: firstCourse._id,
+                        instructorId: courseInstructorId
+                    }));
+                } else if (myMember) {
+                    setFormData(prev => ({ ...prev, instructorId: myMember._id }));
                 }
 
                 // Default times (now, and +2 hours)
@@ -103,7 +103,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                 }));
             } catch (err) {
                 console.error("Failed to load form data", err);
-                setError("Failed to load courses or instructors.");
+                setError("Failed to connect to the server to load session details.");
             } finally {
                 setLoadingData(false);
             }
@@ -137,11 +137,38 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     };
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: value
+        }));
     };
+
+    const handleCourseChange = (e) => {
+        const selectedId = e.target.value;
+        const selectedCourse = courses.find(c => c._id === selectedId);
+        const courseInstructorId = selectedCourse?.instructor?._id || selectedCourse?.instructor || (selectedCourse?.instructors && selectedCourse?.instructors[0]?._id) || formData.instructorId;
+
+        setFormData(prev => ({
+            ...prev,
+            courseId: selectedId,
+            instructorId: courseInstructorId
+        }));
+    };
+
+    // Find instructor object for display
+    const selectedCourseObj = courses.find(c => c._id === formData.courseId);
+    const assignedInstructorObj = selectedCourseObj?.instructor || (selectedCourseObj?.instructors && selectedCourseObj?.instructors[0]) || instructors.find(i => i._id === formData.instructorId);
+    
+    const instructorDisplayName = (() => {
+        if (assignedInstructorObj?.userId && typeof assignedInstructorObj.userId === 'object') {
+            return `${assignedInstructorObj.userId.firstName || ''} ${assignedInstructorObj.userId.lastName || ''} (${assignedInstructorObj.userId.email || ''})`.trim();
+        }
+        if (user) {
+            return `${user.firstName || ''} ${user.lastName || ''} (${user.email || ''})`.trim();
+        }
+        return 'Assigned Lecturer';
+    })();
 
     const handleRecalibrate = () => {
         navigator.geolocation.getCurrentPosition((position) => {
@@ -169,8 +196,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const tenMinsAgo = new Date(new Date().getTime() - 10 * 60000);
     const minDateTime = new Date(tenMinsAgo.getTime() - tenMinsAgo.getTimezoneOffset() * 60000).toISOString().slice(0,16);
 
-    return (
-        <div className="modal-overlay">
+    return createPortal(
+        <div className="modal-overlay z-[100]">
             <div className="modal-container">
                 <div className="modal-content max-w-lg">
                     <button 
@@ -193,35 +220,38 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                     ) : (
                         <form onSubmit={handleSubmit}>
                             <div className="form-group mb-4">
-                                <label className="form-label">Course</label>
-                                <select 
-                                    name="courseId" 
-                                    className="form-input"
-                                    value={formData.courseId}
-                                    onChange={handleChange}
-                                    required
-                                >
-                                    <option value="" disabled>Select a course...</option>
-                                    {courses.map(c => (
-                                        <option key={c._id} value={c._id}>{c.code} - {c.name}</option>
-                                    ))}
-                                </select>
+                                <label className="form-label">Course *</label>
+                                {courses.length === 0 ? (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-xs flex items-center justify-between">
+                                        <span>No courses found in this organization.</span>
+                                        <Link to="/app/courses" onClick={onClose} className="font-bold underline text-amber-900 ml-2">
+                                            Create a Course First
+                                        </Link>
+                                    </div>
+                                ) : (
+                                    <select 
+                                        name="courseId" 
+                                        className="form-input font-medium"
+                                        value={formData.courseId}
+                                        onChange={handleCourseChange}
+                                        required
+                                    >
+                                        <option value="" disabled>Select a course...</option>
+                                        {courses.map(c => (
+                                            <option key={c._id} value={c._id}>
+                                                {c.code} - {c.name} {c.batch ? `(${c.batch})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
 
                             <div className="form-group mb-4">
-                                <label className="form-label">Instructor (Read-Only)</label>
-                                <select 
-                                    name="instructorId" 
-                                    className="form-input bg-slate-100 text-slate-500 cursor-not-allowed"
-                                    value={formData.instructorId}
-                                    onChange={handleChange}
-                                    required
-                                    disabled
-                                >
-                                    {instructors.map(i => (
-                                        <option key={i._id} value={i._id}>{i.userId?.firstName} {i.userId?.lastName}</option>
-                                    ))}
-                                </select>
+                                <label className="form-label">Assigned Lecturer</label>
+                                <div className="px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-700 font-medium flex items-center justify-between">
+                                    <span>{instructorDisplayName}</span>
+                                    <span className="text-[11px] text-slate-400 bg-white px-2 py-0.5 rounded border border-slate-200">Course Lecturer</span>
+                                </div>
                             </div>
 
                             <div className="form-group mb-4">
@@ -237,8 +267,9 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                     <option value="Practical">Practical</option>
                                     <option value="Workshop">Workshop</option>
                                     <option value="Lab">Lab</option>
-                                    <option value="Seminar">Seminar</option>
-                                    <option value="Other">Other</option>
+                                    <option value="Field Visit">Field Visit</option>
+                                    <option value="Field Work">Field Work</option>
+                                    <option value="Presentation">Presentation</option>
                                 </select>
                             </div>
 
@@ -341,7 +372,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

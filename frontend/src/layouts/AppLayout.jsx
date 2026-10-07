@@ -86,9 +86,13 @@ const AppLayout = () => {
                         <div className="px-2 mb-3 text-xs font-semibold text-brand-300/50 uppercase tracking-wider">User Account</div>
                         <div className="flex items-center justify-between px-2">
                             <div className="flex items-center truncate">
-                                <div className="w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0">
-                                    {user?.firstName?.charAt(0) || 'U'}
-                                </div>
+                                {user?.avatar ? (
+                                    <img src={user.avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover mr-3 flex-shrink-0 border border-brand-700 shadow-sm bg-white" />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0 shadow-sm">
+                                        {user?.firstName?.charAt(0) || 'U'}
+                                    </div>
+                                )}
                                 <div className="truncate">
                                     <p className="text-sm font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
                                     <p className="text-xs text-brand-300/60 truncate">{user?.email}</p>

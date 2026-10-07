@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { X } from 'lucide-react';
@@ -31,8 +32,8 @@ const CreateOrganizationModal = ({ onClose }) => {
         }
     };
 
-    return (
-        <div className="modal-overlay">
+    return createPortal(
+        <div className="modal-overlay z-[100]">
             <div className="modal-container">
                 <div className="modal-content max-w-md">
                     <button 
@@ -74,7 +75,8 @@ const CreateOrganizationModal = ({ onClose }) => {
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

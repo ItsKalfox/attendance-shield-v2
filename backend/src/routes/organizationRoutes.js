@@ -8,7 +8,7 @@ const {
 } = require('../controllers/organizationController');
 const { getMembers, addMember, importMembers, removeMember, updateMember, resetMemberPassword, validateEmails } = require('../controllers/memberController');
 const { inviteStaff, getInvitations } = require('../controllers/invitationController');
-const { getCourses, createCourse, getCourseById, updateCourse, getCourseMembers, enrollMembers, deleteCourse, removeMemberFromCourse } = require('../controllers/courseController');
+const { getCourses, createCourse, getCourseById, updateCourse, getCourseMembers, enrollMembers, deleteCourse, removeMemberFromCourse, getCourseStudentAttendance } = require('../controllers/courseController');
 const { getSessions, createSession, getSessionById, confirmSession, cancelSession, deleteSession } = require('../controllers/sessionController');
 const { getSessionAttendance, addManualAttendance, removeAttendance } = require('../controllers/attendanceController');
 const { getDashboardStats } = require('../controllers/dashboardController');
@@ -43,13 +43,14 @@ router.post('/:organizationId/invitations', requireOrganizationRole('OWNER', 'IN
 
 // Course routes
 router.get('/:organizationId/courses', requireOrganizationRole(), getCourses);
-router.post('/:organizationId/courses', requireOrganizationRole('OWNER', 'INSTRUCTOR'), createCourse);
+router.post('/:organizationId/courses', requireOrganizationRole('OWNER', 'ADMIN'), createCourse);
 router.get('/:organizationId/courses/:courseId', requireOrganizationRole(), getCourseById);
-router.patch('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), updateCourse);
+router.patch('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'ADMIN'), updateCourse);
+router.delete('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'ADMIN'), deleteCourse);
 router.get('/:organizationId/courses/:courseId/members', requireOrganizationRole(), getCourseMembers);
-router.post('/:organizationId/courses/:courseId/members', requireOrganizationRole('OWNER', 'INSTRUCTOR'), enrollMembers);
-router.delete('/:organizationId/courses/:courseId/members/:memberId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), removeMemberFromCourse);
-router.delete('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), deleteCourse);
+router.post('/:organizationId/courses/:courseId/members', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), enrollMembers);
+router.delete('/:organizationId/courses/:courseId/members/:memberId', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), removeMemberFromCourse);
+router.get('/:organizationId/courses/:courseId/students/:studentId/attendance', requireOrganizationRole(), getCourseStudentAttendance);
 
 // Session routes
 router.get('/:organizationId/sessions', requireOrganizationRole(), getSessions);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import { X, Copy, Check, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -58,8 +59,8 @@ const QRCodeModal = ({ qrToken, session, onClose }) => {
         doc.save(`QR_${session.courseId?.code || 'Session'}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
     };
 
-    return (
-        <div className="modal-overlay z-[60]">
+    return createPortal(
+        <div className="modal-overlay z-[100]">
             <div className="modal-container">
                 <div className="modal-content max-w-sm text-center relative">
                     <button 
@@ -113,7 +114,8 @@ const QRCodeModal = ({ qrToken, session, onClose }) => {
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -37,6 +37,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['ACTIVE', 'SUSPENDED'],
         default: 'ACTIVE'
+    },
+    authProvider: {
+        type: String,
+        enum: ['LOCAL', 'GOOGLE', 'MICROSOFT'],
+        default: 'LOCAL'
     }
 }, {
     timestamps: true

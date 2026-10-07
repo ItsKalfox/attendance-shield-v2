@@ -1,60 +1,66 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
-import { X, Check } from 'lucide-react';
+import { X, Calendar, BookOpen, Layers, Clock, UserCheck } from 'lucide-react';
 
 const CreateCourseModal = ({ onClose, onCourseCreated }) => {
     const { activeOrganization } = useOrganization();
     const [formData, setFormData] = useState({
         name: '',
         code: '',
-        description: '',
+        batch: '',
+        semester: '',
+        startDate: '',
+        endDate: '',
         instructor: '',
-        attendees: []
+        description: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     
     // Member fetching
-    const [members, setMembers] = useState([]);
-    const [fetchingMembers, setFetchingMembers] = useState(true);
+    const [instructorsList, setInstructorsList] = useState([]);
+    const [fetchingInstructors, setFetchingInstructors] = useState(true);
 
     useEffect(() => {
-        const fetchMembers = async () => {
+        const fetchStaff = async () => {
             if (!activeOrganization) return;
             try {
-                setFetchingMembers(true);
+                setFetchingInstructors(true);
                 const res = await api.get(`/organizations/${activeOrganization._id}/members`);
-                setMembers(res.data);
+                // Filter only OWNER and INSTRUCTOR members
+                const staff = res.data.filter(m => m.role === 'OWNER' || m.role === 'INSTRUCTOR');
+                setInstructorsList(staff);
                 
-                // Pre-select the owner or current user if possible
-                const owner = res.data.find(m => m.role === 'OWNER');
-                if (owner) {
-                    setFormData(prev => ({ ...prev, instructor: owner._id }));
+                if (staff.length > 0) {
+                    setFormData(prev => ({ ...prev, instructor: staff[0]._id }));
                 }
-            } catch (error) {
-                console.error("Failed to fetch members:", error);
+            } catch (err) {
+                console.error("Failed to fetch instructors:", err);
             } finally {
-                setFetchingMembers(false);
+                setFetchingInstructors(false);
             }
         };
 
-        fetchMembers();
+        fetchStaff();
     }, [activeOrganization]);
-
-    const organizers = members.filter(m => m.role === 'OWNER' || m.role === 'INSTRUCTOR');
-    const attendeesList = members.filter(m => m.role === 'ATTENDEE');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         
         if (!formData.name.trim() || !formData.code.trim()) {
-            setError('Course name and code are required');
+            setError('Course name and course code are required.');
+            return;
+        }
+
+        if (!formData.batch.trim() || !formData.semester.trim()) {
+            setError('Batch and semester are required.');
             return;
         }
         
         if (!formData.instructor) {
-            setError('Please select a course instructor');
+            setError('Please select an instructor for this course.');
             return;
         }
 
@@ -63,11 +69,14 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
 
         try {
             const payload = {
-                name: formData.name,
-                code: formData.code,
-                description: formData.description,
-                instructors: [formData.instructor], // Backend expects array
-                ...(formData.attendees.length > 0 && { attendees: formData.attendees })
+                name: formData.name.trim(),
+                code: formData.code.trim().toUpperCase(),
+                batch: formData.batch.trim(),
+                semester: formData.semester.trim(),
+                startDate: formData.startDate || null,
+                endDate: formData.endDate || null,
+                instructor: formData.instructor,
+                description: formData.description.trim()
             };
 
             const res = await api.post(`/organizations/${activeOrganization._id}/courses`, payload);
@@ -87,183 +96,192 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
         });
     };
 
-    const toggleAttendeeSelection = (id) => {
-        setFormData(prev => {
-            const currentList = prev.attendees;
-            if (currentList.includes(id)) {
-                return { ...prev, attendees: currentList.filter(item => item !== id) };
-            } else {
-                return { ...prev, attendees: [...currentList, id] };
-            }
-        });
-    };
-    
-    const selectInstructor = (id) => {
-        setFormData(prev => ({ ...prev, instructor: id }));
-    };
-
-    return (
-        <div className="modal-overlay">
-            <div className="modal-container">
-                <div className="modal-content w-full max-w-4xl p-6 md:p-8">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+            <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+                {/* Header */}
+                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-900">Create New Course</h2>
+                        <p className="text-xs text-slate-500 mt-0.5">Define course specifications and assign a dedicated instructor.</p>
+                    </div>
                     <button 
                         onClick={onClose}
-                        className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition bg-slate-100 hover:bg-slate-200 p-1 rounded-full"
+                        className="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-lg hover:bg-slate-200/60"
                     >
                         <X size={20} />
                     </button>
-                    
-                    <h2 className="text-2xl font-bold mb-6 text-slate-800">Create New Course</h2>
-                    
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium">
+                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center">
+                            <span className="w-2 h-2 rounded-full bg-red-500 mr-2.5"></span>
                             {error}
                         </div>
                     )}
-                    
-                    <form onSubmit={handleSubmit} className="flex flex-col">
-                        <div className="flex flex-col md:flex-row gap-8 mb-8">
-                            
-                            {/* Left Column: Basic Details */}
-                            <div className="flex-1 space-y-5">
-                                <h3 className="font-semibold text-slate-700 border-b pb-2 border-slate-100">Course Details</h3>
-                                
-                                <div className="form-group mb-0">
-                                    <label className="form-label">Course Name <span className="text-red-500">*</span></label>
-                                    <input 
-                                        type="text" 
-                                        name="name"
-                                        className="form-input" 
-                                        placeholder="e.g. Software Engineering"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        autoFocus
-                                    />
-                                </div>
 
-                                <div className="form-group mb-0">
-                                    <label className="form-label">Course Code <span className="text-red-500">*</span></label>
-                                    <input 
-                                        type="text" 
-                                        name="code"
-                                        className="form-input" 
-                                        placeholder="e.g. SE302"
-                                        value={formData.code}
-                                        onChange={handleChange}
-                                    />
-                                </div>
-
-                                <div className="form-group mb-0">
-                                    <label className="form-label">Description (Optional)</label>
-                                    <textarea 
-                                        name="description"
-                                        className="form-input" 
-                                        placeholder="Course description..."
-                                        rows="4"
-                                        value={formData.description}
-                                        onChange={handleChange}
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            {/* Right Column: People Selection */}
-                            <div className="flex-1 space-y-6 flex flex-col h-[380px]">
-                                
-                                {/* Instructor (Single Select) */}
-                                <div className="flex flex-col flex-1 min-h-0">
-                                    <div className="flex justify-between items-center border-b pb-2 mb-3 border-slate-100">
-                                        <h3 className="font-semibold text-slate-700">Course Instructor</h3>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner">
-                                        {fetchingMembers ? (
-                                            <p className="text-sm text-slate-500 text-center p-4">Loading...</p>
-                                        ) : organizers.length === 0 ? (
-                                            <p className="text-sm text-slate-500 text-center p-4">No instructors found.</p>
-                                        ) : (
-                                            <div className="space-y-1">
-                                                {organizers.map(org => (
-                                                    <label key={org._id} className={`flex items-center p-2.5 rounded-lg cursor-pointer border transition-all ${formData.instructor === org._id ? 'bg-white border-brand-200 shadow-sm' : 'border-transparent hover:bg-white hover:border-slate-200'}`}>
-                                                        <input 
-                                                            type="radio" 
-                                                            name="instructor"
-                                                            className="hidden"
-                                                            checked={formData.instructor === org._id}
-                                                            onChange={() => selectInstructor(org._id)}
-                                                        />
-                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center mr-3 border transition-colors ${formData.instructor === org._id ? 'bg-brand-600 border-brand-600' : 'border-slate-300 bg-white'}`}>
-                                                            {formData.instructor === org._id && <div className="w-2 h-2 rounded-full bg-white"></div>}
-                                                        </div>
-                                                        <div className="flex-1 flex justify-between items-center">
-                                                            <div>
-                                                                <p className="text-sm font-medium text-slate-800">{org.userId?.firstName} {org.userId?.lastName}</p>
-                                                                <p className="text-xs text-slate-500">{org.userId?.email}</p>
-                                                            </div>
-                                                            <div className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                                                                {org.role === 'OWNER' ? 'Owner' : 'Instructor'}
-                                                            </div>
-                                                        </div>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Attendees (Multi Select) */}
-                                <div className="flex flex-col flex-1 min-h-0">
-                                    <div className="flex justify-between items-center border-b pb-2 mb-3 border-slate-100">
-                                        <h3 className="font-semibold text-slate-700">Enroll Attendees</h3>
-                                        <span className="text-xs font-medium bg-brand-50 text-brand-600 px-2 py-0.5 rounded-full">{formData.attendees.length} selected</span>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-slate-50 shadow-inner">
-                                        {fetchingMembers ? (
-                                            <p className="text-sm text-slate-500 text-center p-4">Loading...</p>
-                                        ) : attendeesList.length === 0 ? (
-                                            <p className="text-sm text-slate-500 text-center p-4">No attendees found in organization.</p>
-                                        ) : (
-                                            <div className="space-y-1">
-                                                {attendeesList.map(att => (
-                                                    <label key={att._id} className={`flex items-center p-2.5 rounded-lg cursor-pointer border transition-all ${formData.attendees.includes(att._id) ? 'bg-white border-brand-200 shadow-sm' : 'border-transparent hover:bg-white hover:border-slate-200'}`}>
-                                                        <input 
-                                                            type="checkbox" 
-                                                            className="hidden"
-                                                            checked={formData.attendees.includes(att._id)}
-                                                            onChange={() => toggleAttendeeSelection(att._id)}
-                                                        />
-                                                        <div className={`w-5 h-5 rounded flex items-center justify-center mr-3 border transition-colors ${formData.attendees.includes(att._id) ? 'bg-brand-600 border-brand-600' : 'border-slate-300 bg-white'}`}>
-                                                            {formData.attendees.includes(att._id) && <Check size={14} className="text-white" />}
-                                                        </div>
-                                                        <div className="flex-1 flex justify-between items-center">
-                                                            <div>
-                                                                <p className="text-sm font-medium text-slate-800">{att.userId?.firstName} {att.userId?.lastName}</p>
-                                                                <p className="text-xs text-slate-500">{att.userId?.email}</p>
-                                                            </div>
-                                                            <div className="text-xs font-mono text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-                                                                {att.studentId || 'No ID'}
-                                                            </div>
-                                                        </div>
-                                                    </label>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                            </div>
+                    {/* Course Code & Name */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-1">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Course Code *
+                            </label>
+                            <input 
+                                type="text" 
+                                name="code"
+                                placeholder="e.g. CS2040"
+                                value={formData.code}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-mono font-medium text-slate-800 transition uppercase"
+                                required
+                            />
                         </div>
-                        
-                        <div className="flex justify-end gap-3 pt-5 border-t border-slate-100 w-full mt-auto">
-                            <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
-                                Cancel
-                            </button>
-                            <button type="submit" className="btn btn-primary px-6" disabled={loading}>
-                                {loading ? 'Creating...' : 'Create Course'}
-                            </button>
+                        <div className="sm:col-span-2">
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Course Name *
+                            </label>
+                            <input 
+                                type="text" 
+                                name="name"
+                                placeholder="e.g. Software Engineering"
+                                value={formData.name}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm font-medium text-slate-800 transition"
+                                required
+                            />
                         </div>
-                    </form>
-                </div>
+                    </div>
+
+                    {/* Batch & Semester */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Batch / Cohort *
+                            </label>
+                            <input 
+                                type="text" 
+                                name="batch"
+                                placeholder="e.g. Batch 22 / 2022-2023"
+                                value={formData.batch}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                                Semester / Term *
+                            </label>
+                            <input 
+                                type="text" 
+                                name="semester"
+                                placeholder="e.g. Year 2 - Semester 1"
+                                value={formData.semester}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    {/* Timeline: Start Date & End Date */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                                <Calendar size={14} className="mr-1 text-slate-400" /> Start Date
+                            </label>
+                            <input 
+                                type="date" 
+                                name="startDate"
+                                value={formData.startDate}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                                <Calendar size={14} className="mr-1 text-slate-400" /> End Date
+                            </label>
+                            <input 
+                                type="date" 
+                                name="endDate"
+                                value={formData.endDate}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Instructor Selection */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
+                            <UserCheck size={14} className="mr-1 text-slate-400" /> Assigned Instructor *
+                        </label>
+                        {fetchingInstructors ? (
+                            <div className="text-xs text-slate-400 py-2">Loading instructors...</div>
+                        ) : instructorsList.length === 0 ? (
+                            <div className="p-3 bg-amber-50 text-amber-700 rounded-xl text-xs">
+                                No instructors found in this organization. Please invite or assign an instructor first.
+                            </div>
+                        ) : (
+                            <select 
+                                name="instructor"
+                                value={formData.instructor}
+                                onChange={handleChange}
+                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 bg-white transition font-medium"
+                                required
+                            >
+                                {instructorsList.map(inst => (
+                                    <option key={inst._id} value={inst._id}>
+                                        {inst.userId?.firstName} {inst.userId?.lastName} ({inst.userId?.email}) - {inst.role}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        <p className="text-[11px] text-slate-400 mt-1">
+                            Student enrollment can be managed by this instructor or admin after course creation.
+                        </p>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                            Description (Optional)
+                        </label>
+                        <textarea 
+                            name="description"
+                            rows="2"
+                            placeholder="Brief synopsis or lecture hall / lab notes..."
+                            value={formData.description}
+                            onChange={handleChange}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition resize-none"
+                        ></textarea>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                        <button 
+                            type="button" 
+                            onClick={onClose}
+                            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+                            disabled={loading}
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit" 
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-500/20 transition disabled:opacity-50"
+                            disabled={loading || fetchingInstructors || instructorsList.length === 0}
+                        >
+                            {loading ? 'Creating Course...' : 'Create Course'}
+                        </button>
+                    </div>
+                </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

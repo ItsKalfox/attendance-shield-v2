@@ -16,18 +16,35 @@ const courseSchema = new mongoose.Schema({
         required: [true, 'Course code is required'],
         trim: true
     },
+    batch: {
+        type: String,
+        required: [true, 'Batch is required'],
+        trim: true
+    },
+    semester: {
+        type: String,
+        required: [true, 'Semester is required'],
+        trim: true
+    },
+    startDate: {
+        type: Date
+    },
+    endDate: {
+        type: Date
+    },
+    instructor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrganizationMember',
+        required: true
+    },
     description: {
         type: String,
         default: ''
     },
-    instructors: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'OrganizationMember'
-    }],
     status: {
         type: String,
-        enum: ['ACTIVE', 'ARCHIVED'],
-        default: 'ACTIVE'
+        enum: ['ONGOING', 'COMPLETED'],
+        default: 'ONGOING'
     }
 }, {
     timestamps: true

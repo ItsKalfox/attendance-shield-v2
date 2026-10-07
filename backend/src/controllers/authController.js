@@ -43,7 +43,8 @@ const signup = async (req, res, next) => {
             firstName,
             lastName,
             email,
-            passwordHash
+            passwordHash,
+            authProvider: 'LOCAL'
         });
 
         if (user) {
@@ -53,6 +54,7 @@ const signup = async (req, res, next) => {
                 lastName: user.lastName,
                 email: user.email,
                 avatar: user.avatar,
+                authProvider: user.authProvider,
                 token: generateToken(user._id),
             });
         } else {
@@ -80,6 +82,7 @@ const login = async (req, res, next) => {
                 lastName: user.lastName,
                 email: user.email,
                 avatar: user.avatar,
+                authProvider: user.authProvider,
                 token: generateToken(user._id),
             });
         } else {
@@ -353,8 +356,14 @@ const googleAuth = async (req, res, next) => {
                 lastName: family_name || '',
                 email,
                 passwordHash,
-                avatar: picture || ''
+                avatar: picture || '',
+                authProvider: 'GOOGLE'
             });
+        } else {
+            // Update existing user's avatar and provider
+            user.authProvider = 'GOOGLE';
+            if (picture) user.avatar = picture;
+            await user.save();
         }
 
         res.status(200).json({
@@ -363,6 +372,7 @@ const googleAuth = async (req, res, next) => {
             lastName: user.lastName,
             email: user.email,
             avatar: user.avatar,
+            authProvider: user.authProvider,
             token: generateToken(user._id),
         });
     } catch (error) {
@@ -409,8 +419,13 @@ const microsoftAuth = async (req, res, next) => {
                 lastName: family_name,
                 email,
                 passwordHash,
-                avatar: ''
+                avatar: '',
+                authProvider: 'MICROSOFT'
             });
+        } else {
+            // Update existing user's provider
+            user.authProvider = 'MICROSOFT';
+            await user.save();
         }
 
         res.status(200).json({
@@ -419,6 +434,7 @@ const microsoftAuth = async (req, res, next) => {
             lastName: user.lastName,
             email: user.email,
             avatar: user.avatar,
+            authProvider: user.authProvider,
             token: generateToken(user._id),
         });
     } catch (error) {

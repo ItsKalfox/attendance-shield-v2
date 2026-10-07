@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { X, Upload, CheckCircle, AlertTriangle, Trash2, Edit2, Check, XCircle, Loader2 } from 'lucide-react';
@@ -149,8 +150,8 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
 
     const invalidCount = parsedData.filter(r => !r.isValidEmail).length;
 
-    return (
-        <div className="modal-overlay">
+    return createPortal(
+        <div className="modal-overlay z-[100]">
             <div className="modal-container">
                 <div className="modal-content max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden relative">
                     {/* Top loader if importing */}
@@ -344,7 +345,8 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 
