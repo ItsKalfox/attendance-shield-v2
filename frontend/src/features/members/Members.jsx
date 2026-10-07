@@ -68,27 +68,29 @@ const Members = () => {
     return (
         <>
         <div className="animate-fade-in space-y-6">
-            <div className="flex justify-end items-center mb-2">
-                <div className="flex gap-3">
-                    {activeTab === 'ATTENDEES' ? (
-                        <>
-                            <button className="btn btn-outline" onClick={() => setShowImportModal(true)}>
-                                <Upload size={18} className="mr-2" />
-                                Import CSV
+            {activeOrganization?.userRole === 'OWNER' && (
+                <div className="flex justify-end items-center mb-2">
+                    <div className="flex gap-3">
+                        {activeTab === 'ATTENDEES' ? (
+                            <>
+                                <button className="btn btn-outline" onClick={() => setShowImportModal(true)}>
+                                    <Upload size={18} className="mr-2" />
+                                    Import CSV
+                                </button>
+                                <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                                    <PlusCircle size={18} className="mr-2" />
+                                    Add Attendee
+                                </button>
+                            </>
+                        ) : (
+                            <button className="btn btn-primary" onClick={() => setShowInviteModal(true)}>
+                                <Mail size={18} className="mr-2" />
+                                Invite Instructor
                             </button>
-                            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                                <PlusCircle size={18} className="mr-2" />
-                                Add Attendee
-                            </button>
-                        </>
-                    ) : (
-                        <button className="btn btn-primary" onClick={() => setShowInviteModal(true)}>
-                            <Mail size={18} className="mr-2" />
-                            Invite Instructor
-                        </button>
-                    )}
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Tabs */}
             <div className="flex space-x-1 border-b border-slate-200">
@@ -115,15 +117,21 @@ const Members = () => {
                                 <Users size={24} className="text-slate-400" />
                             </div>
                             <h4 className="text-lg font-medium text-slate-800 mb-1">No Attendees found</h4>
-                            <p className="text-slate-500 mb-6 max-w-md mx-auto">No attendees have been added. Add attendees so they can scan QR codes and track their attendance.</p>
-                            <div className="flex justify-center gap-4">
-                                <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                                    Add Attendee
-                                </button>
-                                <button className="btn btn-outline" onClick={() => setShowImportModal(true)}>
-                                    Import CSV
-                                </button>
-                            </div>
+                            <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                                {activeOrganization?.userRole === 'OWNER' 
+                                    ? "No attendees have been added. Add attendees so they can scan QR codes and track their attendance."
+                                    : "No attendees have been added to this organization yet."}
+                            </p>
+                            {activeOrganization?.userRole === 'OWNER' && (
+                                <div className="flex justify-center gap-4">
+                                    <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                                        Add Attendee
+                                    </button>
+                                    <button className="btn btn-outline" onClick={() => setShowImportModal(true)}>
+                                        Import CSV
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ) : (
@@ -156,40 +164,48 @@ const Members = () => {
                                         <td className="text-slate-600">{new Date(member.joinedAt).toLocaleDateString()}</td>
                                         <td className="text-right">
                                             <button 
-                                                className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition mr-1"
-                                                onClick={() => setViewingMember(member)}
-                                                title="View Details"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
-                                            <button 
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" 
-                                                onClick={() => handleRemoveRequest(member)}
-                                                title="Remove Attendee"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )
-            )}
+                                                 className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition mr-1"
+                                                 onClick={() => setViewingMember(member)}
+                                                 title="View Details"
+                                             >
+                                                 <Eye size={18} />
+                                             </button>
+                                             {activeOrganization?.userRole === 'OWNER' && (
+                                                 <button 
+                                                     className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" 
+                                                     onClick={() => handleRemoveRequest(member)}
+                                                     title="Remove Attendee"
+                                                 >
+                                                     <Trash2 size={18} />
+                                                 </button>
+                                             )}
+                                         </td>
+                                     </tr>
+                                 ))}
+                             </tbody>
+                         </table>
+                     </div>
+                 )
+             )}
 
-            {activeTab === 'ORGANIZERS' && (
-                organizers.length === 0 ? (
-                    <div className="card">
-                        <div className="text-center py-12">
-                            <h4 className="text-lg font-medium text-slate-800 mb-1">No Instructors found</h4>
-                            <p className="text-slate-500 mb-6 max-w-md mx-auto">Invite instructors to help you manage courses and sessions.</p>
-                            <button className="btn btn-primary" onClick={() => setShowInviteModal(true)}>
-                                Invite Instructor
-                            </button>
-                        </div>
-                    </div>
-                ) : (
+             {activeTab === 'ORGANIZERS' && (
+                 organizers.length === 0 ? (
+                     <div className="card">
+                         <div className="text-center py-12">
+                             <h4 className="text-lg font-medium text-slate-800 mb-1">No Instructors found</h4>
+                             <p className="text-slate-500 mb-6 max-w-md mx-auto">
+                                 {activeOrganization?.userRole === 'OWNER'
+                                     ? "Invite instructors to help you manage courses and sessions."
+                                     : "No instructors have been added to this organization."}
+                             </p>
+                             {activeOrganization?.userRole === 'OWNER' && (
+                                 <button className="btn btn-primary" onClick={() => setShowInviteModal(true)}>
+                                     Invite Instructor
+                                 </button>
+                             )}
+                         </div>
+                     </div>
+                 ) : (
                     <div className="table-container">
                         <table className="table">
                             <thead>

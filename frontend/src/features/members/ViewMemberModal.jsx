@@ -76,6 +76,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         }
     };
 
+    const isOwner = activeOrganization?.userRole === 'OWNER';
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
             <div className="card w-full max-w-md relative bg-white shadow-xl">
@@ -86,7 +88,9 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                     <X size={20} />
                 </button>
                 
-                <h2 className="text-xl font-bold mb-6 text-slate-800">Member Details</h2>
+                <h2 className="text-xl font-bold mb-6 text-slate-800">
+                    {isOwner ? 'Member Details' : 'View Member Details'}
+                </h2>
                 
                 <form onSubmit={handleSave}>
                     <div className="space-y-4">
@@ -98,7 +102,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                     name="firstName"
                                     value={formData.firstName}
                                     onChange={handleChange}
-                                    className="input w-full"
+                                    disabled={!isOwner}
+                                    className={`input w-full ${!isOwner ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                                     required
                                 />
                             </div>
@@ -109,7 +114,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                     name="lastName"
                                     value={formData.lastName}
                                     onChange={handleChange}
-                                    className="input w-full"
+                                    disabled={!isOwner}
+                                    className={`input w-full ${!isOwner ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                                     required
                                 />
                             </div>
@@ -122,7 +128,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                className="input w-full"
+                                disabled={!isOwner}
+                                className={`input w-full ${!isOwner ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                                 required
                             />
                         </div>
@@ -135,7 +142,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                     name="studentId"
                                     value={formData.studentId}
                                     onChange={handleChange}
-                                    className="input w-full"
+                                    disabled={!isOwner}
+                                    className={`input w-full ${!isOwner ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : ''}`}
                                     placeholder="Optional"
                                 />
                             </div>
@@ -146,38 +154,48 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                 Joined: {new Date(member.joinedAt).toLocaleDateString()}
                             </p>
                             
-                            <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-100">
-                                <button 
-                                    type="button"
-                                    onClick={handleResetPassword}
-                                    disabled={resetting}
-                                    className="flex items-center justify-center w-full py-2 px-4 border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition text-sm font-medium"
-                                >
-                                    <KeyRound size={16} className="mr-2" />
-                                    {resetting ? 'Resetting...' : 'Reset Password'}
-                                </button>
-                                
-                                <button 
-                                    type="button"
-                                    onClick={handleDelete}
-                                    disabled={loading}
-                                    className="flex items-center justify-center w-full py-2 px-4 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition text-sm font-medium"
-                                >
-                                    <Trash2 size={16} className="mr-2" />
-                                    Delete Member
-                                </button>
-                            </div>
+                            {isOwner && (
+                                <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-100">
+                                    <button 
+                                        type="button"
+                                        onClick={handleResetPassword}
+                                        disabled={resetting}
+                                        className="flex items-center justify-center w-full py-2 px-4 border border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition text-sm font-medium"
+                                    >
+                                        <KeyRound size={16} className="mr-2" />
+                                        {resetting ? 'Resetting...' : 'Reset Password'}
+                                    </button>
+                                    
+                                    <button 
+                                        type="button"
+                                        onClick={handleDelete}
+                                        disabled={loading}
+                                        className="flex items-center justify-center w-full py-2 px-4 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition text-sm font-medium"
+                                    >
+                                        <Trash2 size={16} className="mr-2" />
+                                        Delete Member
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                     
                     <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-                        <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
-                            Cancel
-                        </button>
-                        <button type="submit" className="btn btn-primary" disabled={loading}>
-                            <Save size={18} className="mr-2" />
-                            {loading ? 'Saving...' : 'Save Changes'}
-                        </button>
+                        {isOwner ? (
+                            <>
+                                <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" disabled={loading}>
+                                    <Save size={18} className="mr-2" />
+                                    {loading ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </>
+                        ) : (
+                            <button type="button" className="btn btn-secondary" onClick={onClose}>
+                                Close
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>

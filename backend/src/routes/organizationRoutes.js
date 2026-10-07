@@ -29,17 +29,17 @@ router.patch('/:organizationId', requireOrganizationRole('OWNER'), upload.single
 router.get('/:organizationId/dashboard', requireOrganizationRole(), getDashboardStats);
 
 // Member routes
-router.get('/:organizationId/members', requireOrganizationRole(), getMembers);
-router.post('/:organizationId/members', requireOrganizationRole('OWNER', 'INSTRUCTOR'), addMember);
-router.post('/:organizationId/members/import', requireOrganizationRole('OWNER', 'INSTRUCTOR'), importMembers);
-router.delete('/:organizationId/members/:memberId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), removeMember);
-router.patch('/:organizationId/members/:memberId', requireOrganizationRole('OWNER', 'INSTRUCTOR'), updateMember);
-router.post('/:organizationId/members/:memberId/reset-password', requireOrganizationRole('OWNER', 'INSTRUCTOR'), resetMemberPassword);
-router.post('/:organizationId/members/validate-emails', requireOrganizationRole('OWNER', 'INSTRUCTOR'), validateEmails);
+router.get('/:organizationId/members', requireOrganizationRole('OWNER', 'INSTRUCTOR'), getMembers);
+router.post('/:organizationId/members', requireOrganizationRole('OWNER'), addMember);
+router.post('/:organizationId/members/import', requireOrganizationRole('OWNER'), importMembers);
+router.delete('/:organizationId/members/:memberId', requireOrganizationRole('OWNER'), removeMember);
+router.patch('/:organizationId/members/:memberId', requireOrganizationRole('OWNER'), updateMember);
+router.post('/:organizationId/members/:memberId/reset-password', requireOrganizationRole('OWNER'), resetMemberPassword);
+router.post('/:organizationId/members/validate-emails', requireOrganizationRole('OWNER'), validateEmails);
 
 // Invitation routes
-router.get('/:organizationId/invitations', requireOrganizationRole('OWNER', 'INSTRUCTOR'), getInvitations);
-router.post('/:organizationId/invitations', requireOrganizationRole('OWNER', 'INSTRUCTOR'), inviteStaff);
+router.get('/:organizationId/invitations', requireOrganizationRole('OWNER'), getInvitations);
+router.post('/:organizationId/invitations', requireOrganizationRole('OWNER'), inviteStaff);
 
 // Course routes
 router.get('/:organizationId/courses', requireOrganizationRole(), getCourses);

@@ -4,10 +4,11 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const dns = require('dns').promises;
+const sendEmail = require('../utils/sendEmail');
 
 // @desc    Get all members of an organization
 // @route   GET /api/organizations/:organizationId/members
-// @access  Private (Any member)
+// @access  Private (OWNER/INSTRUCTOR)
 const getMembers = async (req, res, next) => {
     try {
         const members = await OrganizationMember.find({ 
