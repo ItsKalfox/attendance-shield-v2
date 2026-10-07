@@ -420,8 +420,32 @@ const microsoftAuth = async (req, res, next) => {
         const data = response.data;
         // email can be in mail or userPrincipalName
         const email = data.mail || data.userPrincipalName;
-        const given_name = data.givenName || 'User';
-        const family_name = data.surname || '';
+        
+        let given_name = data.givenName ? data.givenName.trim() : '';
+        let family_name = data.surname ? data.surname.trim() : '';
+
+        // If either given_name or family_name is missing, extract from displayName
+        if ((!given_name || !family_name) && data.displayName) {
+            const nameParts = data.displayName.trim().split(/\s+/);
+            if (!given_name && nameParts.length > 0) {
+                given_name = nameParts[0];
+            }
+            if (!family_name && nameParts.length > 1) {
+                family_name = nameParts.slice(1).join(' ');
+            }
+        }
+
+        // If given_name is still empty, derive from email address prefix
+        if (!given_name && email) {
+            const emailPrefix = email.split('@')[0];
+            const cleanParts = emailPrefix.replace(/[._-]/g, ' ').trim().split(/\s+/);
+            given_name = cleanParts[0] ? cleanParts[0].charAt(0).toUpperCase() + cleanParts[0].slice(1) : 'User';
+            if (!family_name && cleanParts.length > 1) {
+                family_name = cleanParts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+            }
+        }
+
+        if (!given_name) given_name = 'User';
 
         if (!email) {
             return res.status(400).json({ message: 'Could not extract email from Microsoft account' });
@@ -484,10 +508,16 @@ const microsoftAuth = async (req, res, next) => {
                 authProvider: 'MICROSOFT'
             });
         } else {
-            // Update existing user's provider and avatar if newly fetched
+            // Update existing user's provider, avatar, and correct any fallback placeholder names
             user.authProvider = 'MICROSOFT';
             if (avatarUrl) {
                 user.avatar = avatarUrl;
+            }
+            if (given_name && (!user.firstName || user.firstName === 'User' || user.firstName === 'Unknown')) {
+                user.firstName = given_name;
+            }
+            if (family_name && (!user.lastName || user.lastName === 'Unknown')) {
+                user.lastName = family_name;
             }
             await user.save();
         }

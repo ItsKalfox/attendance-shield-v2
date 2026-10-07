@@ -39,7 +39,7 @@ const Login = () => {
             setError('');
             setLoading(true);
             const loginResponse = await instance.loginPopup({
-                scopes: ["user.read"]
+                scopes: ["user.read", "openid", "profile", "email"]
             });
             await loginWithMicrosoft(loginResponse.accessToken);
             navigate(redirectUrl);
