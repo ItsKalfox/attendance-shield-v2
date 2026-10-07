@@ -1,16 +1,18 @@
 import React from 'react';
-import { Outlet, Navigate, Link } from 'react-router-dom';
+import { Outlet, Navigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const AuthLayout = () => {
     const { user, loading } = useAuth();
+    const [searchParams] = useSearchParams();
+    const redirectUrl = searchParams.get('redirect') || '/app/dashboard';
 
     if (loading) {
         return <div className="flex items-center justify-center h-screen bg-blue-50"><div className="skeleton w-16 h-16 rounded-full"></div></div>;
     }
 
     if (user) {
-        return <Navigate to="/app/dashboard" replace />;
+        return <Navigate to={redirectUrl} replace />;
     }
 
     return (

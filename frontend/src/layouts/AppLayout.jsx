@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useOrganization } from '../context/OrganizationContext';
@@ -13,7 +13,9 @@ import {
     PlusCircle,
     Building2
 } from 'lucide-react';
+import api from '../services/api';
 import CreateOrganizationModal from '../features/organizations/CreateOrganizationModal';
+import PendingInvitationModal from '../features/organizations/PendingInvitationModal';
 
 const AppLayout = () => {
     const { user, logout } = useAuth();
@@ -22,6 +24,28 @@ const AppLayout = () => {
     const location = useLocation();
     const [showOrgDropdown, setShowOrgDropdown] = useState(false);
     const [showCreateOrg, setShowCreateOrg] = useState(false);
+    const [pendingInvitations, setPendingInvitations] = useState([]);
+
+    // Check for pending invitations on mount or when user changes
+    useEffect(() => {
+        const checkPendingInvitations = async () => {
+            if (!user) return;
+            try {
+                const res = await api.get('/invitations/me/pending');
+                if (Array.isArray(res.data) && res.data.length > 0) {
+                    setPendingInvitations(res.data);
+                }
+            } catch (err) {
+                console.error("Could not check pending invitations:", err);
+            }
+        };
+
+        checkPendingInvitations();
+    }, [user]);
+
+    const handleInvitationResolved = (invitationId) => {
+        setPendingInvitations(prev => prev.filter(inv => inv._id !== invitationId));
+    };
 
     // Dynamic Navigation Items
     const navItems = activeOrganization?.userRole === 'ATTENDEE' ? [
@@ -217,6 +241,12 @@ const AppLayout = () => {
                 </main>
             </div>
             {showCreateOrg && <CreateOrganizationModal onClose={() => setShowCreateOrg(false)} />}
+            {pendingInvitations.length > 0 && (
+                <PendingInvitationModal 
+                    invitation={pendingInvitations[0]} 
+                    onResolved={handleInvitationResolved} 
+                />
+            )}
         </div>
     );
 };
