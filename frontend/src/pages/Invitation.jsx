@@ -22,22 +22,24 @@ const Invitation = () => {
         const fetchInvitation = async () => {
             try {
                 const res = await api.get(`/invitations/${token}`);
-                setInvitation(res.data);
+                const data = res.data;
+                setInvitation(data);
                 
-                if (res.data.status !== 'PENDING') {
+                if (data.status && data.status !== 'PENDING') {
                     setStatus('error');
-                    setMessage(`This invitation is already ${res.data.status.toLowerCase()}.`);
+                    setMessage(`This invitation is already ${data.status.toLowerCase()}.`);
                     return;
                 }
                 
-                if (user && user.email?.toLowerCase() !== res.data.email?.toLowerCase()) {
+                if (user && user.email && data.email && user.email.toLowerCase() !== data.email.toLowerCase()) {
                     setStatus('error');
-                    setMessage(`This invitation was sent to ${res.data.email}, but you are currently logged in as ${user.email}. Please switch accounts to accept.`);
+                    setMessage(`This invitation was sent to ${data.email}, but you are currently logged in as ${user.email}. Please log out or switch accounts to accept.`);
                     return;
                 }
                 
                 setStatus('form');
             } catch (error) {
+                console.error("Failed to fetch invitation details:", error);
                 setStatus('error');
                 setMessage(error.response?.data?.message || 'Invalid or expired invitation token.');
             }

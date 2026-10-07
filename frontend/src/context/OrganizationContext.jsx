@@ -2,9 +2,9 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 
-const OrganizationContext = createContext();
+const OrganizationContext = createContext(null);
 
-export const useOrganization = () => useContext(OrganizationContext);
+export const useOrganization = () => useContext(OrganizationContext) || {};
 
 export const OrganizationProvider = ({ children }) => {
     const { user } = useAuth();

@@ -37,15 +37,16 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
-  return <OrganizationProvider>{children}</OrganizationProvider>;
+  return children;
 };
 
 function App() {
   return (
     <AuthProvider>
-      <Toaster position="top-right" />
-      <Router>
-        <Routes>
+      <OrganizationProvider>
+        <Toaster position="top-right" />
+        <Router>
+          <Routes>
           {/* Auth Routes */}
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
@@ -75,6 +76,7 @@ function App() {
           <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         </Routes>
       </Router>
+      </OrganizationProvider>
     </AuthProvider>
   );
 }
