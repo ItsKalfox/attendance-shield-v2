@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { useOrganization } from '../../context/OrganizationContext';
-import { BookOpen, PlusCircle, Calendar, Users, GraduationCap, Clock, CheckCircle2 } from 'lucide-react';
+import { BookOpen, PlusCircle, Calendar, Users, GraduationCap } from 'lucide-react';
 import api from '../../services/api';
 import CreateCourseModal from './CreateCourseModal';
 
@@ -61,47 +61,35 @@ const Courses = () => {
     return (
         <div className="animate-fade-in space-y-6">
             {/* Top Bar: Tabs & Create Action */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200">
                 {/* Tabs */}
-                <div className="flex items-center space-x-2 bg-slate-100/80 p-1 rounded-xl w-fit">
+                <div className="flex space-x-1">
                     <button
                         onClick={() => setActiveTab('ONGOING')}
-                        className={`flex items-center px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                        className={`py-3 px-6 font-medium text-sm border-b-2 transition ${
                             activeTab === 'ONGOING'
-                                ? 'bg-white text-brand-700 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900'
+                                ? 'border-brand-600 text-brand-700'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                         }`}
                     >
-                        <Clock size={16} className="mr-2 text-emerald-600" />
-                        Ongoing Courses
-                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
-                            activeTab === 'ONGOING' ? 'bg-brand-50 text-brand-700' : 'bg-slate-200/60 text-slate-600'
-                        }`}>
-                            {ongoingCourses.length}
-                        </span>
+                        Ongoing Courses ({ongoingCourses.length})
                     </button>
                     <button
                         onClick={() => setActiveTab('COMPLETED')}
-                        className={`flex items-center px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                        className={`py-3 px-6 font-medium text-sm border-b-2 transition ${
                             activeTab === 'COMPLETED'
-                                ? 'bg-white text-brand-700 shadow-sm'
-                                : 'text-slate-600 hover:text-slate-900'
+                                ? 'border-brand-600 text-brand-700'
+                                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                         }`}
                     >
-                        <CheckCircle2 size={16} className="mr-2 text-blue-600" />
-                        Completed Courses
-                        <span className={`ml-2 px-2 py-0.5 rounded-full text-xs font-bold ${
-                            activeTab === 'COMPLETED' ? 'bg-brand-50 text-brand-700' : 'bg-slate-200/60 text-slate-600'
-                        }`}>
-                            {completedCourses.length}
-                        </span>
+                        Completed Courses ({completedCourses.length})
                     </button>
                 </div>
 
                 {/* Only Owner/Admin can create courses */}
                 {isOwnerOrAdmin && (
                     <button 
-                        className="btn btn-primary self-start sm:self-auto shadow-md shadow-brand-500/20"
+                        className="btn btn-primary self-start sm:self-auto shadow-md shadow-brand-500/20 mb-3 sm:mb-0"
                         onClick={() => setShowCreateModal(true)}
                     >
                         <PlusCircle size={18} className="mr-2" />
