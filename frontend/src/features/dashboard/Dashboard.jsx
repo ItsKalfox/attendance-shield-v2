@@ -361,34 +361,19 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    {/* Recent Sessions */}
-                    <div className="card bg-white p-0 overflow-hidden shadow-sm border border-slate-200">
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h3 className="text-lg font-bold flex items-center text-slate-800">
-                                <CalendarClock size={20} className="mr-3 text-brand-500" />
-                                Active & Pending Sessions
-                            </h3>
-                            {recentSessions.length > 0 && (
+                    {/* Active & Pending Sessions (Only shown when there are active/pending sessions) */}
+                    {recentSessions.length > 0 && (
+                        <div className="card bg-white p-0 overflow-hidden shadow-sm border border-slate-200">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                <h3 className="text-lg font-bold flex items-center text-slate-800">
+                                    <CalendarClock size={20} className="mr-3 text-brand-500" />
+                                    Active & Pending Sessions
+                                </h3>
                                 <Link to="/app/sessions" className="text-sm font-semibold text-brand-600 hover:text-brand-700 transition">
                                     View All →
                                 </Link>
-                            )}
-                        </div>
-
-                        {recentSessions.length === 0 ? (
-                            <div className="text-center py-16">
-                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-50 mb-4 shadow-sm border border-slate-100">
-                                    <CalendarClock size={32} className="text-slate-300" />
-                                </div>
-                                <h4 className="text-lg font-bold mb-2 text-slate-700">No Active Sessions</h4>
-                                <p className="text-slate-500 mb-6 text-sm max-w-sm mx-auto">
-                                    There are currently no active or pending attendance sessions. Create one to start marking attendance.
-                                </p>
-                                <button onClick={() => navigate('/app/sessions', { state: { openCreate: true } })} className="btn btn-primary shadow-sm px-6">
-                                    Create Session
-                                </button>
                             </div>
-                        ) : (
+
                             <div className="table-container max-h-[350px] overflow-y-auto">
                                 <table className="table">
                                     <thead className="sticky top-0 bg-white shadow-sm z-10">
@@ -428,8 +413,8 @@ const Dashboard = () => {
                                     </tbody>
                                 </table>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Attendance Overview Section (Two Columns) */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
