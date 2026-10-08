@@ -11,7 +11,8 @@ import {
     LogOut,
     ChevronDown,
     PlusCircle,
-    Building2
+    Building2,
+    Calendar
 } from 'lucide-react';
 import api from '../services/api';
 import CreateOrganizationModal from '../features/organizations/CreateOrganizationModal';
@@ -162,23 +163,21 @@ const AppLayout = () => {
                             })()}
                         </h1>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                    <div className="flex items-center gap-3">
+                        {/* Date Chip */}
+                        <div className="hidden sm:flex items-center px-3.5 py-1.5 rounded-xl bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-600 transition-all duration-300 hover:shadow-md hover:bg-white/95 select-none">
+                            <Calendar size={13} className="text-slate-600 shrink-0 mr-2" />
+                            <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
                         </div>
 
                         {/* Organization Switcher & Role Badge */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                             {activeOrganization?.userRole && !loadingOrg && (
-                                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                                    activeOrganization.userRole === 'OWNER' 
-                                        ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs' 
-                                        : activeOrganization.userRole === 'INSTRUCTOR'
-                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-xs'
-                                            : 'bg-slate-100 text-slate-700 border border-slate-200/80 shadow-xs'
-                                }`}>
-                                    {activeOrganization.userRole === 'OWNER' ? 'Owner' : activeOrganization.userRole === 'INSTRUCTOR' ? 'Instructor' : 'Student'}
-                                </span>
+                                <div className="flex items-center px-3.5 py-1.5 rounded-xl bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-600 transition-all duration-300 hover:shadow-md hover:bg-white/95 select-none">
+                                    <span>
+                                        {activeOrganization.userRole === 'OWNER' ? 'Owner' : activeOrganization.userRole === 'ADMIN' ? 'Admin' : activeOrganization.userRole === 'INSTRUCTOR' ? 'Instructor' : 'Attendee'}
+                                    </span>
+                                </div>
                             )}
 
                             <div className="relative">
