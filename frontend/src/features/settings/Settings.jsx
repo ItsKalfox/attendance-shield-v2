@@ -62,7 +62,7 @@ const Settings = () => {
         <div className="p-6 w-full animate-fade-in space-y-6">
             
             {/* Profile Picture Card */}
-            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl flex flex-col md:flex-row gap-6 items-center">
+            <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex flex-col md:flex-row gap-6 items-center">
                 <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-sm border-2 border-slate-100">
                     {user?.avatar ? (
                         <img 
@@ -115,7 +115,7 @@ const Settings = () => {
             </div>
 
             {/* Profile Info Card */}
-            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-slate-800">Profile</h2>
                     <p className="text-sm text-slate-500">Update your first and last name</p>
@@ -154,7 +154,7 @@ const Settings = () => {
             </div>
 
             {/* Email Card */}
-            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-slate-800">Email</h2>
                     <p className="text-sm text-slate-500">Used to log in to your account</p>
@@ -177,7 +177,7 @@ const Settings = () => {
             </div>
 
             {/* Password Card */}
-            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                     <div>
                         <h2 className="text-lg font-bold text-slate-800">Password</h2>

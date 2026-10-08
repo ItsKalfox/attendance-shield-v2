@@ -273,21 +273,29 @@ const CourseDetails = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <Link 
                     to="/app/courses" 
-                    className="text-brand-600 hover:text-brand-800 flex items-center w-fit text-sm font-semibold bg-brand-50/80 px-3 py-1.5 rounded-xl border border-brand-100 transition"
+                    className="text-slate-700 hover:text-brand-600 flex items-center w-fit text-xs font-semibold bg-white/80 px-3.5 py-1.5 rounded-xl border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] transition select-none"
                 >
-                    <ArrowLeft size={16} className="mr-2" /> Back to Courses
+                    <ArrowLeft size={15} className="mr-2 text-slate-500" /> Back to Courses
                 </Link>
 
                 {/* Course Status & Admin Controls */}
                 <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
-                        isOngoing 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-slate-100 text-slate-700 border-slate-200'
-                    }`}>
-                        {isOngoing ? <Clock size={14} /> : <CheckCircle2 size={14} />}
-                        {isOngoing ? 'ONGOING' : 'COMPLETED'}
-                    </span>
+                    <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] text-xs font-semibold text-slate-700 select-none">
+                        {isOngoing ? (
+                            <>
+                                <span className="relative flex h-2 w-2 mr-0.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                                <span>Ongoing Course</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="inline-flex rounded-full h-2 w-2 bg-slate-400 mr-0.5"></span>
+                                <span>Completed Course</span>
+                            </>
+                        )}
+                    </div>
 
                     {/* Admin Status Toggle */}
                     {canManageCourse && (
@@ -326,7 +334,7 @@ const CourseDetails = () => {
                     {isAttendee ? (
                         <div className="space-y-6">
                             {/* Student Attendance Stats for this Course */}
-                            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                            <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-slate-100">
                                     <div>
                                         <h3 className="text-lg font-bold text-slate-900 flex items-center">
@@ -388,7 +396,7 @@ const CourseDetails = () => {
                             </div>
 
                             {/* Student Session Attendance Log for this Course */}
-                            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+                            <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
                                 <div className="p-5 border-b border-slate-100 bg-slate-50/40">
                                     <h3 className="text-base font-bold text-slate-900 flex items-center">
                                         <Calendar size={18} className="mr-2 text-brand-600" />
@@ -439,7 +447,7 @@ const CourseDetails = () => {
                             </div>
                         </div>
                     ) : (
-                    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+                    <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden flex flex-col">
                         {/* Table Header / Action Bar */}
                         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/40">
                             <div>
@@ -580,7 +588,7 @@ const CourseDetails = () => {
 
                 {/* Right Column: Course Specifications & Lecturer Info */}
                 <div className="space-y-4">
-                    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-5">
+                    <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 space-y-5">
                         <div className="border-b border-slate-100 pb-4">
                             <span className="font-mono text-xs font-bold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-lg border border-brand-100">
                                 {course.code}

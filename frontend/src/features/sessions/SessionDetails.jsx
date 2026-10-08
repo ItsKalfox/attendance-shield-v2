@@ -334,7 +334,7 @@ const SessionDetails = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 flex flex-col gap-6">
                     {/* Attendance Info / Stats Card */}
-                    <div className="card flex items-center justify-between p-5">
+                    <div className="card flex items-center justify-between p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                         <div className="flex items-center gap-6">
                             <CircleChart percentage={percentMarked} />
                             <div>
@@ -367,7 +367,7 @@ const SessionDetails = () => {
                         </div>
                     </div>
 
-                    <div className="card h-full">
+                    <div className="card h-full bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl p-6">
                         <h2 className="text-xl font-bold mb-4 flex items-center">
                             <Users size={18} className="mr-2 text-indigo-400" /> 
                             Attendance Records ({attendanceRecords.length})
@@ -430,7 +430,7 @@ const SessionDetails = () => {
                 </div>
 
                 <div>
-                    <div className="card h-full">
+                    <div className="card h-full bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl p-6">
                         <h2 className="text-xl font-bold mb-4">Session Details</h2>
                         <div className="space-y-4 mb-6">
                             <div>

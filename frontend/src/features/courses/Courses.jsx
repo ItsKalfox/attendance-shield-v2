@@ -105,7 +105,7 @@ const Courses = () => {
                     <span className="text-sm font-medium">Loading courses...</span>
                 </div>
             ) : currentList.length === 0 ? (
-                <div className="card text-center py-16 bg-white border border-dashed border-slate-200 rounded-2xl">
+                <div className="card text-center py-16 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0 rounded-3xl">
                     <div className="w-14 h-14 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-100">
                         <BookOpen size={28} />
                     </div>
@@ -139,26 +139,30 @@ const Courses = () => {
                             <Link 
                                 to={`/app/courses/${course._id}`} 
                                 key={course._id} 
-                                className="group relative bg-white rounded-2xl border border-slate-200/80 hover:border-brand-400 hover:shadow-xl hover:shadow-brand-500/5 transition-all duration-200 flex flex-col overflow-hidden"
+                                className="group relative bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_40px_rgba(0,0,0,0.12)] transition-all duration-300 flex flex-col overflow-hidden border-0 p-6"
                             >
-                                {/* Top colored banner accent */}
-                                <div className={`h-1.5 w-full ${
-                                    normalizeStatus(course.status) === 'ONGOING' ? 'bg-emerald-500' : 'bg-slate-400'
-                                }`} />
-
-                                <div className="p-5 flex-1 flex flex-col">
+                                <div className="flex-1 flex flex-col">
                                     {/* Header: Code & Status */}
-                                    <div className="flex justify-between items-start mb-2.5">
-                                        <span className="font-mono text-xs font-bold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-lg border border-brand-100/80">
+                                    <div className="flex justify-between items-center mb-3.5">
+                                        <span className="font-mono text-xs font-semibold tracking-wide text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-lg">
                                             {course.code}
                                         </span>
-                                        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
-                                            normalizeStatus(course.status) === 'ONGOING'
-                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                                : 'bg-slate-100 text-slate-600 border border-slate-200/60'
-                                        }`}>
-                                            {normalizeStatus(course.status)}
-                                        </span>
+                                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] text-xs font-semibold text-slate-600 select-none">
+                                            {normalizeStatus(course.status) === 'ONGOING' ? (
+                                                <>
+                                                    <span className="relative flex h-2 w-2 mr-0.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                                    </span>
+                                                    <span>Ongoing</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="inline-flex rounded-full h-2 w-2 bg-slate-400 mr-0.5"></span>
+                                                    <span>Completed</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Course Title */}

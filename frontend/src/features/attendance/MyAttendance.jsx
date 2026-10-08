@@ -68,8 +68,8 @@ const MyAttendance = () => {
         <div className="animate-fade-in space-y-8 pb-12">
             {/* Top Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex items-center">
-                    <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center mr-4 shrink-0 border border-brand-100">
+                <div className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex items-center">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center mr-4 shrink-0 border border-brand-100">
                         <TrendingUp size={24} />
                     </div>
                     <div>
@@ -82,8 +82,8 @@ const MyAttendance = () => {
                     </div>
                 </div>
 
-                <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex items-center">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mr-4 shrink-0 border border-emerald-100">
+                <div className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex items-center">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mr-4 shrink-0 border border-emerald-100">
                         <CheckCircle2 size={24} />
                     </div>
                     <div>
@@ -96,8 +96,8 @@ const MyAttendance = () => {
                     </div>
                 </div>
 
-                <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex items-center">
-                    <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mr-4 shrink-0 border border-rose-100">
+                <div className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex items-center">
+                    <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mr-4 shrink-0 border border-rose-100">
                         <XCircle size={24} />
                     </div>
                     <div>
@@ -110,8 +110,8 @@ const MyAttendance = () => {
                     </div>
                 </div>
 
-                <div className="card p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl flex items-center">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 shrink-0 border border-indigo-100">
+                <div className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex items-center">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mr-4 shrink-0 border border-indigo-100">
                         <BookOpen size={24} />
                     </div>
                     <div>
@@ -138,24 +138,27 @@ const MyAttendance = () => {
                 </div>
 
                 {courses.length === 0 ? (
-                    <div className="card text-center py-12 bg-white border border-dashed border-slate-200 rounded-2xl">
+                    <div className="card text-center py-12 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                         <BookOpen size={32} className="text-slate-300 mx-auto mb-2" />
                         <p className="text-slate-500 font-medium text-sm">You are not enrolled in any courses in this organization.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {courses.map(({ course, conducted, attended, percentage, isEligible }) => (
-                            <div key={course._id} className="card bg-white p-5 border border-slate-200/80 shadow-sm rounded-2xl flex flex-col justify-between hover:border-brand-300 transition">
+                            <div key={course._id} className="card bg-white p-6 border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex flex-col justify-between hover:shadow-[0_12px_35px_rgba(0,0,0,0.12)] transition duration-300">
                                 <div>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <span className="font-mono text-xs font-bold px-2 py-0.5 bg-brand-50 text-brand-700 rounded-md border border-brand-100">
+                                    <div className="flex justify-between items-center mb-3">
+                                        <span className="font-mono text-xs font-semibold tracking-wide text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-lg">
                                             {course.code}
                                         </span>
-                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                                            isEligible ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-xs font-semibold select-none shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] ${
+                                            isEligible 
+                                                ? 'bg-white text-slate-700 border-slate-200/80' 
+                                                : 'bg-rose-50/80 text-rose-700 border-rose-200/80'
                                         }`}>
-                                            {isEligible ? 'Eligible' : 'At Risk'}
-                                        </span>
+                                            <span className={`inline-flex rounded-full h-2 w-2 ${isEligible ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                            <span>{isEligible ? 'Eligible' : 'At Risk'}</span>
+                                        </div>
                                     </div>
                                     <h3 className="font-bold text-slate-900 text-base mb-1 line-clamp-1">
                                         {course.name}
@@ -186,7 +189,7 @@ const MyAttendance = () => {
             </div>
 
             {/* Attendance History Log */}
-            <div className="card bg-white p-0 overflow-hidden shadow-sm border border-slate-200 rounded-2xl">
+            <div className="card bg-white p-0 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0 rounded-3xl">
                 <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
                     <div>
                         <h3 className="text-base font-bold text-slate-800 flex items-center">

@@ -34,7 +34,7 @@
 
   /* Cards */
   .card {
-    @apply bg-white rounded-[1.5rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 transition-shadow duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)];
+    @apply bg-white rounded-[1.5rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-0 transition-shadow duration-300 hover:shadow-[0_12px_35px_rgb(0,0,0,0.12)];
   }
   
   .glass {

@@ -124,7 +124,7 @@ const OrganizationDetails = () => {
     if (!organization) {
         return (
             <div className="p-6 w-full animate-fade-in flex flex-col items-center justify-center py-16">
-                <div className="card max-w-md w-full text-center p-8 bg-white border border-slate-200 shadow-sm rounded-2xl">
+                <div className="card max-w-md w-full text-center p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                     <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-100">
                         <Building2 size={32} />
                     </div>
@@ -152,7 +152,7 @@ const OrganizationDetails = () => {
         <div className="p-6 w-full animate-fade-in space-y-6">
             
             {/* Profile Picture Card */}
-            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl flex flex-col md:flex-row gap-6 items-center">
+            <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex flex-col md:flex-row gap-6 items-center">
                 <div className="w-24 h-24 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden shadow-sm border-2 border-white">
                     {avatarPreview ? (
                         <img src={avatarPreview} alt="Organization Avatar" className="w-full h-full object-cover" />
@@ -186,7 +186,7 @@ const OrganizationDetails = () => {
                                     onClick={async () => {
                                         if(window.confirm('Remove organization logo?')) {
                                             setIsSaving(true);
-                                            try {
+                                             try {
                                                 const res = await api.patch(`/organizations/${activeOrganization._id}`, { avatar: '' });
                                                 setOrganization(res.data);
                                                 setAvatarPreview('');
@@ -209,7 +209,7 @@ const OrganizationDetails = () => {
             </div>
 
             {/* Profile Info Card */}
-            <div className="card p-8 bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl">
+            <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-slate-800">Organization Details</h2>
                     <p className="text-sm text-slate-500">Update organization name and description</p>
@@ -258,7 +258,7 @@ const OrganizationDetails = () => {
                     <h2 className="text-xl font-bold mt-8 mb-4">Organization Statistics</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         
-                        <div className="card p-5 bg-white border border-slate-200 flex items-center shadow-sm">
+                        <div className="card p-5 bg-white border-0 flex items-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl">
                             <div className="w-12 h-12 bg-indigo-50 rounded-full flex items-center justify-center mr-4">
                                 <Shield size={24} className="text-indigo-600" />
                             </div>
@@ -270,7 +270,7 @@ const OrganizationDetails = () => {
                             </div>
                         </div>
 
-                        <div className="card p-5 bg-white border border-slate-200 flex items-center shadow-sm">
+                        <div className="card p-5 bg-white border-0 flex items-center shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl">
                             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mr-4">
                                 <Users size={24} className="text-blue-600" />
                             </div>
@@ -280,7 +280,7 @@ const OrganizationDetails = () => {
                             </div>
                         </div>
 
-                        <div className="card p-5 bg-white border border-slate-200 shadow-sm flex flex-col justify-center">
+                        <div className="card p-5 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl flex flex-col justify-center">
                             <div 
                                 className="flex items-center justify-between cursor-pointer"
                                 onClick={() => setShowInstructors(!showInstructors)}
@@ -302,7 +302,7 @@ const OrganizationDetails = () => {
                     </div>
 
                     {showInstructors && (
-                        <div className="card p-0 border border-slate-200 overflow-hidden shadow-sm animate-fade-in mt-[-10px]">
+                        <div className="card p-0 border-0 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl animate-fade-in mt-[-10px]">
                             <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
                                 <h3 className="font-bold text-slate-700 text-sm">Instructor List</h3>
                             </div>
@@ -341,7 +341,7 @@ const OrganizationDetails = () => {
                         <Activity size={20} className="mr-2 text-indigo-500" /> 
                         Activity Log
                     </h2>
-                    <div className="card p-8 bg-white border border-slate-200 shadow-sm text-center">
+                    <div className="card p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl text-center">
                         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-50 mb-4 text-slate-300">
                             <Activity size={32} />
                         </div>

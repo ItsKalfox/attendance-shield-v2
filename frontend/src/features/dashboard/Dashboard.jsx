@@ -169,7 +169,7 @@ const Dashboard = () => {
             {isAttendee ? (
                 <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border-0 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                             <div className="bg-brand-50 p-4 rounded-2xl mr-5 text-brand-600 border border-brand-100">
                                 <Activity size={26} strokeWidth={2.5} />
                             </div>
@@ -182,7 +182,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border-0 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                             <div className="bg-emerald-50 p-4 rounded-2xl mr-5 text-emerald-600 border border-emerald-100">
                                 <BookOpen size={26} strokeWidth={2.5} />
                             </div>
@@ -195,7 +195,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border border-slate-200/80 rounded-2xl shadow-sm">
+                        <div className="card relative overflow-hidden flex items-center p-6 bg-white border-0 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
                             <div className="bg-amber-50 p-4 rounded-2xl mr-5 text-amber-600 border border-amber-100">
                                 <Users size={26} strokeWidth={2.5} />
                             </div>
@@ -214,7 +214,7 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Link 
                             to="/app/courses"
-                            className="card p-6 bg-white border border-slate-200/80 hover:border-brand-400 hover:shadow-lg transition-all rounded-2xl flex items-center justify-between group"
+                            className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-xl transition-all rounded-2xl flex items-center justify-between group"
                         >
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -230,7 +230,7 @@ const Dashboard = () => {
 
                         <Link 
                             to="/app/attendance"
-                            className="card p-6 bg-white border border-slate-200/80 hover:border-emerald-400 hover:shadow-lg transition-all rounded-2xl flex items-center justify-between group"
+                            className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:shadow-xl transition-all rounded-2xl flex items-center justify-between group"
                         >
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -246,7 +246,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* Recent Attended Sessions Log */}
-                    <div className="card bg-white p-0 overflow-hidden shadow-sm border border-slate-200 rounded-2xl">
+                    <div className="card bg-white p-0 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-0 rounded-2xl">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <div>
                                 <h3 className="text-base font-bold text-slate-800 flex items-center">
@@ -307,7 +307,7 @@ const Dashboard = () => {
                     {/* Top Cards Grid */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Stats Card */}
-                        <div className="card bg-white p-8 flex flex-col justify-center relative overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-slate-100/60 rounded-3xl h-[220px]">
+                        <div className="card bg-white p-8 flex flex-col justify-center relative overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0 rounded-3xl h-[220px]">
                             <div className="absolute -right-12 -top-12 w-48 h-48 bg-brand-50 rounded-full opacity-60 blur-2xl pointer-events-none"></div>
                             <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-emerald-50 rounded-full opacity-60 blur-2xl pointer-events-none"></div>
                             
@@ -363,7 +363,7 @@ const Dashboard = () => {
 
                     {/* Active & Pending Sessions (Only shown when there are active/pending sessions) */}
                     {recentSessions.length > 0 && (
-                        <div className="card bg-white p-0 overflow-hidden shadow-sm border border-slate-200">
+                        <div className="card bg-white p-0 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0 rounded-3xl">
                             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                                 <h3 className="text-lg font-bold flex items-center text-slate-800">
                                     <CalendarClock size={20} className="mr-3 text-brand-500" />
@@ -420,7 +420,7 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                         {/* Doughnut Chart Card (Left) */}
-                        <div className="card bg-white p-8 shadow-sm border border-slate-200 flex flex-col rounded-3xl">
+                        <div className="card bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0 flex flex-col rounded-3xl">
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 pb-4 border-b border-slate-100">
                                 <div>
                                     <h2 className="text-xl font-bold text-slate-800 flex items-center mb-1">
@@ -457,7 +457,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Top Attendees Card (Right) */}
-                        <div className="card bg-white p-8 shadow-sm border border-slate-200 flex flex-col rounded-3xl">
+                        <div className="card bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0 flex flex-col rounded-3xl">
                             <div className="mb-6 pb-4 border-b border-slate-100">
                                 <h2 className="text-xl font-bold text-slate-800 flex items-center mb-1">
                                     <Users size={24} className="mr-3 text-brand-500" />
