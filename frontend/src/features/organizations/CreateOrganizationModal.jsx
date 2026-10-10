@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { X } from 'lucide-react';
 
 const CreateOrganizationModal = ({ onClose }) => {
@@ -9,6 +10,13 @@ const CreateOrganizationModal = ({ onClose }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const { refreshOrganizations } = useOrganization();
+
+    const isDirty = Boolean(name.trim());
+
+    const { isShaking, handleBackdropClick } = useModalDismiss({
+        onClose,
+        isDirty
+    });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,9 +41,9 @@ const CreateOrganizationModal = ({ onClose }) => {
     };
 
     return createPortal(
-        <div className="modal-overlay z-[100]">
-            <div className="modal-container">
-                <div className="modal-content max-w-md">
+        <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
+            <div onClick={handleBackdropClick} className="modal-container">
+                <div className={`modal-content max-w-md ${isShaking ? 'animate-modal-shake' : ''}`}>
                     <button 
                         onClick={onClose}
                         className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition bg-slate-100 hover:bg-slate-200 p-1 rounded-full"

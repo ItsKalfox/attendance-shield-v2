@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import api from '../services/api';
+import { safeStorage } from '../utils/storage';
 
 const AuthContext = createContext();
 
@@ -11,55 +12,69 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const checkLoggedIn = async () => {
-            const token = localStorage.getItem('token');
-            if (token) {
-                try {
-                    const res = await api.get('/auth/me');
-                    setUser(res.data);
-                } catch (error) {
-                    console.error('Auth verification failed:', error);
-                    localStorage.removeItem('token');
-                    setUser(null);
+            try {
+                const token = safeStorage.getItem('token');
+                if (token) {
+                    try {
+                        const res = await api.get('/auth/me');
+                        if (res.data) {
+                            setUser(res.data);
+                        } else {
+                            safeStorage.removeItem('token');
+                            setUser(null);
+                        }
+                    } catch (error) {
+                        console.error('Auth verification failed:', error);
+                        // Only clear token if server explicitly returned 401 Unauthorized (token invalid/expired)
+                        // If network failed or server was restarting, retain token so user is not logged out permanently
+                        if (error.response && error.response.status === 401) {
+                            safeStorage.removeItem('token');
+                            setUser(null);
+                        }
+                    }
                 }
+            } catch (err) {
+                console.warn('Initial auth check warning:', err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         checkLoggedIn();
     }, []);
 
     const login = async (email, password) => {
         const res = await api.post('/auth/login', { email, password });
-        localStorage.setItem('token', res.data.token);
+        safeStorage.setItem('token', res.data.token);
         setUser(res.data);
         return res.data;
     };
 
     const signup = async (userData) => {
         const res = await api.post('/auth/signup', userData);
-        localStorage.setItem('token', res.data.token);
+        safeStorage.setItem('token', res.data.token);
         setUser(res.data);
         return res.data;
     };
 
     const loginWithGoogle = async (token) => {
         const res = await api.post('/auth/google', { token });
-        localStorage.setItem('token', res.data.token);
+        safeStorage.setItem('token', res.data.token);
         setUser(res.data);
         return res.data;
     };
 
     const loginWithMicrosoft = async (token) => {
         const res = await api.post('/auth/microsoft', { token });
-        localStorage.setItem('token', res.data.token);
+        safeStorage.setItem('token', res.data.token);
         setUser(res.data);
         return res.data;
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
+        safeStorage.removeItem('token');
         setUser(null);
         // Also remove selected org on logout
-        localStorage.removeItem('activeOrganizationId');
+        safeStorage.removeItem('activeOrganizationId');
     };
 
     return (

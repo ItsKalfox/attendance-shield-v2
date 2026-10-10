@@ -63,14 +63,14 @@ const ForgotPassword = () => {
                 </button>
                 
                 {status === 'success' && (
-                    <Link to="/reset-password" className="btn btn-outline btn-block py-2.5">
+                    <Link to="/reset-password" state={{ email }} className="btn btn-outline btn-block py-2.5">
                         Proceed to Reset Password
                     </Link>
                 )}
             </form>
 
             <div className="mt-6 text-center text-sm">
-                <Link to="/login" className="text-slate-400 hover:text-white transition">Back to login</Link>
+                <Link to="/login" className="text-slate-400 hover:text-slate-700 transition">Back to login</Link>
             </div>
         </div>
     );

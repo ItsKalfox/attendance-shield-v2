@@ -1,5 +1,6 @@
 const AttendanceSession = require('../models/AttendanceSession');
 const crypto = require('crypto');
+const { syncSessionStatuses } = require('../services/sessionService');
 
 // @desc    Get all sessions for organization
 // @route   GET /api/organizations/:organizationId/sessions
@@ -9,6 +10,9 @@ const getSessions = async (req, res, next) => {
         const organizationId = req.params.organizationId;
         const { courseId, status } = req.query;
 
+        // Perform synchronization sweep first
+        await syncSessionStatuses(organizationId);
+
         const query = { organizationId };
         if (courseId) query.courseId = courseId;
         if (status) query.status = status;
@@ -17,21 +21,10 @@ const getSessions = async (req, res, next) => {
             .populate('courseId', 'name code')
             .populate({
                 path: 'instructorId',
-                populate: { path: 'userId', select: 'firstName lastName' }
+                populate: { path: 'userId', select: 'firstName lastName email' }
             })
             .sort({ startTime: -1 });
 
-        const now = new Date();
-        let changed = false;
-        for (let session of sessions) {
-            if (session.status === 'SCHEDULED' && now >= session.startTime) {
-                session.status = 'ACTIVE';
-                await session.save();
-                changed = true;
-            }
-        }
-        
-        // If anything changed, refetch to get updated statuses (or we just mutate the objects inline since we're returning them)
         res.status(200).json(sessions);
     } catch (error) {
         next(error);
@@ -54,8 +47,21 @@ const createSession = async (req, res, next) => {
         const qrToken = crypto.randomBytes(32).toString('hex');
         const qrTokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
 
-        if (req.member.role === 'INSTRUCTOR' && instructorId !== req.member._id.toString()) {
-            return res.status(403).json({ message: 'You can only create sessions for yourself.' });
+        const Course = require('../models/Course');
+        const course = await Course.findOne({ _id: courseId, organizationId });
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        if (req.member.role === 'INSTRUCTOR') {
+            const isAssigned = (course.instructor && course.instructor.toString() === req.member._id.toString()) ||
+                (course.instructors && course.instructors.some(instId => instId.toString() === req.member._id.toString()));
+            if (!isAssigned) {
+                return res.status(403).json({ message: 'You can only create sessions for courses assigned to you.' });
+            }
+            if (instructorId && instructorId !== req.member._id.toString()) {
+                return res.status(403).json({ message: 'You can only create sessions for yourself.' });
+            }
         }
 
         const sessionData = {

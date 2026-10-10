@@ -30,7 +30,12 @@ const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
   if (loading) {
-    return <div className="flex items-center justify-center h-screen"><div className="skeleton w-16 h-16 rounded-full"></div></div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen min-h-[100dvh] bg-[#0c2b27] text-slate-200">
+        <div className="w-10 h-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+        <p className="text-xs font-semibold text-emerald-200/80 tracking-wide">Loading Attendance Shield...</p>
+      </div>
+    );
   }
   
   if (!user) {
@@ -41,11 +46,12 @@ const ProtectedRoute = ({ children }) => {
 };
 
 const RoleRoute = ({ allowedRoles, children }) => {
+  const { loading: authLoading } = useAuth();
   const { activeOrganization, loadingOrg } = useOrganization();
   
-  if (loadingOrg) {
+  if (authLoading || loadingOrg) {
     return (
-      <div className="flex items-center justify-center p-12 text-slate-400">
+      <div className="flex items-center justify-center min-h-[60vh] text-slate-400">
         <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );

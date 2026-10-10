@@ -150,6 +150,7 @@ const scanAttendance = async (req, res, next) => {
         }
 
         // 8. Create or update record
+        let finalRecord;
         if (existingRecord) {
             existingRecord.status = 'PRESENT';
             existingRecord.markedAt = Date.now();
@@ -157,8 +158,9 @@ const scanAttendance = async (req, res, next) => {
             existingRecord.isFlagged = isFlagged;
             if (markedLocation) existingRecord.markedLocation = markedLocation;
             await existingRecord.save();
+            finalRecord = existingRecord;
         } else {
-            await AttendanceRecord.create({
+            finalRecord = await AttendanceRecord.create({
                 organizationId: session.organizationId,
                 courseId: session.courseId,
                 sessionId: session._id,
@@ -170,30 +172,165 @@ const scanAttendance = async (req, res, next) => {
             });
         }
 
+        // Emit real-time update
+        if (req.io) {
+            const populatedRecord = await AttendanceRecord.findById(finalRecord._id)
+                .populate('userId', 'firstName lastName email')
+                .populate('organizationMemberId', 'studentId');
+            req.io.to(session._id.toString()).emit('attendance_updated', populatedRecord);
+        }
+
+        const markedTime = new Date();
         if (isFlagged) {
             return res.status(200).json({ 
                 message: 'Attendance marked successfully.',
-                flagged: true
+                flagged: true,
+                markedAt: markedTime,
+                user: {
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    studentId: orgMember?.studentId || null
+                }
             });
         }
 
-        res.status(200).json({ message: 'Attendance marked successfully.' });
+        res.status(200).json({ 
+            message: 'Attendance marked successfully.',
+            flagged: false,
+            markedAt: markedTime,
+            user: {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                studentId: orgMember?.studentId || null
+            }
+        });
     } catch (error) {
         next(error);
     }
 };
 
-// @desc    Get attendance for a session
+// @desc    Get attendance for a session (paginated with search)
 // @route   GET /api/organizations/:organizationId/sessions/:sessionId/attendance
 // @access  Private (ADMIN/OWNER/INSTRUCTOR)
 const getSessionAttendance = async (req, res, next) => {
     try {
-        const records = await AttendanceRecord.find({
-            sessionId: req.params.sessionId,
-            organizationId: req.params.organizationId
-        }).populate('userId', 'firstName lastName email').populate('organizationMemberId', 'studentId');
+        const { search = '', page = 1, limit = 50 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const limitNum = parseInt(limit);
+        const mongoose = require('mongoose');
 
-        res.status(200).json(records);
+        let matchStage = {
+            sessionId: new mongoose.Types.ObjectId(req.params.sessionId),
+            organizationId: new mongoose.Types.ObjectId(req.params.organizationId),
+            status: { $ne: 'REMOVED' }
+        };
+
+        let userIds = [];
+        let orgMemberIds = [];
+
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            
+            const users = await User.find({
+                $or: [
+                    { firstName: searchRegex },
+                    { lastName: searchRegex },
+                    { email: searchRegex }
+                ]
+            }).select('_id');
+            userIds = users.map(u => u._id);
+
+            const orgMembers = await OrganizationMember.find({
+                organizationId: req.params.organizationId,
+                studentId: searchRegex
+            }).select('_id');
+            orgMemberIds = orgMembers.map(m => m._id);
+
+            matchStage.$or = [
+                { userId: { $in: userIds } },
+                { organizationMemberId: { $in: orgMemberIds } }
+            ];
+        }
+
+        const totalRecords = await AttendanceRecord.countDocuments(matchStage);
+        const records = await AttendanceRecord.find(matchStage)
+            .sort({ markedAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .populate('userId', 'firstName lastName email')
+            .populate('organizationMemberId', 'studentId');
+
+        res.status(200).json({
+            records,
+            totalRecords,
+            totalPages: Math.ceil(totalRecords / limitNum),
+            currentPage: parseInt(page)
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Get session attendance stats (for dashboard cards and manual dropdown)
+// @route   GET /api/organizations/:organizationId/sessions/:sessionId/attendance/stats
+// @access  Private (ADMIN/OWNER/INSTRUCTOR)
+const getSessionAttendanceStats = async (req, res, next) => {
+    try {
+        const { sessionId, organizationId } = req.params;
+        const { includeFlagged } = req.query;
+        const mongoose = require('mongoose');
+
+        const session = await AttendanceSession.findById(sessionId);
+        if (!session) return res.status(404).json({ message: 'Session not found' });
+
+        const members = await CourseMember.find({
+            courseId: session.courseId,
+            status: 'ACTIVE'
+        }).populate('userId', 'firstName lastName email');
+
+        const allRecords = await AttendanceRecord.find({ 
+            sessionId: new mongoose.Types.ObjectId(sessionId), 
+            status: 'PRESENT' 
+        });
+
+        let statsRecords = allRecords;
+        if (includeFlagged !== 'true') {
+            statsRecords = allRecords.filter(r => !r.isFlagged);
+        }
+        
+        const totalMarked = statsRecords.length;
+        const selfMarkedCount = statsRecords.filter(r => r.markedBy === 'SELF').length;
+        const adminMarkedCount = statsRecords.filter(r => r.markedBy !== 'SELF').length;
+
+        const markedUserIds = new Set(allRecords.map(r => r.userId.toString()));
+        const unmarkedMembers = members.filter(m => !markedUserIds.has(m.userId._id.toString()));
+
+        const unmarkedUserIds = unmarkedMembers.map(m => m.userId._id);
+        const orgMembers = await OrganizationMember.find({
+            organizationId: new mongoose.Types.ObjectId(organizationId),
+            userId: { $in: unmarkedUserIds }
+        });
+
+        const studentIdMap = {};
+        orgMembers.forEach(om => {
+            studentIdMap[om.userId.toString()] = om.studentId;
+        });
+
+        res.status(200).json({
+            totalEnrolled: members.length,
+            totalMarked,
+            selfMarkedCount,
+            adminMarkedCount,
+            totalAttendanceCount: allRecords.length,
+            flaggedCount: allRecords.filter(r => r.isFlagged).length,
+            unmarkedMembers: unmarkedMembers.map(m => ({
+                _id: m._id,
+                userId: m.userId,
+                studentId: studentIdMap[m.userId._id.toString()] || null
+            }))
+        });
     } catch (error) {
         next(error);
     }
@@ -252,6 +389,14 @@ const addManualAttendance = async (req, res, next) => {
             });
         }
 
+        // Emit real-time update
+        if (req.io) {
+            const populatedRecord = await AttendanceRecord.findById(record._id)
+                .populate('userId', 'firstName lastName email')
+                .populate('organizationMemberId', 'studentId');
+            req.io.to(sessionId.toString()).emit('attendance_updated', populatedRecord);
+        }
+
         res.status(201).json(record);
     } catch (error) {
         next(error);
@@ -276,7 +421,7 @@ const removeAttendance = async (req, res, next) => {
             return res.status(403).json({ message: 'You cannot modify attendance for other instructors\' sessions.' });
         }
 
-        const record = await AttendanceRecord.findOne({
+        const record = await AttendanceRecord.findOneAndDelete({
             _id: req.params.attendanceId,
             sessionId: req.params.sessionId
         });
@@ -285,11 +430,12 @@ const removeAttendance = async (req, res, next) => {
             return res.status(404).json({ message: 'Record not found' });
         }
 
-        // According to requirements, better to preserve history than delete
-        record.status = 'REMOVED';
-        await record.save();
+        // Emit real-time update
+        if (req.io) {
+            req.io.to(req.params.sessionId.toString()).emit('attendance_removed', record._id);
+        }
 
-        res.status(200).json({ message: 'Attendance removed' });
+        res.status(200).json({ message: 'Attendance removed completely' });
     } catch (error) {
         next(error);
     }
@@ -444,6 +590,7 @@ const getMyAttendance = async (req, res, next) => {
 module.exports = {
     scanAttendance,
     getSessionAttendance,
+    getSessionAttendanceStats,
     addManualAttendance,
     removeAttendance,
     getSessionInfo,

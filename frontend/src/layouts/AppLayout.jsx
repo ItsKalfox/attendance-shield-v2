@@ -12,7 +12,9 @@ import {
     ChevronDown,
     PlusCircle,
     Building2,
-    Calendar
+    Calendar,
+    Menu,
+    X
 } from 'lucide-react';
 import api from '../services/api';
 import CreateOrganizationModal from '../features/organizations/CreateOrganizationModal';
@@ -26,6 +28,12 @@ const AppLayout = () => {
     const [showOrgDropdown, setShowOrgDropdown] = useState(false);
     const [showCreateOrg, setShowCreateOrg] = useState(false);
     const [pendingInvitations, setPendingInvitations] = useState([]);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Close mobile drawer on route navigation
+    useEffect(() => {
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
 
     // Check for pending invitations on mount or when user changes
     useEffect(() => {
@@ -75,13 +83,96 @@ const AppLayout = () => {
         navigate('/login');
     };
 
-    // If no orgs and not loading, show empty state or create org modal
-    // (We will handle this better in the dashboard or via a modal)
-
     return (
         <div className="app-container">
-            {/* Sidebar */}
-            <div className="app-sidebar border-none text-slate-300">
+            {/* Floating Mobile Navigation Menu */}
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-start items-center p-3 sm:p-4 animate-in fade-in duration-200">
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity duration-300"
+                        onClick={() => setMobileMenuOpen(false)}
+                    />
+
+                    {/* Floating Navigation Card */}
+                    <div className="relative w-full max-w-sm bg-[#0c2b27]/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-slate-200 flex flex-col max-h-[calc(100dvh-max(2rem,env(safe-area-inset-top)+env(safe-area-inset-bottom)))] overflow-hidden animate-in fade-in zoom-in-95 duration-200 mt-2 sm:mt-4 z-10">
+                        {/* Card Header */}
+                        <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-brand-800/60 shrink-0">
+                            <img src="/logo.png" alt="Attendance Shield" className="w-36 h-auto object-contain" />
+                            <button 
+                                onClick={() => setMobileMenuOpen(false)} 
+                                className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-all active:scale-95"
+                                aria-label="Close menu"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        
+                        {/* Navigation Links */}
+                        <div className="flex-1 px-3 py-3 overflow-y-auto space-y-1">
+                            <div className="px-3.5 py-1 text-[11px] font-semibold text-brand-300/60 uppercase tracking-wider">
+                                Navigation
+                            </div>
+                            <nav className="space-y-1">
+                                {navItems.map((item) => (
+                                    <NavLink 
+                                        key={item.path}
+                                        to={item.path} 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className={({ isActive }) => `flex items-center px-4 py-2.5 rounded-2xl font-medium transition-all ${
+                                            isActive 
+                                                ? 'bg-emerald-500/20 text-emerald-200 font-semibold shadow-sm' 
+                                                : 'text-slate-300 hover:text-white hover:bg-white/10'
+                                        }`}
+                                    >
+                                        <item.icon size={19} className="mr-3.5 shrink-0 text-emerald-400" /> 
+                                        <span>{item.label}</span>
+                                    </NavLink>
+                                ))}
+                            </nav>
+                        </div>
+
+                        {/* User Account Footer */}
+                        <div className="p-3 border-t border-brand-800/60 bg-black/20 shrink-0">
+                            <div className="flex items-center justify-between px-2 py-1">
+                                <div className="flex items-center truncate min-w-0">
+                                    {user?.avatar ? (
+                                        <img 
+                                            src={user.avatar} 
+                                            alt="Avatar" 
+                                            referrerPolicy="no-referrer"
+                                            onError={(e) => {
+                                                e.target.style.display = 'none';
+                                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                            }}
+                                            className="w-9 h-9 rounded-full object-cover mr-2.5 shrink-0 border border-brand-700 shadow-sm bg-white" 
+                                        />
+                                    ) : null}
+                                    <div 
+                                        className={`w-9 h-9 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold text-sm mr-2.5 shrink-0 shadow-sm ${user?.avatar ? 'hidden' : ''}`}
+                                    >
+                                        {user?.firstName?.charAt(0) || 'U'}
+                                    </div>
+                                    <div className="truncate min-w-0">
+                                        <p className="text-xs font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
+                                        <p className="text-[11px] text-brand-300/60 truncate">{user?.email}</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={handleLogout} 
+                                    className="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition shrink-0 ml-1" 
+                                    title="Log Out"
+                                >
+                                    <LogOut size={16} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Desktop Sidebar */}
+            <div className="hidden lg:flex app-sidebar border-none text-slate-300">
                 <div className="flex items-center px-6 shrink-0 pt-8 pb-6">
                     <img src="/logo.png" alt="Attendance Shield" className="w-44 h-auto drop-shadow-md object-contain" />
                 </div>
@@ -150,12 +241,18 @@ const AppLayout = () => {
 
             {/* Main Content */}
             <div className="app-main">
-                <header className="app-header justify-between">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 capitalize tracking-tight">
+                <header className="app-header justify-between gap-2">
+                    <div className="flex items-center min-w-0">
+                        <button
+                            onClick={() => setMobileMenuOpen(true)}
+                            className="p-2 -ml-2 text-slate-700 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition lg:hidden mr-2 shrink-0"
+                            aria-label="Open navigation menu"
+                        >
+                            <Menu size={22} />
+                        </button>
+                        <h1 className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-slate-900 capitalize tracking-tight truncate">
                             {(() => {
                                 const pathSegment = window.location.pathname.split('/').pop();
-                                // Check if the segment is a 24-char hex string (MongoDB ID)
                                 if (/^[0-9a-fA-F]{24}$/.test(pathSegment)) {
                                     return 'Details';
                                 }
@@ -163,17 +260,17 @@ const AppLayout = () => {
                             })()}
                         </h1>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         {/* Date Chip */}
                         <div className="hidden sm:flex items-center px-3.5 py-1.5 rounded-xl bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-600 transition-all duration-300 hover:shadow-md hover:bg-white/95 select-none">
                             <Calendar size={13} className="text-slate-600 shrink-0 mr-2" />
-                            <span>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                            <span>{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
                         </div>
 
                         {/* Organization Switcher & Role Badge */}
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                             {activeOrganization?.userRole && !loadingOrg && (
-                                <div className="flex items-center px-3.5 py-1.5 rounded-xl bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-600 transition-all duration-300 hover:shadow-md hover:bg-white/95 select-none">
+                                <div className="hidden md:flex items-center px-3 py-1.5 rounded-xl bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-600 select-none">
                                     <span>
                                         {activeOrganization.userRole === 'OWNER' ? 'Owner' : activeOrganization.userRole === 'ADMIN' ? 'Admin' : activeOrganization.userRole === 'INSTRUCTOR' ? 'Instructor' : 'Attendee'}
                                     </span>
@@ -182,28 +279,37 @@ const AppLayout = () => {
 
                             <div className="relative">
                                 <button
-                                    className="flex items-center gap-2 hover:opacity-80 transition text-slate-800"
+                                    className="flex items-center gap-1.5 sm:gap-2 hover:opacity-80 transition text-slate-800 p-1 sm:p-0 rounded-lg"
                                     onClick={() => setShowOrgDropdown(!showOrgDropdown)}
                                 >
-                                    <div className="flex items-center">
-                                        {activeOrganization?.avatarUrl && !loadingOrg ? (
-                                            <img src={activeOrganization.avatarUrl} alt={activeOrganization.name} className="w-8 h-8 rounded-md object-contain shrink-0 bg-slate-50 shadow-sm" />
-                                        ) : activeOrganization && !loadingOrg ? (
-                                            <div className="w-8 h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0 shadow-sm">
-                                                {activeOrganization.name.substring(0, 2).toUpperCase()}
+                                    <div className="flex items-center min-w-0">
+                                        {loadingOrg ? (
+                                            <div className="flex items-center">
+                                                <div className="skeleton w-7 h-7 sm:w-8 sm:h-8 rounded-md shrink-0"></div>
+                                                <div className="skeleton w-20 sm:w-28 h-5 rounded ml-2 sm:ml-3"></div>
                                             </div>
-                                        ) : null}
-                                        <span className="truncate font-bold text-base ml-3 max-w-[200px] text-left">
-                                            {loadingOrg ? 'Loading...' : (activeOrganization?.name || 'No Organization')}
-                                        </span>
+                                        ) : (
+                                            <>
+                                                {activeOrganization?.avatarUrl ? (
+                                                    <img src={activeOrganization.avatarUrl} alt={activeOrganization.name} className="w-7 h-7 sm:w-8 sm:h-8 rounded-md object-contain shrink-0 bg-slate-50 shadow-sm" />
+                                                ) : activeOrganization ? (
+                                                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0 shadow-sm">
+                                                        {activeOrganization.name.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                ) : null}
+                                                <span className="truncate font-bold text-xs sm:text-sm lg:text-base ml-2 sm:ml-3 max-w-[100px] sm:max-w-[160px] lg:max-w-[200px] text-left">
+                                                    {activeOrganization?.name || 'No Org'}
+                                                </span>
+                                            </>
+                                        )}
                                     </div>
-                                    <ChevronDown size={16} className="text-slate-500 shrink-0 ml-1" />
+                                    <ChevronDown size={14} className="text-slate-500 shrink-0" />
                                 </button>
 
                                 {showOrgDropdown && (
                                     <>
                                         <div className="fixed inset-0 z-40" onClick={() => setShowOrgDropdown(false)}></div>
-                                        <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                                        <div className="absolute top-full right-0 mt-2 w-56 sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
                                             {organizations.map(org => (
                                                 <button
                                                     key={org._id}
@@ -216,7 +322,7 @@ const AppLayout = () => {
                                                     {org._id === activeOrganization?._id ? (
                                                         <span className="text-brand-600 mr-2 font-bold shrink-0">✓</span>
                                                     ) : (
-                                                        <span className="w-4 mr-2 shrink-0"></span> // Placeholder for alignment
+                                                        <span className="w-4 mr-2 shrink-0"></span>
                                                     )}
                                                     {org.avatarUrl ? (
                                                         <img src={org.avatarUrl} alt={org.name} className="w-5 h-5 rounded-md object-contain mr-2 shrink-0 bg-slate-50" />

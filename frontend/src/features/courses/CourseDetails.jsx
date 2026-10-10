@@ -212,9 +212,111 @@ const CourseDetails = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center py-24 text-slate-400">
-            <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mr-3"></div>
-            <span className="text-sm font-medium">Loading course information...</span>
+        <div className="animate-fade-in space-y-6">
+            {/* Top Navigation Skeleton */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="skeleton w-36 h-8 rounded-xl"></div>
+                <div className="flex items-center gap-2">
+                    <div className="skeleton w-28 h-8 rounded-xl"></div>
+                    <div className="skeleton w-36 h-8 rounded-xl"></div>
+                </div>
+            </div>
+
+            {/* Main Layout: 2 Columns */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left/Main Column Skeleton */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden">
+                        {/* Header bar / Search & Action */}
+                        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+                            <div>
+                                <div className="skeleton w-40 h-5 mb-1.5 rounded-md"></div>
+                                <div className="skeleton w-56 h-3 rounded"></div>
+                            </div>
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                <div className="skeleton w-44 h-8 rounded-xl"></div>
+                                <div className="skeleton w-28 h-8 rounded-xl"></div>
+                            </div>
+                        </div>
+
+                        {/* Table Skeleton */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50/80 border-b border-slate-100">
+                                    <tr>
+                                        <th className="py-3 px-5"><div className="skeleton w-20 h-4"></div></th>
+                                        <th className="py-3 px-4"><div className="skeleton w-20 h-4"></div></th>
+                                        <th className="py-3 px-5 text-right"><div className="skeleton w-16 h-4 ml-auto"></div></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <tr key={i}>
+                                            <td className="py-3.5 px-5">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="skeleton w-8 h-8 rounded-full"></div>
+                                                    <div className="space-y-1">
+                                                        <div className="skeleton w-32 h-4 rounded"></div>
+                                                        <div className="skeleton w-44 h-3 rounded"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-3.5 px-4">
+                                                <div className="skeleton w-24 h-5 rounded"></div>
+                                            </td>
+                                            <td className="py-3.5 px-5 text-right">
+                                                <div className="skeleton w-28 h-7 rounded-xl ml-auto"></div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column Skeleton */}
+                <div className="space-y-4">
+                    <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 space-y-5">
+                        <div className="border-b border-slate-100 pb-4 space-y-2">
+                            <div className="skeleton w-20 h-6 rounded-lg"></div>
+                            <div className="skeleton w-48 h-6 rounded-md"></div>
+                            <div className="skeleton w-full h-3 rounded"></div>
+                            <div className="skeleton w-3/4 h-3 rounded"></div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <div className="skeleton w-24 h-4 rounded"></div>
+                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100/80 flex items-center space-x-3">
+                                <div className="skeleton w-10 h-10 rounded-full"></div>
+                                <div className="space-y-1.5 flex-1">
+                                    <div className="skeleton w-32 h-4 rounded"></div>
+                                    <div className="skeleton w-40 h-3 rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100/80 space-y-1.5">
+                                <div className="skeleton w-14 h-3 rounded"></div>
+                                <div className="skeleton w-20 h-5 rounded"></div>
+                            </div>
+                            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100/80 space-y-1.5">
+                                <div className="skeleton w-14 h-3 rounded"></div>
+                                <div className="skeleton w-20 h-5 rounded"></div>
+                            </div>
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100/80 space-y-2">
+                            <div className="flex justify-between">
+                                <div className="skeleton w-24 h-3 rounded"></div>
+                                <div className="skeleton w-10 h-3 rounded"></div>
+                            </div>
+                            <div className="skeleton w-full h-2 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 
@@ -250,7 +352,9 @@ const CourseDetails = () => {
     // Filter enrolled members by search
     const filteredMembers = members.filter(m => {
         const query = memberSearch.toLowerCase();
-        const fullName = `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`.toLowerCase();
+        const fName = m.organizationMemberId?.firstName || m.userId?.firstName || '';
+        const lName = m.organizationMemberId?.lastName || m.userId?.lastName || '';
+        const fullName = `${fName} ${lName}`.toLowerCase();
         const email = (m.userId?.email || '').toLowerCase();
         const studentId = (m.organizationMemberId?.studentId || m.userId?.studentId || '').toLowerCase();
         return fullName.includes(query) || email.includes(query) || studentId.includes(query);
@@ -259,7 +363,9 @@ const CourseDetails = () => {
     // Filter un-enrolled members in modal
     const filteredOrgMembers = orgMembers.filter(m => {
         const query = enrollSearch.toLowerCase();
-        const fullName = `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`.toLowerCase();
+        const fName = m.firstName || m.userId?.firstName || '';
+        const lName = m.lastName || m.userId?.lastName || '';
+        const fullName = `${fName} ${lName}`.toLowerCase();
         const email = (m.userId?.email || '').toLowerCase();
         const studentId = (m.studentId || m.userId?.studentId || '').toLowerCase();
         return fullName.includes(query) || email.includes(query) || studentId.includes(query);
@@ -316,7 +422,7 @@ const CourseDetails = () => {
                     {/* Admin Delete Course */}
                     {canManageCourse && (
                         <button 
-                            className="px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-xl hover:bg-rose-100 transition flex items-center"
+                            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm shadow-rose-600/20 rounded-xl transition flex items-center"
                             onClick={handleDeleteCourse}
                             title="Delete this course"
                         >
@@ -415,27 +521,34 @@ const CourseDetails = () => {
                                         <table className="w-full text-left text-xs">
                                             <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200">
                                                 <tr>
-                                                    <th className="py-3 px-5">Session Name</th>
-                                                    <th className="py-3 px-4">Date & Time</th>
-                                                    <th className="py-3 px-4">Verification</th>
-                                                    <th className="py-3 px-5 text-right">Status</th>
+                                                    <th className="py-3 px-3.5 sm:px-5">Session Name</th>
+                                                    <th className="py-3 px-4 hidden sm:table-cell">Date & Time</th>
+                                                    <th className="py-3 px-4 hidden md:table-cell">Verification</th>
+                                                    <th className="py-3 px-3.5 sm:px-5 text-right">Status</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 font-medium">
                                                 {studentCourseStats.records.map(r => (
                                                     <tr key={r._id} className="hover:bg-slate-50/60 transition">
-                                                        <td className="py-3 px-5 font-semibold text-slate-800">
-                                                            {r.sessionId?.sessionName || 'Lecture Session'}
+                                                        <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 font-semibold text-slate-800">
+                                                            <div className="truncate max-w-[160px] xs:max-w-[200px] sm:max-w-none">
+                                                                {r.sessionId?.sessionName || 'Lecture Session'}
+                                                            </div>
+                                                            <div className="sm:hidden text-[11px] text-slate-400 font-normal mt-0.5 flex items-center gap-1.5">
+                                                                <span>{new Date(r.markedAt || r.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                                                                <span>&bull;</span>
+                                                                <span>{r.markedBy === 'SELF' ? 'QR Code' : 'Verified'}</span>
+                                                            </div>
                                                         </td>
-                                                        <td className="py-3 px-4 text-slate-600">
+                                                        <td className="py-3.5 px-4 text-slate-600 hidden sm:table-cell">
                                                             {new Date(r.markedAt || r.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                                                         </td>
-                                                        <td className="py-3 px-4 text-slate-600">
+                                                        <td className="py-3.5 px-4 text-slate-600 hidden md:table-cell">
                                                             {r.markedBy === 'SELF' ? 'QR Code' : 'Lecturer Verified'}
                                                         </td>
-                                                        <td className="py-3 px-5 text-right">
+                                                        <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 text-right whitespace-nowrap">
                                                             <span className="badge badge-success text-xs font-semibold">
-                                                                Present
+                                                                 Present
                                                             </span>
                                                         </td>
                                                     </tr>
@@ -504,51 +617,55 @@ const CourseDetails = () => {
                                 <table className="w-full text-left text-xs">
                                     <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200">
                                         <tr>
-                                            <th className="py-3 px-5">Student</th>
-                                            <th className="py-3 px-4">Student ID</th>
-                                            <th className="py-3 px-4 text-center">Status</th>
-                                            <th className="py-3 px-5 text-right">Actions</th>
+                                            <th className="py-3 px-3.5 sm:px-5">Student</th>
+                                            <th className="py-3 px-4 hidden sm:table-cell">Student ID</th>
+                                            <th className="py-3 px-3.5 sm:px-5 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium">
                                         {filteredMembers.map(m => {
                                             const studentIdVal = m.organizationMemberId?.studentId || m.userId?.studentId || '-';
-                                            const studentName = `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`.trim() || 'Student';
+                                            const fName = m.organizationMemberId?.firstName || m.userId?.firstName || '';
+                                            const lName = m.organizationMemberId?.lastName || m.userId?.lastName || '';
+                                            const studentName = `${fName} ${lName}`.trim() || 'Student';
+                                            const initial = fName ? fName.charAt(0) : 'S';
                                             const studentOrgMemberId = m.organizationMemberId?._id || m._id;
 
-                                             return (
+                                            return (
                                                 <tr key={m._id} className="hover:bg-slate-50/60 transition group">
-                                                    <td className="py-3.5 px-5">
-                                                        <div className="flex items-center space-x-3">
+                                                    <td className="py-3 sm:py-3.5 px-3.5 sm:px-5">
+                                                        <div className="flex items-center space-x-2.5 sm:space-x-3">
                                                             <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 border border-brand-100 flex items-center justify-center font-bold text-xs shrink-0">
-                                                                {m.userId?.firstName?.charAt(0) || 'S'}
+                                                                {initial}
                                                             </div>
-                                                            <div>
-                                                                <div className="font-semibold text-slate-900 group-hover:text-brand-600 transition">
+                                                            <div className="min-w-0">
+                                                                <div className="font-semibold text-slate-900 group-hover:text-brand-600 transition truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
                                                                     {studentName}
                                                                 </div>
-                                                                <div className="text-[11px] text-slate-400 font-normal">
+                                                                <div className="text-[11px] text-slate-400 font-normal truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
                                                                     {m.userId?.email}
                                                                 </div>
+                                                                {studentIdVal !== '-' && (
+                                                                    <div className="sm:hidden mt-0.5">
+                                                                        <span className="inline-block font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/70">
+                                                                            ID: {studentIdVal}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="py-3.5 px-4 font-mono text-slate-600">
+                                                    <td className="py-3.5 px-4 font-mono text-slate-600 hidden sm:table-cell">
                                                         {studentIdVal !== '-' ? (
-                                                            <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                                             <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">
                                                                 {studentIdVal}
                                                             </span>
                                                         ) : (
                                                             <span className="text-slate-300">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="py-3.5 px-4 text-center">
-                                                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                                            Enrolled
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3.5 px-5 text-right">
-                                                        <div className="flex items-center justify-end space-x-2">
+                                                    <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 text-right whitespace-nowrap">
+                                                        <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
                                                             {/* View Attendance Button */}
                                                             <button
                                                                 onClick={() => setAttendanceModalConfig({
@@ -556,11 +673,12 @@ const CourseDetails = () => {
                                                                     studentOrgMemberId: m.organizationMemberId?._id || m.organizationMemberId,
                                                                     studentName
                                                                 })}
-                                                                className="flex items-center px-2.5 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg border border-brand-200/60 transition shadow-sm"
+                                                                className="flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
                                                                 title="View attendance metrics and export PDF"
                                                             >
-                                                                <Eye size={13} className="mr-1 text-brand-600" />
-                                                                View Attendance
+                                                                <Eye size={13} className="sm:mr-1.5 text-slate-500" />
+                                                                <span className="hidden sm:inline">View Attendance</span>
+                                                                <span className="sm:hidden text-[11px]">View</span>
                                                             </button>
 
                                                             {/* Remove Member Button */}
@@ -570,7 +688,7 @@ const CourseDetails = () => {
                                                                     onClick={() => handleRemoveMemberClick(m._id)}
                                                                     title="Remove from course"
                                                                 >
-                                                                    <Trash2 size={15} />
+                                                                    <Trash2 size={14} className="sm:w-[15px] sm:h-[15px]" />
                                                                 </button>
                                                             )}
                                                         </div>
@@ -590,7 +708,7 @@ const CourseDetails = () => {
                 <div className="space-y-4">
                     <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 space-y-5">
                         <div className="border-b border-slate-100 pb-4">
-                            <span className="font-mono text-xs font-bold px-2.5 py-1 bg-brand-50 text-brand-700 rounded-lg border border-brand-100">
+                            <span className="font-mono text-xs font-semibold tracking-wide text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-lg">
                                 {course.code}
                             </span>
                             <h2 className="text-xl font-bold text-slate-900 mt-2.5">
@@ -612,22 +730,28 @@ const CourseDetails = () => {
 
                             <div className="flex items-center justify-between py-1 border-b border-slate-50">
                                 <span className="text-slate-400 font-medium">Semester / Term:</span>
-                                <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                                <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-0.5 rounded">
                                     {course.semester || 'Unspecified'}
                                 </span>
                             </div>
 
-                            {/* Term Dates */}
-                            {(course.startDate || course.endDate) && (
-                                <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                                    <span className="text-slate-400 font-medium flex items-center">
-                                        <Calendar size={13} className="mr-1 text-slate-400" /> Academic Term:
-                                    </span>
-                                    <span className="font-medium text-slate-700 text-[11px]">
-                                        {course.startDate ? new Date(course.startDate).toLocaleDateString() : 'Start'} &ndash; {course.endDate ? new Date(course.endDate).toLocaleDateString() : 'End'}
-                                    </span>
-                                </div>
-                            )}
+                            <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                <span className="text-slate-400 font-medium flex items-center">
+                                    <Calendar size={13} className="mr-1 text-slate-400" /> Start Date:
+                                </span>
+                                <span className="font-semibold text-slate-800">
+                                    {course.startDate ? new Date(course.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unspecified'}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center justify-between py-1 border-b border-slate-50">
+                                <span className="text-slate-400 font-medium flex items-center">
+                                    <Calendar size={13} className="mr-1 text-slate-400" /> End Date:
+                                </span>
+                                <span className="font-semibold text-slate-800">
+                                    {course.endDate ? new Date(course.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unspecified'}
+                                </span>
+                            </div>
 
                             <div className="flex items-center justify-between py-1 border-b border-slate-50">
                                 <span className="text-slate-400 font-medium">Sessions Held:</span>
@@ -673,8 +797,8 @@ const CourseDetails = () => {
 
             {/* Enroll Students Modal */}
             {showEnrollModal && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[85vh]">
+                <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+                    <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[85vh] my-auto">
                         {/* Header */}
                         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
                             <div>
@@ -753,7 +877,7 @@ const CourseDetails = () => {
                                             />
                                             <div className="flex-1 min-w-0">
                                                 <div className="font-semibold text-slate-800 text-xs truncate">
-                                                    {m.userId?.firstName} {m.userId?.lastName || ''}
+                                                    {m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`.trim() || 'Attendee'}
                                                 </div>
                                                 <div className="text-[11px] text-slate-400 truncate">
                                                     {m.userId?.email}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { X } from 'lucide-react';
 
 const AddMemberModal = ({ onClose, onMemberAdded }) => {
@@ -14,6 +15,18 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const isDirty = Boolean(
+        formData.firstName.trim() || 
+        formData.lastName.trim() || 
+        formData.email.trim() || 
+        formData.studentId.trim()
+    );
+
+    const { isShaking, handleBackdropClick } = useModalDismiss({
+        onClose,
+        isDirty
+    });
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,9 +58,9 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-container">
-                <div className="modal-content max-w-md">
+        <div onClick={handleBackdropClick} className="modal-overlay cursor-default">
+            <div onClick={handleBackdropClick} className="modal-container">
+                <div className={`modal-content max-w-md ${isShaking ? 'animate-modal-shake' : ''}`}>
                     <button 
                         onClick={onClose}
                         className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition bg-slate-100 hover:bg-slate-200 p-1 rounded-full"
@@ -64,8 +77,8 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
                     )}
                     
                     <form onSubmit={handleSubmit}>
-                        <div className="flex gap-4 mb-4">
-                            <div className="form-group w-1/2 mb-0">
+                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                            <div className="form-group w-full sm:w-1/2 mb-0">
                                 <label className="form-label">First Name</label>
                                 <input 
                                     type="text" 
@@ -77,7 +90,7 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
                                     autoFocus
                                 />
                             </div>
-                            <div className="form-group w-1/2 mb-0">
+                            <div className="form-group w-full sm:w-1/2 mb-0">
                                 <label className="form-label">Last Name</label>
                                 <input 
                                     type="text" 
@@ -104,14 +117,9 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
 
                         <div className="form-group mb-4">
                             <label className="form-label">Role</label>
-                            <select 
-                                name="role"
-                                className="form-input bg-slate-50 text-slate-500 cursor-not-allowed"
-                                value={formData.role}
-                                disabled
-                            >
-                                <option value="ATTENDEE">Attendee</option>
-                            </select>
+                            <div className="form-input bg-slate-50 text-slate-500 cursor-not-allowed py-2.5 font-medium">
+                                Attendee
+                            </div>
                         </div>
 
                         <div className="form-group mb-6">
@@ -126,11 +134,11 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
                             />
                         </div>
                         
-                        <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-100">
-                            <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading}>
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 mt-8 pt-4 border-t border-slate-100">
+                            <button type="button" className="btn btn-outline w-full sm:w-auto" onClick={onClose} disabled={loading}>
                                 Cancel
                             </button>
-                            <button type="submit" className="btn btn-primary" disabled={loading}>
+                            <button type="submit" className="btn btn-primary w-full sm:w-auto" disabled={loading}>
                                 {loading ? 'Adding...' : 'Add Attendee'}
                             </button>
                         </div>

@@ -10,6 +10,10 @@ export default defineConfig({
   ],
   server: {
     host: true, // This allows LAN connections
+    cors: true,
+    hmr: {
+      overlay: false,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

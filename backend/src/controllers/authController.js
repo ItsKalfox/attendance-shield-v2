@@ -13,7 +13,7 @@ const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 // Generate JWT
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || '30d',
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
     });
 };
 
@@ -111,14 +111,18 @@ const getMe = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
     try {
         const { email } = req.body;
-        const user = await User.findOne({ email });
+        if (!email) {
+            return res.status(400).json({ message: 'Please provide an email address' });
+        }
+
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
 
         if (!user) {
             // Return success even if user not found to prevent enumeration
             return res.status(200).json({ message: 'If an account exists, an OTP has been sent.' });
         }
 
-        // Generate OTP
+        // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         
         // Hash OTP for DB storage
@@ -128,21 +132,25 @@ const forgotPassword = async (req, res, next) => {
         // Delete any existing OTPs for user
         await PasswordResetOTP.deleteMany({ userId: user._id });
 
-        // Save new OTP
+        // Save new OTP (valid for 10 minutes)
         await PasswordResetOTP.create({
             userId: user._id,
             otpHash,
-            expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+            expiresAt: Date.now() + 10 * 60 * 1000
         });
 
         // Send Email
-        const message = `Your password reset OTP is: ${otp}\n\nIt is valid for 10 minutes.`;
+        const message = `Your Attendance Shield password reset code is: ${otp}\n\nThis verification code is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.`;
         
-        await sendEmail({
-            email: user.email,
-            subject: 'Password Reset OTP',
-            message
-        });
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'Attendance Shield - Password Reset Code',
+                message
+            });
+        } catch (emailErr) {
+            console.error('Failed to send password reset email:', emailErr);
+        }
 
         res.status(200).json({ message: 'If an account exists, an OTP has been sent.' });
     } catch (error) {
@@ -161,7 +169,7 @@ const verifyResetOtp = async (req, res, next) => {
             return res.status(400).json({ message: 'Please provide email and OTP' });
         }
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email: email.toLowerCase().trim() });
         if (!user) {
             return res.status(400).json({ message: 'Invalid or expired OTP' });
         }
@@ -181,7 +189,7 @@ const verifyResetOtp = async (req, res, next) => {
             return res.status(400).json({ message: 'Too many attempts. Request a new OTP.' });
         }
 
-        const isMatch = await bcrypt.compare(otp, otpRecord.otpHash);
+        const isMatch = await bcrypt.compare(otp.toString().trim(), otpRecord.otpHash);
 
         if (!isMatch) {
             otpRecord.attempts += 1;
@@ -189,15 +197,10 @@ const verifyResetOtp = async (req, res, next) => {
             return res.status(400).json({ message: 'Invalid OTP' });
         }
 
-        // Generate temporary token for password reset
-        const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
-        
-        // Let's store this resetTokenHash on the OTP record
         otpRecord.used = true;
         await otpRecord.save();
         
-        // Actually for simplicity, we can just return a short-lived JWT token specialized for reset
+        // Generate temporary token for password reset
         const tempToken = jwt.sign({ id: user._id, type: 'reset' }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
         res.status(200).json({ 
@@ -214,31 +217,72 @@ const verifyResetOtp = async (req, res, next) => {
 // @access  Public
 const resetPassword = async (req, res, next) => {
     try {
-        const { resetToken, password } = req.body;
+        const { resetToken, email, otp, password, newPassword } = req.body;
+        const targetPassword = newPassword || password;
 
-        if (!resetToken || !password) {
-            return res.status(400).json({ message: 'Please provide reset token and new password' });
+        if (!targetPassword) {
+            return res.status(400).json({ message: 'Please provide a new password' });
         }
 
-        let decoded;
-        try {
-            decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
-        } catch (error) {
-            return res.status(400).json({ message: 'Invalid or expired reset token' });
+        if (targetPassword.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters long' });
         }
 
-        if (decoded.type !== 'reset') {
-            return res.status(400).json({ message: 'Invalid token type' });
-        }
+        let user;
 
-        const user = await User.findById(decoded.id);
-        if (!user) {
-            return res.status(400).json({ message: 'User not found' });
+        if (email && otp) {
+            // Direct OTP-based reset
+            user = await User.findOne({ email: email.toLowerCase().trim() });
+            if (!user) {
+                return res.status(400).json({ message: 'Invalid or expired OTP' });
+            }
+
+            const otpRecord = await PasswordResetOTP.findOne({
+                userId: user._id,
+                used: false,
+                expiresAt: { $gt: Date.now() }
+            });
+
+            if (!otpRecord) {
+                return res.status(400).json({ message: 'Invalid or expired OTP' });
+            }
+
+            if (otpRecord.attempts >= 5) {
+                return res.status(400).json({ message: 'Too many attempts. Request a new OTP.' });
+            }
+
+            const isMatch = await bcrypt.compare(otp.toString().trim(), otpRecord.otpHash);
+            if (!isMatch) {
+                otpRecord.attempts += 1;
+                await otpRecord.save();
+                return res.status(400).json({ message: 'Invalid OTP' });
+            }
+
+            otpRecord.used = true;
+            await otpRecord.save();
+        } else if (resetToken) {
+            let decoded;
+            try {
+                decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+            } catch (error) {
+                return res.status(400).json({ message: 'Invalid or expired reset token' });
+            }
+
+            if (decoded.type !== 'reset') {
+                return res.status(400).json({ message: 'Invalid token type' });
+            }
+
+            user = await User.findById(decoded.id);
+            if (!user) {
+                return res.status(400).json({ message: 'User not found' });
+            }
+        } else {
+            return res.status(400).json({ message: 'Please provide verification code or reset token' });
         }
 
         // Hash new password
         const salt = await bcrypt.genSalt(10);
-        const passwordHash = await bcrypt.hash(password, salt);
+        const passwordHash = await bcrypt.hash(targetPassword, salt);
 
         user.passwordHash = passwordHash;
         await user.save();

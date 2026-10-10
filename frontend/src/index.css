@@ -1,19 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    background-color: #0c2b27;
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-800 font-sans antialiased min-h-screen selection:bg-brand-500/20 selection:text-brand-900;
+    background-color: #0c2b27;
+    @apply text-slate-800 font-sans antialiased selection:bg-brand-500/20 selection:text-brand-900;
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer components {
   /* Layout */
   .app-container {
-    @apply flex h-screen overflow-hidden bg-[#0c2b27] p-2 sm:p-4 sm:pl-0;
+    @apply flex overflow-hidden bg-[#0c2b27] p-0 lg:p-4 lg:pl-0;
+    height: 100vh;
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  @media (min-width: 1024px) {
+    .app-container {
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+      padding-left: 0;
+      padding-right: 1rem;
+    }
   }
   
   .app-sidebar {
@@ -21,20 +46,20 @@
   }
   
   .app-main {
-    @apply flex-1 flex flex-col overflow-hidden relative bg-slate-50 rounded-[2rem] shadow-2xl;
+    @apply flex-1 flex flex-col overflow-hidden relative bg-slate-50 rounded-t-2xl sm:rounded-t-3xl lg:rounded-[2rem] shadow-2xl;
   }
   
   .app-header {
-    @apply h-24 bg-transparent border-none flex items-center px-10 sticky top-0 z-30;
+    @apply h-16 sm:h-20 lg:h-24 bg-transparent border-none flex items-center px-4 sm:px-6 lg:px-10 sticky top-0 z-30 transition-all;
   }
   
   .app-content {
-    @apply flex-1 overflow-y-auto px-10 pb-10;
+    @apply flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 pb-6 sm:pb-8 lg:pb-10;
   }
 
   /* Cards */
   .card {
-    @apply bg-white rounded-[1.5rem] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-0 transition-shadow duration-300 hover:shadow-[0_12px_35px_rgb(0,0,0,0.12)];
+    @apply bg-white rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100/80 transition-shadow duration-300 hover:shadow-[0_12px_35px_rgb(0,0,0,0.1)];
   }
   
   .glass {
@@ -72,7 +97,7 @@
   }
   
   .btn-danger {
-    @apply bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 hover:border-red-300;
+    @apply bg-rose-600 text-white border border-transparent hover:bg-rose-700 shadow-sm shadow-rose-600/20 active:scale-95;
   }
   
   .btn-block {
@@ -116,15 +141,15 @@
 
 /* Modal fix for vertical centering */
 .modal-overlay {
-  @apply fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm overflow-y-auto;
+  @apply fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm overflow-y-auto p-3 sm:p-4;
 }
 
 .modal-container {
-  @apply min-h-full flex items-center justify-center p-4 sm:p-6;
+  @apply min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4 py-4 sm:py-8;
 }
 
 .modal-content {
-  @apply bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-2xl w-full relative my-8 animate-fade-in;
+  @apply bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl w-full max-w-lg relative my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] overflow-y-auto animate-fade-in;
 }
 
 /* Animations */
@@ -135,6 +160,26 @@
 
 .animate-fade-in {
   animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes success-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-success-pop {
+  animation: success-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.18); opacity: 0.2; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.8s infinite ease-in-out;
 }
 
 .skeleton {
@@ -149,4 +194,82 @@
 
 @keyframes shimmer {
   100% { transform: translateX(100%); }
+}
+
+@keyframes modal-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.animate-modal-shake {
+  animation: modal-shake 0.35s ease-in-out !important;
+}
+
+/* Custom Modern Range Slider */
+input[type="range"].slider-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+/* Chrome, Safari, Edge, Opera */
+input[type="range"].slider-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 3.5px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4), 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+input[type="range"].slider-range::-webkit-slider-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5), 0 2px 5px rgba(0, 0, 0, 0.15);
+  background: #059669;
+}
+
+input[type="range"].slider-range::-webkit-slider-thumb:active {
+  transform: scale(1.08);
+  background: #047857;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.6);
+}
+
+/* Firefox */
+input[type="range"].slider-range::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 3.5px solid #ffffff;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4), 0 1px 3px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+input[type="range"].slider-range::-moz-range-thumb:hover {
+  transform: scale(1.18);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+  background: #059669;
+}
+
+input[type="range"].slider-range::-moz-range-thumb:active {
+  transform: scale(1.08);
+  background: #047857;
+}
+
+input[type="range"].slider-range::-moz-range-track {
+  background: transparent;
+  height: 8px;
+  border-radius: 9999px;
 }

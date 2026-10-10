@@ -26,6 +26,16 @@ const organizationMemberSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    firstName: {
+        type: String,
+        trim: true,
+        default: ''
+    },
+    lastName: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     joinedAt: {
         type: Date,
         default: Date.now

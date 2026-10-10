@@ -9,22 +9,38 @@ const protect = async (req, res, next) => {
             // Get token from header
             token = req.headers.authorization.split(' ')[1];
 
+            if (!token || token === 'null' || token === 'undefined') {
+                return res.status(401).json({ message: 'Not authorized, token missing' });
+            }
+
             // Verify token
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             // Get user from the token
             req.user = await User.findById(decoded.id).select('-passwordHash');
 
-            next();
+            if (!req.user) {
+                return res.status(401).json({ message: 'User not found or account deleted' });
+            }
+
+            return next();
         } catch (error) {
-            console.error(error);
-            res.status(401).json({ message: 'Not authorized' });
+            if (error.name === 'TokenExpiredError') {
+                return res.status(401).json({ message: 'Session expired. Please log in again.', isExpired: true });
+            }
+            if (error.name === 'JsonWebTokenError') {
+                return res.status(401).json({ message: 'Invalid authentication token. Please log in again.' });
+            }
+            console.error('Auth middleware error:', error.message);
+            return res.status(401).json({ message: 'Not authorized, token validation failed' });
         }
     }
 
     if (!token) {
-        res.status(401).json({ message: 'Not authorized, no token' });
+        return res.status(401).json({ message: 'Not authorized, no token provided' });
     }
 };
 
 module.exports = { protect };
+
+

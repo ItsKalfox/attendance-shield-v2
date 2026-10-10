@@ -1,6 +1,7 @@
 const Course = require('../models/Course');
 const OrganizationMember = require('../models/OrganizationMember');
 const AttendanceSession = require('../models/AttendanceSession');
+const { syncSessionStatuses } = require('../services/sessionService');
 
 // @desc    Get dashboard statistics
 // @route   GET /api/organizations/:organizationId/dashboard
@@ -8,6 +9,9 @@ const AttendanceSession = require('../models/AttendanceSession');
 const getDashboardStats = async (req, res, next) => {
     try {
         const organizationId = req.params.organizationId;
+
+        // Perform synchronization sweep first
+        await syncSessionStatuses(organizationId);
 
         let stats = {};
         let recentSessions = [];

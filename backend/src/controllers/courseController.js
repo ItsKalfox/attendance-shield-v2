@@ -1,8 +1,10 @@
 const Course = require('../models/Course');
 const CourseMember = require('../models/CourseMember');
 const OrganizationMember = require('../models/OrganizationMember');
+const User = require('../models/User');
 const AttendanceSession = require('../models/AttendanceSession');
 const AttendanceRecord = require('../models/AttendanceRecord');
+const mongoose = require('mongoose');
 
 // @desc    Get all courses for organization
 // @route   GET /api/organizations/:organizationId/courses
@@ -42,6 +44,14 @@ const getCourses = async (req, res, next) => {
 
         for (let course of courses) {
             course.attendeesCount = await CourseMember.countDocuments({ courseId: course._id });
+            if (!course.instructor) {
+                const ownerMember = await OrganizationMember.findOne({ organizationId, role: 'OWNER' })
+                    .populate('userId', 'firstName lastName email avatar');
+                if (ownerMember) {
+                    course.instructor = ownerMember;
+                    await Course.updateOne({ _id: course._id }, { $set: { instructor: ownerMember._id } });
+                }
+            }
         }
 
         res.status(200).json(courses);
@@ -101,7 +111,7 @@ const createCourse = async (req, res, next) => {
 // @access  Private
 const getCourseById = async (req, res, next) => {
     try {
-        const course = await Course.findOne({
+        let course = await Course.findOne({
             _id: req.params.courseId,
             organizationId: req.params.organizationId
         })
@@ -112,6 +122,16 @@ const getCourseById = async (req, res, next) => {
 
         if (!course) {
             return res.status(404).json({ message: 'Course not found' });
+        }
+
+        // If older course without instructor, assign owner
+        if (!course.instructor) {
+            const ownerMember = await OrganizationMember.findOne({ organizationId: req.params.organizationId, role: 'OWNER' })
+                .populate('userId', 'firstName lastName email avatar');
+            if (ownerMember) {
+                course.instructor = ownerMember;
+                await Course.updateOne({ _id: course._id }, { $set: { instructor: ownerMember._id } });
+            }
         }
 
         // If requester is an INSTRUCTOR, ensure they are assigned to this course
@@ -191,7 +211,7 @@ const getCourseMembers = async (req, res, next) => {
         })
         .populate({
             path: 'organizationMemberId',
-            select: 'studentId role status joinedAt'
+            select: 'studentId role status joinedAt firstName lastName'
         });
 
         res.status(200).json(members);
@@ -452,7 +472,7 @@ const getCourseStudentAttendance = async (req, res, next) => {
         res.status(200).json({
             student: {
                 _id: studentMember._id,
-                name: `${studentMember.userId?.firstName || ''} ${studentMember.userId?.lastName || ''}`.trim() || 'Student',
+                name: `${studentMember.firstName || studentMember.userId?.firstName || ''} ${studentMember.lastName || studentMember.userId?.lastName || ''}`.trim() || 'Student',
                 email: studentMember.userId?.email || '',
                 studentId: studentMember.studentId || '',
                 avatar: studentMember.userId?.avatar || '',
@@ -486,6 +506,247 @@ const getCourseStudentAttendance = async (req, res, next) => {
     }
 };
 
+// @desc    Validate bulk course import data
+// @route   POST /api/organizations/:organizationId/courses/validate-import
+// @access  Private (ADMIN/OWNER)
+const validateImportCourses = async (req, res, next) => {
+    try {
+        const { courses } = req.body;
+        const organizationId = req.params.organizationId;
+
+        if (!courses || !Array.isArray(courses)) {
+            return res.status(400).json({ message: 'Invalid courses data array' });
+        }
+
+        // 1. Fetch all existing course codes in this organization
+        const existingCourses = await Course.find({ organizationId }).select('code');
+        const existingCodeSet = new Set(existingCourses.map(c => (c.code || '').toLowerCase().trim()));
+
+        // 2. Fetch all staff members (OWNER, INSTRUCTOR, ADMIN) in this organization
+        const staffMembers = await OrganizationMember.find({
+            organizationId,
+            role: { $in: ['OWNER', 'INSTRUCTOR', 'ADMIN'] }
+        }).populate('userId', 'firstName lastName email avatar');
+
+        const staffByEmail = new Map();
+        staffMembers.forEach(m => {
+            const email = m.userId?.email?.toLowerCase().trim();
+            if (email) {
+                staffByEmail.set(email, {
+                    memberId: m._id,
+                    name: `${m.firstName || m.userId?.firstName || ''} ${m.lastName || m.userId?.lastName || ''}`.trim() || 'Instructor',
+                    role: m.role,
+                    email: m.userId?.email
+                });
+            }
+        });
+
+        // 3. Validate each course
+        const results = courses.map((course, index) => {
+            const code = (course.courseCode || course.code || '').trim();
+            const name = (course.courseName || course.name || '').trim();
+            const batch = (course.batch || '').trim();
+            const semester = (course.semester || '').trim();
+            const instructorEmail = (course.instructorEmail || course.instructor || '').toLowerCase().trim();
+            const description = (course.description || '').trim();
+            const startDateStr = course.startDate || '';
+            const endDateStr = course.endDate || '';
+
+            const errors = [];
+            let isCodeDuplicateInOrg = false;
+            let instructorFound = null;
+            let isDateInvalid = false;
+
+            // Validate Code
+            if (!code) {
+                errors.push('Course code is required');
+            } else if (existingCodeSet.has(code.toLowerCase())) {
+                isCodeDuplicateInOrg = true;
+                errors.push('Course code already exists in organization');
+            }
+
+            // Validate Name
+            if (!name) {
+                errors.push('Course name is required');
+            }
+
+            // Validate Batch & Semester
+            if (!batch) {
+                errors.push('Batch is required');
+            }
+            if (!semester) {
+                errors.push('Semester is required');
+            }
+
+            // Validate Dates
+            let parsedStartDate = null;
+            let parsedEndDate = null;
+            if (startDateStr) {
+                const d = new Date(startDateStr);
+                if (isNaN(d.getTime())) {
+                    isDateInvalid = true;
+                    errors.push('Invalid start date');
+                } else {
+                    parsedStartDate = d.toISOString().split('T')[0];
+                }
+            }
+            if (endDateStr) {
+                const d = new Date(endDateStr);
+                if (isNaN(d.getTime())) {
+                    isDateInvalid = true;
+                    errors.push('Invalid end date');
+                } else {
+                    parsedEndDate = d.toISOString().split('T')[0];
+                }
+            }
+            if (parsedStartDate && parsedEndDate) {
+                if (new Date(parsedEndDate) < new Date(parsedStartDate)) {
+                    isDateInvalid = true;
+                    errors.push('End date cannot be earlier than start date');
+                }
+            }
+
+            // Validate Instructor
+            if (!instructorEmail) {
+                errors.push('Instructor email is required');
+            } else {
+                const staff = staffByEmail.get(instructorEmail);
+                if (staff) {
+                    instructorFound = {
+                        memberId: staff.memberId,
+                        name: staff.name,
+                        email: staff.email,
+                        role: staff.role
+                    };
+                } else {
+                    errors.push('Instructor not found in organization (must be registered staff)');
+                }
+            }
+
+            return {
+                _tempId: course._tempId || index.toString(),
+                courseCode: code,
+                courseName: name,
+                batch,
+                semester,
+                startDate: parsedStartDate || startDateStr,
+                endDate: parsedEndDate || endDateStr,
+                instructorEmail,
+                description,
+                isCodeDuplicateInOrg,
+                isDateInvalid,
+                instructorFound,
+                isValid: errors.length === 0,
+                errors
+            };
+        });
+
+        res.status(200).json({
+            results,
+            availableInstructors: Array.from(staffByEmail.values())
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Bulk create courses from validated import
+// @route   POST /api/organizations/:organizationId/courses/bulk-create
+// @access  Private (ADMIN/OWNER)
+const bulkCreateCourses = async (req, res, next) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        const { courses } = req.body;
+        const organizationId = req.params.organizationId;
+
+        if (!courses || !Array.isArray(courses) || courses.length === 0) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(400).json({ message: 'No courses provided to create' });
+        }
+
+        // Fetch staff in organization
+        const staffMembers = await OrganizationMember.find({
+            organizationId,
+            role: { $in: ['OWNER', 'INSTRUCTOR', 'ADMIN'] }
+        }).populate('userId', 'email').session(session);
+
+        const staffByEmail = new Map();
+        staffMembers.forEach(m => {
+            const email = m.userId?.email?.toLowerCase().trim();
+            if (email) staffByEmail.set(email, m._id);
+        });
+
+        const staffById = new Set(staffMembers.map(m => m._id.toString()));
+        const createdCourses = [];
+
+        for (const item of courses) {
+            const code = (item.courseCode || item.code || '').trim().toUpperCase();
+            const name = (item.courseName || item.name || '').trim();
+            const batch = (item.batch || '').trim();
+            const semester = (item.semester || '').trim();
+            const instructorEmail = (item.instructorEmail || item.instructor || '').toLowerCase().trim();
+            const instructorMemberId = item.instructorMemberId || item.instructorFound?.memberId;
+            const description = (item.description || '').trim();
+            const startDate = item.startDate ? new Date(item.startDate) : null;
+            const endDate = item.endDate ? new Date(item.endDate) : null;
+
+            if (!code || !name || !batch || !semester) {
+                throw new Error(`Missing required fields for course code: ${code || name || 'Unknown'}`);
+            }
+
+            let assignedInstructorId = null;
+            if (instructorMemberId && staffById.has(instructorMemberId.toString())) {
+                assignedInstructorId = instructorMemberId;
+            } else if (instructorEmail && staffByEmail.has(instructorEmail)) {
+                assignedInstructorId = staffByEmail.get(instructorEmail);
+            } else {
+                throw new Error(`Invalid or missing instructor for course "${code}"`);
+            }
+
+            // Check duplicate code in DB during transaction
+            const existingCourse = await Course.findOne({
+                organizationId,
+                code: { $regex: new RegExp(`^${code}$`, 'i') }
+            }).session(session);
+
+            if (existingCourse) {
+                throw new Error(`Course code "${code}" already exists in the organization.`);
+            }
+
+            const created = await Course.create([{
+                organizationId,
+                name,
+                code,
+                batch,
+                semester,
+                startDate: startDate && !isNaN(startDate.getTime()) ? startDate : null,
+                endDate: endDate && !isNaN(endDate.getTime()) ? endDate : null,
+                instructor: assignedInstructorId,
+                description,
+                status: 'ONGOING'
+            }], { session });
+
+            createdCourses.push(created[0]);
+        }
+
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(201).json({
+            message: `Successfully created ${createdCourses.length} courses`,
+            total: createdCourses.length,
+            courses: createdCourses
+        });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        next(error);
+    }
+};
+
 module.exports = {
     getCourses,
     createCourse,
@@ -495,5 +756,7 @@ module.exports = {
     enrollMembers,
     deleteCourse,
     removeMemberFromCourse,
-    getCourseStudentAttendance
+    getCourseStudentAttendance,
+    validateImportCourses,
+    bulkCreateCourses
 };

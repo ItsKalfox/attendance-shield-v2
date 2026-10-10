@@ -11,7 +11,8 @@ import {
     Filter, 
     QrCode, 
     MapPin, 
-    ShieldCheck 
+    ShieldCheck,
+    ChevronDown
 } from 'lucide-react';
 
 const MyAttendance = () => {
@@ -20,11 +21,18 @@ const MyAttendance = () => {
     const [loading, setLoading] = useState(true);
     const [selectedCourse, setSelectedCourse] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
+    const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
     const fetchMyAttendance = async () => {
-        if (!activeOrganization) return;
+        if (!activeOrganization) {
+            setData(null);
+            setLoading(false);
+            return;
+        }
         try {
             setLoading(true);
+            setData(null);
             const res = await api.get(`/organizations/${activeOrganization._id}/my-attendance`);
             setData(res.data);
         } catch (error) {
@@ -38,11 +46,69 @@ const MyAttendance = () => {
         fetchMyAttendance();
     }, [activeOrganization]);
 
-    if (loading) {
+    if (loading || !data) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <p className="text-sm font-medium">Loading your attendance history...</p>
+            <div className="animate-fade-in space-y-8">
+                {/* 4 Summary Stat Cards Skeleton */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl flex items-center">
+                            <div className="skeleton w-12 h-12 rounded-2xl mr-4 shrink-0"></div>
+                            <div className="space-y-1.5 flex-1">
+                                <div className="skeleton w-16 h-7 rounded-md"></div>
+                                <div className="skeleton w-24 h-3 rounded"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Course Breakdown Skeleton */}
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <div className="skeleton w-56 h-6 rounded-md"></div>
+                        <div className="skeleton w-64 h-4 rounded"></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="card bg-white p-6 border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <div className="skeleton w-16 h-5 rounded-lg"></div>
+                                    <div className="skeleton w-20 h-5 rounded-xl"></div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="skeleton w-3/4 h-5 rounded-md"></div>
+                                    <div className="skeleton w-1/2 h-3.5 rounded"></div>
+                                </div>
+                                <div className="space-y-2 pt-3 border-t border-slate-100">
+                                    <div className="skeleton w-full h-3 rounded"></div>
+                                    <div className="skeleton w-full h-2 rounded-full"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Timeline Table Card Skeleton */}
+                <div className="card p-6 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl space-y-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                        <div className="skeleton w-44 h-6 rounded-md"></div>
+                        <div className="flex gap-2">
+                            <div className="skeleton w-36 h-8 rounded-xl"></div>
+                            <div className="skeleton w-28 h-8 rounded-xl"></div>
+                        </div>
+                    </div>
+                    <div className="space-y-3 pt-2">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex justify-between items-center">
+                                <div className="space-y-1.5">
+                                    <div className="skeleton w-40 h-4 rounded"></div>
+                                    <div className="skeleton w-56 h-3 rounded"></div>
+                                </div>
+                                <div className="skeleton w-20 h-6 rounded-full"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -127,7 +193,7 @@ const MyAttendance = () => {
 
             {/* Course Breakdown Cards */}
             <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-4">
                     <h2 className="text-lg font-bold text-slate-800 flex items-center">
                         <BookOpen size={20} className="mr-2.5 text-brand-600" />
                         Course Attendance Breakdown
@@ -200,30 +266,63 @@ const MyAttendance = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 shadow-sm">
-                            <Filter size={14} className="text-slate-400" />
-                            <select 
-                                className="bg-transparent border-none outline-none text-slate-700 font-semibold cursor-pointer"
-                                value={selectedCourse}
-                                onChange={(e) => setSelectedCourse(e.target.value)}
+                        <div className="relative">
+                            <div 
+                                className="flex items-center justify-between gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 shadow-sm cursor-pointer min-w-[140px]"
+                                onClick={() => setIsCourseDropdownOpen(!isCourseDropdownOpen)}
                             >
-                                <option value="all">All Courses</option>
-                                {courses.map(c => (
-                                    <option key={c.course._id} value={c.course._id}>{c.course.name}</option>
-                                ))}
-                            </select>
+                                <div className="flex items-center">
+                                    <Filter size={14} className="text-slate-400 mr-1.5" />
+                                    <span className="truncate pr-2">
+                                        {selectedCourse === 'all' ? 'All Courses' : (courses.find(c => c.course._id === selectedCourse)?.course.name || 'All Courses')}
+                                    </span>
+                                </div>
+                                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isCourseDropdownOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                            {isCourseDropdownOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsCourseDropdownOpen(false)}></div>
+                                    <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 py-1 min-w-[180px] max-h-[200px] overflow-y-auto custom-scrollbar">
+                                        <div 
+                                            className={`px-3 py-1.5 text-xs cursor-pointer hover:bg-brand-50 ${selectedCourse === 'all' ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700'}`}
+                                            onClick={() => { setSelectedCourse('all'); setIsCourseDropdownOpen(false); }}
+                                        >
+                                            All Courses
+                                        </div>
+                                        {courses.map(c => (
+                                            <div 
+                                                key={c.course._id}
+                                                className={`px-3 py-1.5 text-xs cursor-pointer hover:bg-brand-50 truncate ${selectedCourse === c.course._id ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700'}`}
+                                                onClick={() => { setSelectedCourse(c.course._id); setIsCourseDropdownOpen(false); }}
+                                            >
+                                                {c.course.name}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 shadow-sm">
-                            <select 
-                                className="bg-transparent border-none outline-none text-slate-700 font-semibold cursor-pointer"
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
+                        <div className="relative">
+                            <div 
+                                className="flex items-center justify-between gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 shadow-sm cursor-pointer min-w-[120px]"
+                                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
                             >
-                                <option value="all">All Statuses</option>
-                                <option value="PRESENT">Present</option>
-                                <option value="REMOVED">Removed</option>
-                            </select>
+                                <span className="truncate pr-2">
+                                    {statusFilter === 'all' ? 'All Statuses' : statusFilter === 'PRESENT' ? 'Present' : 'Removed'}
+                                </span>
+                                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                            {isStatusDropdownOpen && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setIsStatusDropdownOpen(false)}></div>
+                                    <div className="absolute right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl z-20 py-1 min-w-[120px]">
+                                        <div className={`px-3 py-1.5 text-xs cursor-pointer hover:bg-brand-50 ${statusFilter === 'all' ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700'}`} onClick={() => { setStatusFilter('all'); setIsStatusDropdownOpen(false); }}>All Statuses</div>
+                                        <div className={`px-3 py-1.5 text-xs cursor-pointer hover:bg-brand-50 ${statusFilter === 'PRESENT' ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700'}`} onClick={() => { setStatusFilter('PRESENT'); setIsStatusDropdownOpen(false); }}>Present</div>
+                                        <div className={`px-3 py-1.5 text-xs cursor-pointer hover:bg-brand-50 ${statusFilter === 'REMOVED' ? 'bg-brand-50 text-brand-700 font-bold' : 'text-slate-700'}`} onClick={() => { setStatusFilter('REMOVED'); setIsStatusDropdownOpen(false); }}>Removed</div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -240,37 +339,42 @@ const MyAttendance = () => {
                     </div>
                 ) : (
                     <div className="table-container">
-                        <table className="table">
+                        <table className="table w-full text-xs">
                             <thead>
                                 <tr>
-                                    <th>Course</th>
-                                    <th>Session Name</th>
-                                    <th>Date & Time</th>
-                                    <th>Verification</th>
-                                    <th>Status</th>
+                                    <th className="py-3 px-3.5 sm:px-6">Course</th>
+                                    <th className="py-3 px-4 hidden sm:table-cell">Session Name</th>
+                                    <th className="py-3 px-4 hidden md:table-cell">Date & Time</th>
+                                    <th className="py-3 px-4 hidden sm:table-cell">Verification</th>
+                                    <th className="py-3 px-3.5 sm:px-6 text-right">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredRecords.map(record => (
                                     <tr key={record._id} className="hover:bg-slate-50/60 transition">
-                                        <td>
-                                            <div className="font-bold text-slate-800 text-sm">
+                                        <td className="py-3 sm:py-4 px-3.5 sm:px-6">
+                                            <div className="font-bold text-slate-800 text-sm truncate max-w-[150px] xs:max-w-[200px] sm:max-w-none">
                                                 {record.courseId?.name || 'Course'}
                                             </div>
                                             <div className="text-xs font-mono text-slate-400 mt-0.5">
                                                 {record.courseId?.code || ''}
                                             </div>
+                                            <div className="sm:hidden text-[11px] text-slate-500 font-normal mt-1 flex items-center gap-1.5 flex-wrap">
+                                                <span className="font-semibold text-slate-700">{record.sessionId?.sessionName || 'Lecture'}</span>
+                                                <span>&bull;</span>
+                                                <span>{new Date(record.markedAt || record.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                                            </div>
                                         </td>
-                                        <td>
+                                        <td className="hidden sm:table-cell">
                                             <span className="font-medium text-slate-700 text-sm">
                                                 {record.sessionId?.sessionName || 'Lecture Session'}
                                             </span>
                                         </td>
-                                        <td className="text-slate-600 text-xs">
+                                        <td className="text-slate-600 text-xs hidden md:table-cell">
                                             <div>{new Date(record.markedAt || record.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                                             <div className="text-slate-400 mt-0.5">{new Date(record.markedAt || record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                         </td>
-                                        <td>
+                                        <td className="hidden sm:table-cell">
                                             <div className="flex items-center gap-1.5 text-xs text-slate-600">
                                                 {record.markedBy === 'SELF' ? (
                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium text-[11px]">
@@ -288,7 +392,7 @@ const MyAttendance = () => {
                                                 )}
                                             </div>
                                         </td>
-                                        <td>
+                                        <td className="py-3 sm:py-4 px-3.5 sm:px-6 text-right whitespace-nowrap">
                                             {record.status === 'PRESENT' ? (
                                                 <span className="badge badge-success text-xs font-semibold">
                                                     Present

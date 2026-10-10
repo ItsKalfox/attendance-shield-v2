@@ -1,13 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, MapPin, Loader2, Navigation, BookOpen } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { 
+    CheckCircle, 
+    XCircle, 
+    MapPin, 
+    Loader2, 
+    Navigation, 
+    BookOpen, 
+    User, 
+    Clock, 
+    ShieldCheck, 
+    Building2,
+    Calendar,
+    Sparkles,
+    Check
+} from 'lucide-react';
 import api from '../services/api';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useMsal } from '@azure/msal-react';
 
 const PublicAttend = () => {
     const { qrToken } = useParams();
-    const navigate = useNavigate();
     
     const [status, setStatus] = useState('IDLE'); // IDLE, LOADING, SUCCESS, ERROR
     const [message, setMessage] = useState('');
@@ -16,6 +29,7 @@ const PublicAttend = () => {
     const [isLocating, setIsLocating] = useState(false);
     const [locationError, setLocationError] = useState('');
     const [showLocationSuccess, setShowLocationSuccess] = useState(false);
+    const [markedData, setMarkedData] = useState(null);
     
     const { instance } = useMsal();
 
@@ -94,6 +108,7 @@ const PublicAttend = () => {
 
             const res = await api.post('/attendance/scan', payload);
             
+            setMarkedData(res.data);
             setStatus('SUCCESS');
             setMessage(res.data.message || 'Attendance marked successfully!');
         } catch (error) {
@@ -125,29 +140,72 @@ const PublicAttend = () => {
 
     if (status === 'SUCCESS') {
         return (
-            <div className="min-h-screen bg-brand-950 flex items-center justify-center p-4 relative overflow-hidden">
-                {/* Background decorative elements */}
+            <div className="min-h-screen bg-[#061a17] flex items-center justify-center p-4 sm:p-6 relative overflow-hidden font-sans">
+                {/* Background decorative glow elements */}
                 <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-500/20 blur-[120px]"></div>
-                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-brand-700/20 blur-[120px]"></div>
+                    <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-brand-500/15 blur-[130px]"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-brand-700/20 blur-[130px]"></div>
                 </div>
-                <div className="card max-w-md w-full text-center py-12 px-6 shadow-2xl border-emerald-200 bg-white relative z-10">
-                    <div className="mx-auto w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
-                        <CheckCircle size={40} />
+
+                <div className="card max-w-md w-full bg-white rounded-[2rem] p-8 shadow-[0_25px_60px_rgba(0,0,0,0.25)] border border-slate-100/80 relative z-10 animate-fade-in text-center">
+                    {/* Top Organization and Brand Header */}
+                    <div className="flex items-center justify-between mb-10 gap-3">
+                        {sessionInfo?.organization ? (
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                {sessionInfo.organization.logoUrl ? (
+                                    <img 
+                                        src={sessionInfo.organization.logoUrl} 
+                                        alt={sessionInfo.organization.name} 
+                                        className="w-8 h-8 object-contain rounded-md shrink-0" 
+                                    />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs shrink-0">
+                                        {sessionInfo.organization.name.substring(0, 2).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="font-bold text-slate-800 text-sm text-left line-clamp-2 leading-snug">
+                                    {sessionInfo.organization.name}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+                                <Building2 size={16} />
+                                <span>Verified Organization</span>
+                            </div>
+                        )}
+                        <img src="/logo-dark.png" alt="Attendance Shield" className="h-6 w-auto object-contain opacity-90 shrink-0" />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Success!</h1>
-                    <p className="text-slate-600 mb-8">{message}</p>
-                    
-                    <button onClick={() => navigate('/login')} className="text-brand-600 hover:underline text-sm font-medium">
-                        Go to Dashboard
-                    </button>
+
+                    {/* Old Tick Mark Icon with Pulse Ring */}
+                    <div className="relative flex items-center justify-center mx-auto mb-8">
+                        <div className="absolute w-28 h-28 rounded-full bg-emerald-400/20 animate-pulse-ring pointer-events-none"></div>
+                        <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center relative z-10 shadow-sm">
+                            <CheckCircle size={40} />
+                        </div>
+                    </div>
+
+                    {/* Titles and Subtext */}
+                    <h1 className="text-2xl font-bold text-slate-800 mb-2">
+                        Attendance Confirmed!
+                    </h1>
+                    <p className="text-slate-600 text-sm mb-6 max-w-sm mx-auto leading-relaxed">
+                        {markedData?.flagged 
+                            ? 'Attendance recorded and flagged for location verification. You can now safely close this browser tab.' 
+                            : 'Your presence has been recorded and verified for this session. You can now safely close this browser tab.'}
+                    </p>
+
+                    {/* Security Watermark */}
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400 mt-2 font-medium">
+                        <ShieldCheck size={14} className="text-emerald-500" />
+                        <span>Secured &amp; verified by AttendanceShield</span>
+                    </div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-brand-950 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-brand-950 flex items-center justify-center p-4 relative overflow-hidden font-sans">
             {/* Background decorative elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-brand-500/20 blur-[120px]"></div>
@@ -156,22 +214,31 @@ const PublicAttend = () => {
             
             <div className="card max-w-md w-full p-8 shadow-2xl bg-white border border-slate-100 relative z-10">
                 <div className="mb-8 flex flex-col">
-                    <div className="flex w-full items-center justify-between mb-8">
+                    <div className="flex w-full items-center justify-between mb-8 gap-3">
                         {sessionInfo && sessionInfo.organization ? (
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                 {sessionInfo.organization.logoUrl ? (
-                                    <img src={sessionInfo.organization.logoUrl} alt={sessionInfo.organization.name} className="w-8 h-8 rounded-md object-contain" />
+                                    <img 
+                                        src={sessionInfo.organization.logoUrl} 
+                                        alt={sessionInfo.organization.name} 
+                                        className="w-8 h-8 object-contain rounded-md shrink-0" 
+                                    />
                                 ) : (
-                                    <div className="w-8 h-8 rounded-md bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs">
+                                    <div className="w-8 h-8 rounded-lg bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs shrink-0">
                                         {sessionInfo.organization.name.substring(0, 2).toUpperCase()}
                                     </div>
                                 )}
-                                <span className="font-bold text-slate-700 text-sm truncate max-w-[150px]">{sessionInfo.organization.name}</span>
+                                <span className="font-bold text-slate-800 text-sm text-left line-clamp-2 leading-snug">
+                                    {sessionInfo.organization.name}
+                                </span>
                             </div>
                         ) : (
-                            <div></div>
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-brand-700">
+                                <Building2 size={16} />
+                                <span>Verified Organization</span>
+                            </div>
                         )}
-                        <img src="/logo-dark.png" alt="Attendance Shield" className="h-6 w-auto object-contain" />
+                        <img src="/logo-dark.png" alt="Attendance Shield" className="h-6 w-auto object-contain shrink-0" />
                     </div>
 
                     <div className="text-center">
@@ -187,7 +254,7 @@ const PublicAttend = () => {
                         ) : (
                             <h1 className="text-2xl font-extrabold text-slate-800 mb-2">Mark Attendance</h1>
                         )}
-                        <p className="text-slate-500 text-sm">Mark your attendance by entering your credentials below. Ensure your location services are enabled if required.</p>
+                        <p className="text-slate-500 text-sm">Mark your attendance by continuing with your Google or Microsoft account. Ensure your location services are enabled if required.</p>
                     </div>
                 </div>
 

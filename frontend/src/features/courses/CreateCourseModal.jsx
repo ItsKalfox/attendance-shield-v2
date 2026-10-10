@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
-import { X, Calendar, BookOpen, Layers, Clock, UserCheck } from 'lucide-react';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
+import { X, Calendar, BookOpen, Layers, Clock, UserCheck, ChevronDown } from 'lucide-react';
 
 const CreateCourseModal = ({ onClose, onCourseCreated }) => {
     const { activeOrganization } = useOrganization();
@@ -22,6 +23,22 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
     // Member fetching
     const [instructorsList, setInstructorsList] = useState([]);
     const [fetchingInstructors, setFetchingInstructors] = useState(true);
+    const [isInstructorDropdownOpen, setIsInstructorDropdownOpen] = useState(false);
+
+    const isDirty = Boolean(
+        formData.name.trim() ||
+        formData.code.trim() ||
+        formData.batch.trim() ||
+        formData.semester.trim() ||
+        formData.startDate ||
+        formData.endDate ||
+        formData.description.trim()
+    );
+
+    const { isShaking, handleBackdropClick } = useModalDismiss({
+        onClose,
+        isDirty
+    });
 
     useEffect(() => {
         const fetchStaff = async () => {
@@ -97,24 +114,27 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+        <div 
+            onClick={handleBackdropClick}
+            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto cursor-default"
+        >
+            <div className={`relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border-0 overflow-hidden my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] animate-in fade-in zoom-in-95 duration-200 ${isShaking ? 'animate-modal-shake' : ''}`}>
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="shrink-0 px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70 backdrop-blur-sm">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-900">Create New Course</h2>
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-900">Create New Course</h2>
                         <p className="text-xs text-slate-500 mt-0.5">Define course specifications and assign a dedicated instructor.</p>
                     </div>
                     <button 
                         onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-lg hover:bg-slate-200/60"
+                        className="text-slate-400 hover:text-slate-600 transition p-1.5 rounded-lg hover:bg-slate-200/60 ml-2"
                     >
                         <X size={20} />
                     </button>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto min-h-0">
                     {error && (
                         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center">
                             <span className="w-2 h-2 rounded-full bg-red-500 mr-2.5"></span>
@@ -226,19 +246,40 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                                 No instructors found in this organization. Please invite or assign an instructor first.
                             </div>
                         ) : (
-                            <select 
-                                name="instructor"
-                                value={formData.instructor}
-                                onChange={handleChange}
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 bg-white transition font-medium"
-                                required
-                            >
-                                {instructorsList.map(inst => (
-                                    <option key={inst._id} value={inst._id}>
-                                        {inst.userId?.firstName} {inst.userId?.lastName} ({inst.userId?.email}) - {inst.role}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <div 
+                                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 bg-white transition font-medium cursor-pointer flex justify-between items-center"
+                                    onClick={() => setIsInstructorDropdownOpen(!isInstructorDropdownOpen)}
+                                >
+                                    <span className="truncate pr-2">
+                                        {(() => {
+                                            const sel = instructorsList.find(i => i._id === formData.instructor);
+                                            return sel ? `${sel.userId?.firstName} ${sel.userId?.lastName} (${sel.userId?.email})` : 'Select Instructor...';
+                                        })()}
+                                    </span>
+                                    <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform ${isInstructorDropdownOpen ? 'rotate-180' : ''}`} />
+                                </div>
+                                {isInstructorDropdownOpen && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setIsInstructorDropdownOpen(false)}></div>
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 overflow-hidden py-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                            {instructorsList.map(inst => (
+                                                <div 
+                                                    key={inst._id}
+                                                    className={`px-3.5 py-2.5 text-sm cursor-pointer flex justify-between items-center hover:bg-brand-50 ${formData.instructor === inst._id ? 'bg-brand-50 text-brand-700 font-medium' : 'text-slate-700'}`}
+                                                    onClick={() => {
+                                                        handleChange({ target: { name: 'instructor', value: inst._id } });
+                                                        setIsInstructorDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    <span className="truncate pr-2">{inst.userId?.firstName} {inst.userId?.lastName} <span className="text-xs text-slate-400">({inst.userId?.email})</span></span>
+                                                    <span className="text-[10px] font-bold text-slate-500 uppercase shrink-0 bg-slate-100 px-1.5 py-0.5 rounded">{inst.role}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         )}
                         <p className="text-[11px] text-slate-400 mt-1">
                             Student enrollment can be managed by this instructor or admin after course creation.
@@ -261,18 +302,18 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-3 border-t border-slate-100">
                         <button 
                             type="button" 
                             onClick={onClose}
-                            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+                            className="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 transition w-full sm:w-auto"
                             disabled={loading}
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit" 
-                            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-500/20 transition disabled:opacity-50"
+                            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-500/20 transition disabled:opacity-50 w-full sm:w-auto"
                             disabled={loading || fetchingInstructors || instructorsList.length === 0}
                         >
                             {loading ? 'Creating Course...' : 'Create Course'}

@@ -42,23 +42,49 @@ if (isMsalResponse) {
       navigateToLoginRequestUrl: false
     },
     cache: {
-      cacheLocation: 'localStorage',
+      cacheLocation: 'sessionStorage',
       storeAuthStateInCookie: false
     }
   };
 
-  const msalInstance = new PublicClientApplication(msalConfig);
+  let msalInstance = null;
+  try {
+    msalInstance = new PublicClientApplication(msalConfig);
+  } catch (err) {
+    console.warn('MSAL instance creation warning:', err);
+  }
 
-  msalInstance.initialize().then(() => {
-    createRoot(document.getElementById('root')).render(
-      <StrictMode>
-        <GoogleOAuthProvider clientId={googleClientId}>
-          <MsalProvider instance={msalInstance}>
-            <App />
-          </MsalProvider>
-        </GoogleOAuthProvider>
-      </StrictMode>,
-    );
-  });
+  const initMsalAndMount = async () => {
+    if (msalInstance) {
+      try {
+        // Race with a 1500ms timeout so MSAL network calls never block app rendering
+        await Promise.race([
+          msalInstance.initialize(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('MSAL init timed out')), 1500))
+        ]);
+      } catch (err) {
+        console.warn('MSAL initialization bypassed or handled:', err);
+      }
+    }
+
+    const rootEl = document.getElementById('root');
+    if (rootEl) {
+      createRoot(rootEl).render(
+        <StrictMode>
+          <GoogleOAuthProvider clientId={googleClientId}>
+            {msalInstance ? (
+              <MsalProvider instance={msalInstance}>
+                <App />
+              </MsalProvider>
+            ) : (
+              <App />
+            )}
+          </GoogleOAuthProvider>
+        </StrictMode>,
+      );
+    }
+  };
+
+  initMsalAndMount();
 }
 

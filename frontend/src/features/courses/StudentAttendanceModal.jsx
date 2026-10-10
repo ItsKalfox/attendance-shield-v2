@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { X, Download, User, Calendar, BookOpen, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import api from '../../services/api';
 import jsPDF from 'jspdf';
@@ -9,6 +10,11 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const { handleBackdropClick } = useModalDismiss({
+        onClose,
+        isDirty: false
+    });
 
     useEffect(() => {
         if (!isOpen || !studentOrgMemberId || !courseId) return;
@@ -168,43 +174,89 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-            <div className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden my-8">
+        <div onClick={handleBackdropClick} className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 cursor-default">
+            <div className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border-0 overflow-hidden my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh]">
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center border border-brand-100">
-                            <FileText size={20} />
+                <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 backdrop-blur-sm">
+                    <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center border border-brand-100 shrink-0">
+                            <FileText size={18} className="sm:w-5 sm:h-5" />
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-900">Student Attendance Report</h2>
-                            <p className="text-xs text-slate-500">Comprehensive breakdown across all lecture formats</p>
+                        <div className="min-w-0">
+                            <h2 className="text-base sm:text-lg font-bold text-slate-900 truncate">Student Attendance Report</h2>
+                            <p className="text-[11px] sm:text-xs text-slate-500 truncate">Comprehensive breakdown across all lecture formats</p>
                         </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0 ml-2">
                         {data && (
                             <button
                                 onClick={generatePDF}
-                                className="flex items-center px-3.5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition"
+                                className="flex items-center px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition"
                             >
-                                <Download size={14} className="mr-1.5" /> Export PDF
+                                <Download size={13} className="mr-1 sm:mr-1.5" /> 
+                                <span className="hidden xs:inline">Export </span>PDF
                             </button>
                         )}
                         <button
                             onClick={onClose}
                             className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition"
                         >
-                            <X size={20} />
+                            <X size={18} className="sm:w-5 sm:h-5" />
                         </button>
                     </div>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                            <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                            <span className="text-sm font-medium">Calculating attendance metrics...</span>
+                        <div className="space-y-6">
+                            {/* Profile & Course Meta Cards Skeleton */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/70 space-y-2.5">
+                                    <div className="skeleton w-32 h-3 rounded"></div>
+                                    <div className="skeleton w-44 h-5 rounded-md"></div>
+                                    <div className="skeleton w-52 h-3.5 rounded"></div>
+                                    <div className="skeleton w-36 h-4 rounded"></div>
+                                </div>
+                                <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/70 space-y-2.5">
+                                    <div className="skeleton w-36 h-3 rounded"></div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="skeleton w-16 h-5 rounded-lg"></div>
+                                        <div className="skeleton w-36 h-5 rounded-md"></div>
+                                    </div>
+                                    <div className="skeleton w-48 h-3.5 rounded"></div>
+                                    <div className="skeleton w-40 h-3.5 rounded"></div>
+                                </div>
+                            </div>
+
+                            {/* Overall Stats Cards Skeleton */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="p-3.5 bg-white rounded-xl border border-slate-200 text-center space-y-2">
+                                        <div className="skeleton w-20 h-3 mx-auto rounded"></div>
+                                        <div className="skeleton w-12 h-6 mx-auto rounded-md"></div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Attendance Table Skeleton */}
+                            <div className="border border-slate-200 rounded-xl overflow-hidden">
+                                <div className="bg-slate-50 p-3 border-b border-slate-200 flex justify-between">
+                                    <div className="skeleton w-28 h-4 rounded"></div>
+                                    <div className="skeleton w-20 h-4 rounded"></div>
+                                </div>
+                                <div className="divide-y divide-slate-100 p-2 space-y-2">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="py-2 px-3 flex justify-between items-center">
+                                            <div className="skeleton w-32 h-4 rounded"></div>
+                                            <div className="skeleton w-16 h-4 rounded"></div>
+                                            <div className="skeleton w-16 h-4 rounded"></div>
+                                            <div className="skeleton w-16 h-4 rounded"></div>
+                                            <div className="skeleton w-20 h-5 rounded-full"></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     ) : error ? (
                         <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-xl text-sm font-medium">
@@ -233,13 +285,13 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
                                 <div className="p-4 rounded-xl bg-slate-50/80 border border-slate-200/70 space-y-1.5">
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Course Specification</div>
                                     <div className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                        <span className="font-mono text-xs px-2 py-0.5 bg-brand-100 text-brand-700 rounded font-bold">
+                                        <span className="font-mono text-xs px-2.5 py-1 bg-slate-100/90 text-slate-500 rounded-lg font-semibold tracking-wide">
                                             {data.course.code}
                                         </span>
                                         <span className="truncate">{data.course.name}</span>
                                     </div>
                                     <div className="text-xs text-slate-600">
-                                        <span className="font-medium">Cohort:</span> {data.course.batch || '-'} &bull; <span className="font-medium">Term:</span> {data.course.semester || '-'}
+                                        <span className="font-medium">Batch:</span> {data.course.batch || '-'} &bull; <span className="font-medium">Semester:</span> {data.course.semester || '-'}
                                     </div>
                                     {data.course.instructor && (
                                         <div className="text-xs text-slate-600 truncate">
@@ -270,9 +322,6 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
                                 }`}>
                                     <div className="text-[11px] font-semibold uppercase">Overall Rate</div>
                                     <div className="text-xl font-extrabold mt-1">{data.summary.overallPercentage}%</div>
-                                    <div className="text-[10px] font-bold mt-0.5">
-                                        {data.summary.isEligible ? 'Eligible (>=80%)' : 'Short (<80%)'}
-                                    </div>
                                 </div>
                             </div>
 
@@ -285,33 +334,33 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
                                     <table className="w-full text-left text-xs">
                                         <thead className="bg-slate-100/60 text-slate-500 font-semibold border-b border-slate-200">
                                             <tr>
-                                                <th className="py-2.5 px-4">Session Format</th>
-                                                <th className="py-2.5 px-4 text-center">Conducted</th>
-                                                <th className="py-2.5 px-4 text-center">Attended</th>
-                                                <th className="py-2.5 px-4 text-center">Absent</th>
-                                                <th className="py-2.5 px-4 text-center">Percentage</th>
-                                                <th className="py-2.5 px-4 w-32">Progress</th>
+                                                <th className="py-2.5 px-3 sm:px-4">Session Format</th>
+                                                <th className="py-2.5 px-2 sm:px-4 text-center">Conducted</th>
+                                                <th className="py-2.5 px-2 sm:px-4 text-center">Attended</th>
+                                                <th className="py-2.5 px-2 sm:px-4 text-center hidden xs:table-cell">Absent</th>
+                                                <th className="py-2.5 px-2 sm:px-4 text-center">Rate</th>
+                                                <th className="py-2.5 px-4 w-32 hidden sm:table-cell">Progress</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 font-medium">
                                             {data.breakdown.map((item) => (
                                                 <tr key={item.type} className="hover:bg-slate-50/50 transition">
-                                                    <td className="py-2.5 px-4 font-semibold text-slate-800">
+                                                    <td className="py-2.5 px-3 sm:px-4 font-semibold text-slate-800">
                                                         {item.type}
                                                     </td>
-                                                    <td className="py-2.5 px-4 text-center text-slate-600">
+                                                    <td className="py-2.5 px-2 sm:px-4 text-center text-slate-600">
                                                         {item.conducted}
                                                     </td>
-                                                    <td className="py-2.5 px-4 text-center font-bold text-emerald-600">
+                                                    <td className="py-2.5 px-2 sm:px-4 text-center font-bold text-emerald-600">
                                                         {item.attended}
                                                     </td>
-                                                    <td className="py-2.5 px-4 text-center font-bold text-rose-500">
+                                                    <td className="py-2.5 px-2 sm:px-4 text-center font-bold text-rose-500 hidden xs:table-cell">
                                                         {item.absent}
                                                     </td>
-                                                    <td className="py-2.5 px-4 text-center font-bold text-slate-900">
+                                                    <td className="py-2.5 px-2 sm:px-4 text-center font-bold text-slate-900">
                                                         {item.conducted > 0 ? `${item.percentage}%` : '-'}
                                                     </td>
-                                                    <td className="py-2.5 px-4">
+                                                    <td className="py-2.5 px-4 hidden sm:table-cell">
                                                         {item.conducted > 0 ? (
                                                             <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                                                 <div 

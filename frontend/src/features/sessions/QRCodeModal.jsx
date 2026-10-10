@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { QRCodeCanvas } from 'qrcode.react';
 import { X, Copy, Check, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -7,6 +8,11 @@ import autoTable from 'jspdf-autotable';
 
 const QRCodeModal = ({ qrToken, session, onClose }) => {
     const [copied, setCopied] = useState(false);
+
+    const { handleBackdropClick } = useModalDismiss({
+        onClose,
+        isDirty: false
+    });
     
     // Construct the absolute URL that the attendee will scan
     const attendUrl = `${window.location.origin}/attend/${qrToken}`;
@@ -60,8 +66,8 @@ const QRCodeModal = ({ qrToken, session, onClose }) => {
     };
 
     return createPortal(
-        <div className="modal-overlay z-[100]">
-            <div className="modal-container">
+        <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
+            <div onClick={handleBackdropClick} className="modal-container">
                 <div className="modal-content max-w-sm text-center relative">
                     <button 
                         onClick={onClose}
