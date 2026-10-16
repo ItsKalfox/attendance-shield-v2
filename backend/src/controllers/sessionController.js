@@ -39,8 +39,28 @@ const createSession = async (req, res, next) => {
         const { courseId, instructorId, lectureType, startTime, expiresAt, isGeofenceEnabled, geofenceCoordinates, geofenceRadius } = req.body;
         const organizationId = req.params.organizationId;
 
-        // confirmationDeadline = expiresAt + 30 mins
+        if (!startTime || !expiresAt) {
+            return res.status(400).json({ message: 'Session start time and expiry time are required' });
+        }
+
+        const startDate = new Date(startTime);
         const expiresAtDate = new Date(expiresAt);
+
+        if (isNaN(startDate.getTime()) || isNaN(expiresAtDate.getTime())) {
+            return res.status(400).json({ message: 'Invalid start time or expiry time format' });
+        }
+
+        // Allow a 15-minute buffer for form filling and recent lecture starts
+        const nowBuffer = new Date(Date.now() - 15 * 60 * 1000);
+        if (startDate < nowBuffer) {
+            return res.status(400).json({ message: 'Session start time cannot be more than 15 minutes in the past' });
+        }
+
+        if (expiresAtDate <= startDate) {
+            return res.status(400).json({ message: 'Session expiry time must be after the start time' });
+        }
+
+        // confirmationDeadline = expiresAt + 30 mins
         const confirmationDeadline = new Date(expiresAtDate.getTime() + 30 * 60000);
 
         // Generate QR token

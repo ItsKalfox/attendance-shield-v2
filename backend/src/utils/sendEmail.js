@@ -12,11 +12,12 @@ const sendEmail = async (options) => {
     });
 
     const message = {
-        from: `${process.env.EMAIL_FROM_NAME || 'Attendance Platform'} <${process.env.EMAIL_FROM || 'noreply@example.com'}>`,
+        from: `${process.env.EMAIL_FROM_NAME || 'Attendance Shield'} <${process.env.EMAIL_FROM || 'noreply@example.com'}>`,
         to: options.email,
         subject: options.subject,
         text: options.message,
-        html: options.html
+        html: options.html,
+        ...(options.attachments ? { attachments: options.attachments } : {})
     };
 
     // Only attempt to send if credentials are provided

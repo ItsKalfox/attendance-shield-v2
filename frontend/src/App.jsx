@@ -1,30 +1,40 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { OrganizationProvider, useOrganization } from './context/OrganizationContext';
 import { Toaster } from 'react-hot-toast';
+import { PwaProvider } from './context/PwaContext';
+import { IosInstallModal, FloatingInstallBanner } from './components/InstallPwaModal';
 
 // Layouts
 import AppLayout from './layouts/AppLayout';
 import AuthLayout from './layouts/AuthLayout';
 
-// Pages
+// Primary pages loaded eagerly
 import Login from './pages/Login';
-import Signup from './pages/Signup';
 import Dashboard from './features/dashboard/Dashboard';
-import Courses from './features/courses/Courses';
-import Sessions from './features/sessions/Sessions';
-import Members from './features/members/Members';
-import CourseDetails from './features/courses/CourseDetails';
-import SessionDetails from './features/sessions/SessionDetails';
-import MyAttendance from './features/attendance/MyAttendance';
-import Invitation from './pages/Invitation';
-import PublicAttend from './pages/PublicAttend';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
 
-import OrganizationDetails from './features/organization/OrganizationDetails';
-import Settings from './features/settings/Settings';
+// Secondary pages loaded on demand via React.lazy to reduce initial download payload over LAN
+const Signup = lazy(() => import('./pages/Signup'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const Invitation = lazy(() => import('./pages/Invitation'));
+const PublicAttend = lazy(() => import('./pages/PublicAttend'));
+
+const Courses = lazy(() => import('./features/courses/Courses'));
+const CourseDetails = lazy(() => import('./features/courses/CourseDetails'));
+const Sessions = lazy(() => import('./features/sessions/Sessions'));
+const SessionDetails = lazy(() => import('./features/sessions/SessionDetails'));
+const Members = lazy(() => import('./features/members/Members'));
+const MyAttendance = lazy(() => import('./features/attendance/MyAttendance'));
+const OrganizationDetails = lazy(() => import('./features/organization/OrganizationDetails'));
+const Settings = lazy(() => import('./features/settings/Settings'));
+
+const PageFallback = () => (
+  <div className="flex items-center justify-center min-h-[40vh] p-8 text-slate-400">
+    <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -72,39 +82,45 @@ function App() {
   return (
     <AuthProvider>
       <OrganizationProvider>
-        <Toaster position="top-right" />
-        <Router>
-          <Routes>
-          {/* Auth Routes */}
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-          </Route>
+        <PwaProvider>
+          <Toaster position="top-right" />
+          <IosInstallModal />
+          <FloatingInstallBanner />
+          <Router>
+            <Suspense fallback={<PageFallback />}>
+              <Routes>
+                {/* Auth Routes */}
+                <Route element={<AuthLayout />}>
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                </Route>
 
-          {/* Public functional routes */}
-          <Route path="/invitation/:token" element={<Invitation />} />
-          <Route path="/attend/:qrToken" element={<PublicAttend />} />
-          
-          {/* Main App Routes */}
-          <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/app/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="sessions" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Sessions /></RoleRoute>} />
-            <Route path="sessions/:sessionId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><SessionDetails /></RoleRoute>} />
-            <Route path="courses" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><Courses /></RoleRoute>} />
-            <Route path="courses/:courseId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><CourseDetails /></RoleRoute>} />
-            <Route path="attendance" element={<RoleRoute allowedRoles={['ATTENDEE', 'OWNER', 'INSTRUCTOR']}><MyAttendance /></RoleRoute>} />
-            <Route path="members" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Members /></RoleRoute>} />
-            <Route path="organization" element={<OrganizationDetails />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
+                {/* Public functional routes */}
+                <Route path="/invitation/:token" element={<Invitation />} />
+                <Route path="/attend/:qrToken" element={<PublicAttend />} />
+                
+                {/* Main App Routes */}
+                <Route path="/app" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                  <Route index element={<Navigate to="/app/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="sessions" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Sessions /></RoleRoute>} />
+                  <Route path="sessions/:sessionId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><SessionDetails /></RoleRoute>} />
+                  <Route path="courses" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><Courses /></RoleRoute>} />
+                  <Route path="courses/:courseId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><CourseDetails /></RoleRoute>} />
+                  <Route path="attendance" element={<RoleRoute allowedRoles={['ATTENDEE', 'OWNER', 'INSTRUCTOR']}><MyAttendance /></RoleRoute>} />
+                  <Route path="members" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Members /></RoleRoute>} />
+                  <Route path="organization" element={<OrganizationDetails />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
 
-          {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
-        </Routes>
-      </Router>
+                {/* Default redirect */}
+                <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
+              </Routes>
+            </Suspense>
+          </Router>
+        </PwaProvider>
       </OrganizationProvider>
     </AuthProvider>
   );

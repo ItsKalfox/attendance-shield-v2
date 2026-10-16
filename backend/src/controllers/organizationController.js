@@ -6,17 +6,29 @@ const OrganizationMember = require('../models/OrganizationMember');
 // @access  Private
 const createOrganization = async (req, res, next) => {
     try {
-        const { name } = req.body;
+        const { name, description } = req.body;
         
-        if (!name) {
+        if (!name || !name.trim()) {
             return res.status(400).json({ message: 'Organization name is required' });
         }
 
-        // Create the organization
-        const organization = await Organization.create({
-            name,
+        if (!description || !description.trim()) {
+            return res.status(400).json({ message: 'Organization description is required' });
+        }
+
+        const orgPayload = {
+            name: name.trim(),
+            description: description.trim(),
             createdBy: req.user._id
-        });
+        };
+
+        if (req.file) {
+            orgPayload.avatarUrl = req.file.path;
+            orgPayload.avatarPublicId = req.file.filename;
+        }
+
+        // Create the organization
+        const organization = await Organization.create(orgPayload);
 
         // Make the creator the OWNER
         await OrganizationMember.create({

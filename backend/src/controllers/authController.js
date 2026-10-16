@@ -1,9 +1,17 @@
 const User = require('../models/User');
 const PasswordResetOTP = require('../models/PasswordResetOTP');
+const EmailVerificationOTP = require('../models/EmailVerificationOTP');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
+const { 
+    getLogoAttachment, 
+    getSignupOtpEmail, 
+    getWelcomeEmail,
+    getPasswordResetOtpEmail,
+    getPasswordChangedEmail 
+} = require('../utils/emailTemplates');
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios');
 const { cloudinary } = require('../config/cloudinary');
@@ -17,22 +25,178 @@ const generateToken = (id) => {
     });
 };
 
+// @desc    Send OTP to verify email for signup
+// @route   POST /api/auth/send-signup-otp
+// @access  Public
+const sendSignupOtp = async (req, res, next) => {
+    try {
+        const { name, email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'Please provide an email address' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Validate basic email format
+        const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/;
+        if (!emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({ message: 'Please provide a valid email address' });
+        }
+
+        // Check if user already exists
+        const userExists = await User.findOne({ email: normalizedEmail });
+        if (userExists) {
+            return res.status(400).json({ message: 'An account with this email already exists. Please log in instead.' });
+        }
+
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        // Hash OTP for DB storage
+        const salt = await bcrypt.genSalt(10);
+        const otpHash = await bcrypt.hash(otp, salt);
+
+        // Delete any existing unverified OTPs for this email
+        await EmailVerificationOTP.deleteMany({ email: normalizedEmail });
+
+        // Save new OTP record (valid for 10 minutes)
+        await EmailVerificationOTP.create({
+            email: normalizedEmail,
+            otpHash,
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000)
+        });
+
+        // Send Email with official Attendance Shield template
+        const html = getSignupOtpEmail({ name, otp });
+        const textMessage = `Your Attendance Shield verification code is: ${otp}\n\nThis verification code is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.`;
+        const attachments = getLogoAttachment();
+
+        try {
+            await sendEmail({
+                email: normalizedEmail,
+                subject: `Attendance Shield - Verification Code: ${otp}`,
+                message: textMessage,
+                html,
+                attachments
+            });
+        } catch (emailErr) {
+            console.error('Failed to send signup OTP email:', emailErr);
+            return res.status(500).json({ message: 'Failed to send verification email. Please check your email address and try again.' });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Verification code sent to your email.'
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// @desc    Verify OTP for signup
+// @route   POST /api/auth/verify-signup-otp
+// @access  Public
+const verifySignupOtp = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+
+        if (!email || !otp) {
+            return res.status(400).json({ message: 'Please provide both email and verification code' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        const otpRecord = await EmailVerificationOTP.findOne({
+            email: normalizedEmail,
+            expiresAt: { $gt: Date.now() }
+        });
+
+        if (!otpRecord) {
+            return res.status(400).json({ message: 'Invalid or expired verification code. Please request a new one.' });
+        }
+
+        if (otpRecord.attempts >= 5) {
+            return res.status(400).json({ message: 'Too many incorrect attempts. Please request a new verification code.' });
+        }
+
+        const isMatch = await bcrypt.compare(otp.toString().trim(), otpRecord.otpHash);
+
+        if (!isMatch) {
+            otpRecord.attempts += 1;
+            await otpRecord.save();
+            return res.status(400).json({ message: 'Invalid verification code. Please check and try again.' });
+        }
+
+        // Generate a signed verification token (valid for 20 minutes)
+        const verificationToken = jwt.sign(
+            { email: normalizedEmail, purpose: 'signup_verified' },
+            process.env.JWT_SECRET,
+            { expiresIn: '20m' }
+        );
+
+        otpRecord.verified = true;
+        otpRecord.verificationToken = verificationToken;
+        await otpRecord.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Email verified successfully',
+            verificationToken
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 // @desc    Register a new user
 // @route   POST /api/auth/signup
 // @access  Public
 const signup = async (req, res, next) => {
     try {
-        const { firstName, lastName, email, password } = req.body;
+        const { name, firstName, lastName, email, password, verificationToken } = req.body;
 
-        if (!firstName || !lastName || !email || !password) {
-            return res.status(400).json({ message: 'Please add all fields' });
+        if (!email || !password) {
+            return res.status(400).json({ message: 'Please provide email and password' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+
+        // Parse full name or firstName/lastName
+        let fName = (firstName || '').trim();
+        let lName = (lastName || '').trim();
+        if (name && (!fName || !lName)) {
+            const parts = name.trim().split(/\s+/);
+            fName = parts[0] || '';
+            lName = parts.slice(1).join(' ') || '';
+        }
+
+        if (!fName) {
+            fName = 'User';
+        }
+
+        if (password.length < 6) {
+            return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+        }
+
+        // Verify verificationToken
+        if (!verificationToken) {
+            return res.status(400).json({ message: 'Please verify your email address before creating an account.' });
+        }
+
+        try {
+            const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET);
+            if (decoded.purpose !== 'signup_verified' || decoded.email !== normalizedEmail) {
+                return res.status(400).json({ message: 'Invalid or expired email verification token. Please verify your email again.' });
+            }
+        } catch (tokenErr) {
+            return res.status(400).json({ message: 'Email verification has expired. Please verify your email again.' });
         }
 
         // Check if user exists
-        const userExists = await User.findOne({ email });
-
+        const userExists = await User.findOne({ email: normalizedEmail });
         if (userExists) {
-            return res.status(400).json({ message: 'User already exists' });
+            return res.status(400).json({ message: 'An account with this email already exists' });
         }
 
         // Hash password
@@ -41,12 +205,31 @@ const signup = async (req, res, next) => {
 
         // Create user
         const user = await User.create({
-            firstName,
-            lastName,
-            email,
+            firstName: fName,
+            lastName: lName,
+            email: normalizedEmail,
             passwordHash,
             authProvider: 'LOCAL'
         });
+
+        // Clean up OTP records for this email
+        await EmailVerificationOTP.deleteMany({ email: normalizedEmail });
+
+        // Send Welcome Email asynchronously
+        try {
+            const welcomeHtml = getWelcomeEmail({ name: `${fName} ${lName}`.trim(), email: normalizedEmail });
+            const welcomeText = `Welcome to Attendance Shield, ${fName}! Your account is ready. Visit ${process.env.CLIENT_URL || 'https://localhost:5173'}/app/dashboard to get started.`;
+            const welcomeAttachments = getLogoAttachment();
+            await sendEmail({
+                email: normalizedEmail,
+                subject: `Welcome to Attendance Shield, ${fName}!`,
+                message: welcomeText,
+                html: welcomeHtml,
+                attachments: welcomeAttachments
+            });
+        } catch (welcomeErr) {
+            console.error('Failed to send welcome email:', welcomeErr);
+        }
 
         if (user) {
             res.status(201).json({
@@ -140,13 +323,17 @@ const forgotPassword = async (req, res, next) => {
         });
 
         // Send Email
+        const html = getPasswordResetOtpEmail({ name: user.firstName, otp });
         const message = `Your Attendance Shield password reset code is: ${otp}\n\nThis verification code is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.`;
+        const attachments = getLogoAttachment();
         
         try {
             await sendEmail({
                 email: user.email,
-                subject: 'Attendance Shield - Password Reset Code',
-                message
+                subject: `Attendance Shield - Password Reset Code: ${otp}`,
+                message,
+                html,
+                attachments
             });
         } catch (emailErr) {
             console.error('Failed to send password reset email:', emailErr);
@@ -287,6 +474,22 @@ const resetPassword = async (req, res, next) => {
         user.passwordHash = passwordHash;
         await user.save();
 
+        // Send Password Changed confirmation email asynchronously
+        try {
+            const changedHtml = getPasswordChangedEmail({ name: user.firstName, email: user.email });
+            const changedText = `Hi ${user.firstName || 'there'},\n\nThe password for your Attendance Shield account (${user.email}) has been changed successfully.\n\nIf you did not make this change, please contact your administrator or reset your password immediately.`;
+            const attachments = getLogoAttachment();
+            await sendEmail({
+                email: user.email,
+                subject: 'Attendance Shield - Password Changed Successfully',
+                message: changedText,
+                html: changedHtml,
+                attachments
+            });
+        } catch (emailErr) {
+            console.error('Failed to send password changed email:', emailErr);
+        }
+
         res.status(200).json({ message: 'Password has been reset successfully' });
     } catch (error) {
         next(error);
@@ -343,6 +546,22 @@ const updatePassword = async (req, res, next) => {
         const salt = await bcrypt.genSalt(10);
         user.passwordHash = await bcrypt.hash(newPassword, salt);
         await user.save();
+
+        // Send Password Changed confirmation email asynchronously
+        try {
+            const changedHtml = getPasswordChangedEmail({ name: user.firstName, email: user.email });
+            const changedText = `Hi ${user.firstName || 'there'},\n\nThe password for your Attendance Shield account (${user.email}) has been changed successfully.\n\nIf you did not make this change, please contact your administrator or reset your password immediately.`;
+            const attachments = getLogoAttachment();
+            await sendEmail({
+                email: user.email,
+                subject: 'Attendance Shield - Password Changed Successfully',
+                message: changedText,
+                html: changedHtml,
+                attachments
+            });
+        } catch (emailErr) {
+            console.error('Failed to send password changed email:', emailErr);
+        }
 
         res.status(200).json({ message: 'Password updated successfully' });
     } catch (error) {
@@ -581,8 +800,36 @@ const microsoftAuth = async (req, res, next) => {
     }
 };
 
+// @desc    Update user preferences (e.g. PDF export settings)
+// @route   PATCH /api/auth/me/preferences
+// @access  Private
+const updatePreferences = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.preferences = {
+            ...(user.preferences || {}),
+            ...(req.body.preferences || req.body)
+        };
+        user.markModified('preferences');
+        await user.save();
+
+        res.status(200).json({
+            message: 'Preferences updated successfully',
+            preferences: user.preferences
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     signup,
+    sendSignupOtp,
+    verifySignupOtp,
     login,
     getMe,
     forgotPassword,
@@ -590,6 +837,7 @@ module.exports = {
     resetPassword,
     updateMe,
     updatePassword,
+    updatePreferences,
     googleAuth,
     microsoftAuth
 };

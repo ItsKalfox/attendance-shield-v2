@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
-import { X, Download, User, Calendar, BookOpen, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { useOrganization } from '../../context/OrganizationContext';
+import { useAuth } from '../../context/AuthContext';
+import { X, Download, User, Calendar, BookOpen, CheckCircle, AlertTriangle, FileText, Loader2, Settings } from 'lucide-react';
 import api from '../../services/api';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { generateStudentAttendancePDF } from './exportStudentAttendancePdf';
+import PdfExportSettingsModal from '../../components/PdfExportSettingsModal';
+import { getPdfExportSettings, savePdfExportSettings } from '../../utils/pdfSettingsStorage';
 
 const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, studentOrgMemberId }) => {
+    const { activeOrganization } = useOrganization();
+    const { user } = useAuth();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [exportingPDF, setExportingPDF] = useState(false);
+    const [isPdfSettingsOpen, setIsPdfSettingsOpen] = useState(false);
 
     const { handleBackdropClick } = useModalDismiss({
         onClose,
@@ -38,144 +45,36 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
 
     if (!isOpen) return null;
 
-    const generatePDF = () => {
+    const handleExportPDF = async (overrideSettings = null) => {
         if (!data) return;
-
-        const doc = new jsPDF();
-        const { student, course, breakdown, summary } = data;
-
-        // Colors
-        const primaryColor = [15, 23, 42]; // slate-900
-        const brandColor = [79, 70, 229]; // indigo-600
-
-        // Title Header
-        doc.setFillColor(248, 250, 252);
-        doc.rect(0, 0, 210, 40, 'F');
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(18);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text('STUDENT ATTENDANCE REPORT', 14, 20);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Generated on: ${new Date().toLocaleDateString(undefined, { dateStyle: 'long' })}`, 14, 28);
-
-        // Course Info Box
-        doc.setDrawColor(226, 232, 240);
-        doc.setFillColor(255, 255, 255);
-        doc.roundedRect(14, 46, 182, 32, 3, 3, 'FD');
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text(`${course.code} - ${course.name}`, 20, 56);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(71, 85, 105);
-        doc.text(`Batch: ${course.batch || 'N/A'}    |    Semester: ${course.semester || 'N/A'}`, 20, 64);
-        doc.text(`Lecturer: ${course.instructor?.name || 'Assigned Staff'} (${course.instructor?.email || ''})`, 20, 72);
-
-        // Student Info Box
-        doc.roundedRect(14, 82, 182, 26, 3, 3, 'FD');
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text(`Student: ${student.name}`, 20, 92);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(71, 85, 105);
-        doc.text(`Email: ${student.email}    |    Student ID: ${student.studentId || 'N/A'}`, 20, 100);
-
-        // Summary Statistics Box
-        doc.setFillColor(241, 245, 249);
-        doc.roundedRect(14, 114, 182, 24, 3, 3, 'F');
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.text(`Total Sessions: ${summary.totalConducted}`, 24, 128);
-        doc.text(`Attended: ${summary.totalAttended}`, 75, 128);
-        doc.text(`Absent: ${summary.totalAbsent}`, 120, 128);
-
-        const eligibilityText = summary.isEligible ? 'ELIGIBLE' : 'SHORT ATTENDANCE';
-        const eligibilityColor = summary.isEligible ? [16, 185, 129] : [239, 68, 68];
-        doc.setTextColor(eligibilityColor[0], eligibilityColor[1], eligibilityColor[2]);
-        doc.text(`Rate: ${summary.overallPercentage}% (${eligibilityText})`, 155, 128);
-
-        // Table Data
-        const tableBody = breakdown
-            .filter(item => item.conducted > 0)
-            .map(item => [
-                item.type,
-                item.conducted.toString(),
-                item.attended.toString(),
-                item.absent.toString(),
-                `${item.percentage}%`
-            ]);
-
-        // If no sessions yet, include all standard rows
-        const finalRows = tableBody.length > 0 ? tableBody : breakdown.map(item => [
-            item.type,
-            '0',
-            '0',
-            '0',
-            '0%'
-        ]);
-
-        autoTable(doc, {
-            startY: 145,
-            head: [['Session Type', 'Conducted', 'Attended', 'Absent', 'Attendance %']],
-            body: finalRows,
-            theme: 'grid',
-            headStyles: {
-                fillColor: brandColor,
-                textColor: [255, 255, 255],
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            columnStyles: {
-                0: { fontStyle: 'bold', halign: 'left' },
-                1: { halign: 'center' },
-                2: { halign: 'center' },
-                3: { halign: 'center' },
-                4: { halign: 'center', fontStyle: 'bold' }
-            },
-            alternateRowStyles: {
-                fillColor: [248, 250, 252]
-            },
-            styles: {
-                fontSize: 9,
-                cellPadding: 4
-            }
-        });
-
-        // Footer / Signature Section
-        const finalY = doc.lastAutoTable.finalY || 220;
-        const signatureY = Math.min(finalY + 30, 260);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(148, 163, 184);
-
-        doc.line(24, signatureY, 80, signatureY);
-        doc.text('Lecturer / Instructor Signature', 26, signatureY + 6);
-
-        doc.line(130, signatureY, 186, signatureY);
-        doc.text('Department Head / Official Stamp', 132, signatureY + 6);
-
-        // Save PDF
-        const sanitizedStudentName = student.name.replace(/[^a-zA-Z0-9]/g, '_');
-        doc.save(`${course.code}_${sanitizedStudentName}_Attendance_Report.pdf`);
+        try {
+            setExportingPDF(true);
+            const activeSettings = overrideSettings || getPdfExportSettings({ mode: 'student', course: data.course, user });
+            await generateStudentAttendancePDF({
+                organization: activeOrganization,
+                student: data.student,
+                course: data.course,
+                breakdown: data.breakdown,
+                summary: data.summary
+            }, activeSettings);
+        } catch (err) {
+            console.error("Failed to generate student attendance PDF:", err);
+            alert("Failed to generate PDF. Please try again.");
+        } finally {
+            setExportingPDF(false);
+        }
     };
 
-    return createPortal(
-        <div onClick={handleBackdropClick} className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200 cursor-default">
-            <div className="relative w-full max-w-3xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border-0 overflow-hidden my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh]">
+    const handleApplySettingsAndExport = async (newSettings) => {
+        await savePdfExportSettings({ mode: 'student', courseId, settings: newSettings });
+        await handleExportPDF(newSettings);
+    };
+
+    return (
+        <>
+            {createPortal(
+                <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
+            <div className="modal-flex-card max-w-3xl">
                 {/* Header */}
                 <div className="shrink-0 px-4 sm:px-6 py-3.5 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/80 backdrop-blur-sm">
                     <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
@@ -189,13 +88,29 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
                     </div>
                     <div className="flex items-center space-x-1.5 sm:space-x-2 shrink-0 ml-2">
                         {data && (
-                            <button
-                                onClick={generatePDF}
-                                className="flex items-center px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition"
-                            >
-                                <Download size={13} className="mr-1 sm:mr-1.5" /> 
-                                <span className="hidden xs:inline">Export </span>PDF
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={() => handleExportPDF()}
+                                    disabled={exportingPDF}
+                                    className="flex items-center px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-60 rounded-xl shadow-sm shadow-blue-500/20 transition active:scale-98"
+                                >
+                                    {exportingPDF ? (
+                                        <Loader2 size={13} className="mr-1 sm:mr-1.5 animate-spin text-white" />
+                                    ) : (
+                                        <Download size={13} className="mr-1 sm:mr-1.5 text-white" />
+                                    )} 
+                                    <span className="hidden xs:inline">Export </span>PDF
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPdfSettingsOpen(true)}
+                                    className="p-1.5 sm:p-2 text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-sm"
+                                    title="PDF Export Settings"
+                                    aria-label="PDF Export Settings"
+                                >
+                                    <Settings size={14} />
+                                </button>
+                            </div>
                         )}
                         <button
                             onClick={onClose}
@@ -207,7 +122,7 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
                 </div>
 
                 {/* Content */}
-                <div className="p-4 sm:p-6 flex-1 overflow-y-auto min-h-0">
+                <div className="modal-scroll-body p-4 sm:p-6">
                     {loading ? (
                         <div className="space-y-6">
                             {/* Profile & Course Meta Cards Skeleton */}
@@ -386,6 +301,17 @@ const StudentAttendanceModal = ({ isOpen, onClose, organizationId, courseId, stu
             </div>
         </div>,
         document.body
+    )}
+
+    {/* PDF Export Settings Modal */}
+    <PdfExportSettingsModal
+        isOpen={isPdfSettingsOpen}
+        onClose={() => setIsPdfSettingsOpen(false)}
+        mode="student"
+        initialSettings={getPdfExportSettings({ mode: 'student', course: data?.course, user })}
+        onApplyAndExport={handleApplySettingsAndExport}
+    />
+</>
     );
 };
 

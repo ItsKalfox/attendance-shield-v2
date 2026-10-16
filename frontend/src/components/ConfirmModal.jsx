@@ -1,7 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useModalDismiss } from '../hooks/useModalDismiss';
-import { AlertTriangle, CheckCircle, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Trash2, LogOut } from 'lucide-react';
 
 const ConfirmModal = ({ 
     isOpen, 
@@ -9,7 +9,7 @@ const ConfirmModal = ({
     onConfirm, 
     title = 'Are you sure?', 
     message, 
-    type = 'delete', // 'delete', 'confirm', 'warning'
+    type = 'delete', // 'delete', 'confirm', 'warning', 'logout', 'danger'
     confirmText = 'Confirm',
     cancelText = 'Cancel'
 }) => {
@@ -20,14 +20,16 @@ const ConfirmModal = ({
 
     if (!isOpen) return null;
 
-    const isDelete = type === 'delete';
+    const isLogout = type === 'logout';
+    const isDelete = type === 'delete' || type === 'danger' || isLogout;
     const isConfirm = type === 'confirm';
     
     return createPortal(
-        <div onClick={handleBackdropClick} className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto animate-fade-in cursor-default">
-            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-5 sm:p-6 text-center transform transition-all border-0 my-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] overflow-y-auto">
+        <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
+            <div className="modal-content max-w-sm text-center">
                 <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isDelete ? 'bg-red-100' : isConfirm ? 'bg-emerald-100' : 'bg-amber-100'}`}>
-                    {isDelete && <Trash2 className="h-6 w-6 text-red-600" />}
+                    {isLogout && <LogOut className="h-6 w-6 text-red-600" />}
+                    {!isLogout && (type === 'delete' || type === 'danger') && <Trash2 className="h-6 w-6 text-red-600" />}
                     {isConfirm && <CheckCircle className="h-6 w-6 text-emerald-600" />}
                     {!isDelete && !isConfirm && <AlertTriangle className="h-6 w-6 text-amber-600" />}
                 </div>

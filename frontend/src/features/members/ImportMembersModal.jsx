@@ -318,7 +318,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
     return createPortal(
         <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
             <div onClick={handleBackdropClick} className="modal-container px-2 sm:px-6">
-                <div className={`modal-content w-full max-w-6xl lg:max-w-7xl xl:max-w-[1380px] max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] flex flex-col p-0 overflow-hidden relative shadow-2xl rounded-2xl sm:rounded-3xl border-0 ${isShaking ? 'animate-modal-shake' : ''}`}>
+                <div className={`modal-flex-card max-w-6xl lg:max-w-7xl xl:max-w-[1380px] p-0 ${isShaking ? 'animate-modal-shake' : ''}`}>
                     {/* Top loader if importing */}
                     {importing && (
                         <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
@@ -328,7 +328,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                         </div>
                     )}
                     
-                    <div className="p-6 sm:p-8 flex-1 overflow-y-auto min-h-0 flex flex-col relative">
+                    <div className="modal-scroll-body p-6 sm:p-8 flex flex-col relative">
                         <button 
                             onClick={onClose}
                             disabled={importing}

@@ -89,8 +89,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         : `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim() || 'Instructor';
 
     return (
-        <div onClick={handleBackdropClick} className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto animate-fade-in cursor-default">
-            <div className={`w-full max-w-md bg-white shadow-2xl border-0 rounded-2xl sm:rounded-3xl p-5 sm:p-6 relative my-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] overflow-y-auto ${isShaking ? 'animate-modal-shake' : ''}`}>
+        <div onClick={handleBackdropClick} className="modal-overlay z-50 cursor-default">
+            <div className={`modal-content max-w-md ${isShaking ? 'animate-modal-shake' : ''}`}>
                 
                 {/* Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">

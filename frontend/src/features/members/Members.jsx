@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useOrganization } from '../../context/OrganizationContext';
-import { Users, PlusCircle, Upload, Trash2, Mail, Eye, Search, Shield } from 'lucide-react';
+import { Users, PlusCircle, Upload, Mail, Search, Shield, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 import AddMemberModal from './AddMemberModal';
 import ImportMembersModal from './ImportMembersModal';
@@ -9,7 +9,7 @@ import ViewMemberModal from './ViewMemberModal';
 import ConfirmModal from '../../components/ConfirmModal';
 import Pagination from '../../components/Pagination';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20;
 
 const Members = () => {
     const { activeOrganization } = useOrganization();
@@ -335,24 +335,15 @@ const Members = () => {
                                                     {new Date(member.joinedAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 text-right whitespace-nowrap">
-                                                    <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
+                                                    <div className="flex items-center justify-end">
                                                         <button 
-                                                            className="flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
+                                                            className="inline-flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
                                                             onClick={() => setViewingMember(member)}
                                                             title="View Details"
                                                         >
-                                                            <Eye size={13} className="sm:mr-1.5 text-slate-500" />
-                                                            <span className="hidden sm:inline">View</span>
+                                                            <span>View</span>
+                                                            <ArrowRight size={13} className="ml-1 text-slate-400" />
                                                         </button>
-                                                        {activeOrganization?.userRole === 'OWNER' && (
-                                                            <button 
-                                                                className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition" 
-                                                                onClick={() => handleRemoveRequest(member)}
-                                                                title="Remove Attendee"
-                                                            >
-                                                                <Trash2 size={14} className="sm:w-[15px] sm:h-[15px]" />
-                                                            </button>
-                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -473,27 +464,16 @@ const Members = () => {
                                                     {new Date(member.joinedAt).toLocaleDateString()}
                                                 </td>
                                                 <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 text-right whitespace-nowrap">
-                                                    <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
+                                                    <div className="flex items-center justify-end">
                                                         {activeOrganization?.userRole === 'OWNER' && (
-                                                            <>
-                                                                <button 
-                                                                    className="flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
-                                                                    onClick={() => setViewingMember(member)}
-                                                                    title="View Details"
-                                                                >
-                                                                    <Eye size={13} className="sm:mr-1.5 text-slate-500" />
-                                                                    <span className="hidden sm:inline">View</span>
-                                                                </button>
-                                                                {member.role !== 'OWNER' && (
-                                                                    <button 
-                                                                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition" 
-                                                                        onClick={() => handleRemoveRequest(member)}
-                                                                        title="Remove Instructor"
-                                                                    >
-                                                                        <Trash2 size={14} className="sm:w-[15px] sm:h-[15px]" />
-                                                                    </button>
-                                                                )}
-                                                            </>
+                                                            <button 
+                                                                className="inline-flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
+                                                                onClick={() => setViewingMember(member)}
+                                                                title="View Details"
+                                                            >
+                                                                <span>View</span>
+                                                                <ArrowRight size={13} className="ml-1 text-slate-400" />
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </td>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { CloudUpload, User as UserIcon, Mail, KeyRound, Clock, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { MobileInstallAppCard } from '../../components/InstallPwaModal';
 
 const Settings = () => {
     const { user, setUser } = useAuth();
@@ -488,6 +489,9 @@ const Settings = () => {
                     </div>
                 )}
             </div>
+            
+            {/* Permanent Mobile Install & Instructions Card (Mobile-only) */}
+            <MobileInstallAppCard />
 
         </div>
     );

@@ -25,6 +25,72 @@ function deg2rad(deg) {
     return deg * (Math.PI/180);
 }
 
+// In-Memory Session Cache (short TTL to handle high-traffic bursts of 200-300 students scanning simultaneously)
+const sessionCache = new Map();
+const sessionInfoCache = new Map();
+const CACHE_TTL_MS = 15 * 1000; // 15 seconds cache window
+
+const getCachedSession = async (tokenHash) => {
+    const cached = sessionCache.get(tokenHash);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+    const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash });
+    if (session) {
+        sessionCache.set(tokenHash, { data: session, timestamp: now });
+        if (sessionCache.size > 200) {
+            for (const [k, v] of sessionCache.entries()) {
+                if (now - v.timestamp > CACHE_TTL_MS) sessionCache.delete(k);
+            }
+        }
+    }
+    return session;
+};
+
+const getCachedSessionInfo = async (tokenHash) => {
+    const cached = sessionInfoCache.get(tokenHash);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp < CACHE_TTL_MS)) {
+        return cached.data;
+    }
+    const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash })
+        .select('isGeofenceEnabled status startTime expiresAt courseId instructorId organizationId')
+        .populate('courseId', 'name code')
+        .populate('organizationId', 'name avatarUrl')
+        .populate({
+            path: 'instructorId',
+            populate: { path: 'userId', select: 'firstName lastName' }
+        });
+
+    if (session) {
+        const infoData = {
+            isGeofenceEnabled: session.isGeofenceEnabled,
+            status: session.status,
+            organization: session.organizationId ? {
+                name: session.organizationId.name,
+                logoUrl: session.organizationId.avatarUrl
+            } : null,
+            course: session.courseId ? {
+                name: session.courseId.name,
+                code: session.courseId.code
+            } : null,
+            instructor: session.instructorId?.userId ? {
+                firstName: session.instructorId.userId.firstName,
+                lastName: session.instructorId.userId.lastName
+            } : null
+        };
+        sessionInfoCache.set(tokenHash, { data: infoData, timestamp: now });
+        if (sessionInfoCache.size > 200) {
+            for (const [k, v] of sessionInfoCache.entries()) {
+                if (now - v.timestamp > CACHE_TTL_MS) sessionInfoCache.delete(k);
+            }
+        }
+        return infoData;
+    }
+    return null;
+};
+
 // @desc    Scan QR to mark attendance
 // @route   POST /api/attendance/scan
 // @access  Private
@@ -81,18 +147,22 @@ const scanAttendance = async (req, res, next) => {
 
         const tokenHash = crypto.createHash('sha256').update(qrToken).digest('hex');
 
-        // 2. Validate session
-        const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash });
+        // 2. Validate session (using high-speed in-memory cache for high concurrency)
+        const session = await getCachedSession(tokenHash);
         if (!session) {
             return res.status(404).json({ message: 'Invalid or expired QR code.' });
         }
 
-        // 3. Validate session is accepting attendance
-        const now = new Date();
-        if (session.status === 'SCHEDULED' || now < session.startTime) {
+        // 3. Validate session is accepting attendance (with 45-second clock skew grace period)
+        const nowMs = Date.now();
+        const CLOCK_SKEW_GRACE_MS = 45 * 1000;
+        const sessionStartMs = new Date(session.startTime).getTime();
+        const sessionExpiryMs = new Date(session.expiresAt).getTime();
+
+        if (session.status === 'SCHEDULED' && (nowMs + CLOCK_SKEW_GRACE_MS < sessionStartMs)) {
             return res.status(400).json({ message: 'The session has not started yet.' });
         }
-        if (session.status !== 'ACTIVE' || now >= session.expiresAt) {
+        if (session.status !== 'ACTIVE' || (nowMs - CLOCK_SKEW_GRACE_MS >= sessionExpiryMs)) {
             return res.status(400).json({ message: 'Attendance Session Expired' });
         }
 
@@ -172,12 +242,32 @@ const scanAttendance = async (req, res, next) => {
             });
         }
 
-        // Emit real-time update
+        // Emit real-time update directly from memory (avoids extra findById + double populates under 300 concurrent requests)
         if (req.io) {
-            const populatedRecord = await AttendanceRecord.findById(finalRecord._id)
-                .populate('userId', 'firstName lastName email')
-                .populate('organizationMemberId', 'studentId');
-            req.io.to(session._id.toString()).emit('attendance_updated', populatedRecord);
+            const socketPayload = {
+                _id: finalRecord._id,
+                sessionId: session._id,
+                courseId: session.courseId,
+                organizationId: session.organizationId,
+                status: finalRecord.status,
+                markedAt: finalRecord.markedAt,
+                markedBy: finalRecord.markedBy,
+                isFlagged: finalRecord.isFlagged,
+                markedLocation: finalRecord.markedLocation,
+                createdAt: finalRecord.createdAt,
+                updatedAt: finalRecord.updatedAt,
+                userId: {
+                    _id: user._id,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email
+                },
+                organizationMemberId: {
+                    _id: orgMember._id,
+                    studentId: orgMember?.studentId || ''
+                }
+            };
+            req.io.to(session._id.toString()).emit('attendance_updated', socketPayload);
         }
 
         const markedTime = new Date();
@@ -207,6 +297,10 @@ const scanAttendance = async (req, res, next) => {
             }
         });
     } catch (error) {
+        // Gracefully handle concurrent duplicate submissions
+        if (error.code === 11000) {
+            return res.status(400).json({ message: 'Attendance already marked.' });
+        }
         next(error);
     }
 };
@@ -447,35 +541,13 @@ const removeAttendance = async (req, res, next) => {
 const getSessionInfo = async (req, res, next) => {
     try {
         const tokenHash = crypto.createHash('sha256').update(req.params.qrToken).digest('hex');
-        const session = await AttendanceSession.findOne({ qrTokenHash: tokenHash })
-            .select('isGeofenceEnabled status startTime expiresAt courseId instructorId organizationId')
-            .populate('courseId', 'name code')
-            .populate('organizationId', 'name avatarUrl')
-            .populate({
-                path: 'instructorId',
-                populate: { path: 'userId', select: 'firstName lastName' }
-            });
+        const sessionInfo = await getCachedSessionInfo(tokenHash);
         
-        if (!session) {
+        if (!sessionInfo) {
             return res.status(404).json({ message: 'Invalid or expired QR code.' });
         }
 
-        res.status(200).json({ 
-            isGeofenceEnabled: session.isGeofenceEnabled,
-            status: session.status,
-            organization: session.organizationId ? {
-                name: session.organizationId.name,
-                logoUrl: session.organizationId.avatarUrl
-            } : null,
-            course: session.courseId ? {
-                name: session.courseId.name,
-                code: session.courseId.code
-            } : null,
-            instructor: session.instructorId?.userId ? {
-                firstName: session.instructorId.userId.firstName,
-                lastName: session.instructorId.userId.lastName
-            } : null
-        });
+        res.status(200).json(sessionInfo);
     } catch (error) {
         next(error);
     }

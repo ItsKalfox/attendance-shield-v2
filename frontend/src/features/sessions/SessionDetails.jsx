@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag, Trash2, Download, RefreshCw, MoreVertical, Search, ArrowUp, Info } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag, Trash2, Download, RefreshCw, MoreVertical, Search, ArrowUp, Info, Loader2, Settings, Tv, Radio } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { io } from 'socket.io-client';
+import { generateSessionAttendancePDF } from './exportSessionAttendancePdf';
+import PdfExportSettingsModal from '../../components/PdfExportSettingsModal';
+import { getPdfExportSettings, savePdfExportSettings } from '../../utils/pdfSettingsStorage';
+import ProjectorModal from './ProjectorModal';
 
 const CircleChart = ({ percentage }) => {
     const radius = 28;
@@ -64,6 +68,17 @@ const SessionDetails = () => {
     const [confirmModalConfig, setConfirmModalConfig] = useState({ isOpen: false, type: '', message: '', recordId: null });
     const [includeFlagged, setIncludeFlagged] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [exportingPDF, setExportingPDF] = useState(false);
+    const [isPdfSettingsOpen, setIsPdfSettingsOpen] = useState(false);
+    const [showProjectorModal, setShowProjectorModal] = useState(false);
+    const [currentTime, setCurrentTime] = useState(Date.now());
+    const [liveTickerPulse, setLiveTickerPulse] = useState(false);
+
+    // Live clock interval for expiry countdown
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     // New states
     const [stats, setStats] = useState(null);
@@ -180,6 +195,8 @@ const SessionDetails = () => {
                 return [newRecord, ...prev];
             });
             fetchStats();
+            setLiveTickerPulse(true);
+            setTimeout(() => setLiveTickerPulse(false), 2000);
         });
 
         socket.on('attendance_removed', (recordId) => {
@@ -429,71 +446,34 @@ const SessionDetails = () => {
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const exportToPDF = async () => {
+    const exportToPDF = async (overrideSettings = null) => {
         if (!session) return;
         
         try {
+            setExportingPDF(true);
+            const activeSettings = overrideSettings || getPdfExportSettings({ mode: 'session', course: session?.courseId, user });
             const allRecordsRes = await api.get(`/organizations/${activeOrganization._id}/sessions/${sessionId}/attendance?limit=10000`);
-            const allRecords = allRecordsRes.data.records;
-            
-            const doc = new jsPDF();
-            
-            doc.setFontSize(18);
-            doc.text('Attendance Report', 14, 22);
-            
-            const headerTableData = [
-                ['Course Code', session.courseId?.code || '-', 'Session Type', session.lectureType || '-'],
-                ['Course Title', session.courseId?.name || '-', 'Instructor', `${session.instructorId?.userId?.firstName || ''} ${session.instructorId?.userId?.lastName || ''}`.trim()],
-                ['Date', new Date(session.startTime).toLocaleDateString(), 'Time', `${new Date(session.startTime).toLocaleTimeString()} - ${new Date(session.expiresAt).toLocaleTimeString()}`],
-            ];
-
-            autoTable(doc, {
-                startY: 28,
-                body: headerTableData,
-                theme: 'grid',
-                styles: { fontSize: 10, cellPadding: 3, textColor: 0, lineColor: 0, lineWidth: 0.1, fillColor: 255 },
-                columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: 35 },
-                    1: { cellWidth: 55 },
-                    2: { fontStyle: 'bold', cellWidth: 35 },
-                    3: { cellWidth: 55 }
-                }
-            });
+            const allRecords = allRecordsRes.data?.records || [];
             
             const filteredRecordsForPDF = includeFlagged ? allRecords : allRecords.filter(r => !r.isFlagged);
-            const presentItems = members.map(m => {
-                const record = filteredRecordsForPDF.find(r => r.userId?._id === m.userId?._id && r.status === 'PRESENT');
-                return record ? { member: m, record } : null;
-            }).filter(item => item !== null);
 
-            const totalMarkedPDF = presentItems.length;
-            const pdfPercentMarked = totalEnrolled > 0 ? Math.round((totalMarkedPDF / totalEnrolled) * 100) : 0;
-        
-        doc.setFontSize(11);
-        doc.text(`Total Enrolled: ${totalEnrolled}`, 14, doc.lastAutoTable.finalY + 10);
-        doc.text(`Total Present: ${totalMarkedPDF}`, 14, doc.lastAutoTable.finalY + 16);
-        doc.text(`Attendance Rate: ${pdfPercentMarked}%`, 14, doc.lastAutoTable.finalY + 22);
-        
-        const tableData = presentItems.map(item => [
-            item.record.organizationMemberId?.studentId || '-',
-            `${item.member.userId?.firstName} ${item.member.userId?.lastName}`,
-            new Date(item.record.markedAt).toLocaleTimeString()
-        ]);
-
-            autoTable(doc, {
-                startY: doc.lastAutoTable.finalY + 28,
-                head: [['Student ID', 'Name', 'Mark Time']],
-                body: tableData,
-                theme: 'grid',
-                headStyles: { fillColor: 255, textColor: 0, fontStyle: 'bold', lineWidth: 0.1, lineColor: 0 },
-                bodyStyles: { fillColor: 255, textColor: 0, lineWidth: 0.1, lineColor: 0 },
-            });
-            
-            doc.save(`Attendance_${session.courseId?.code}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
+            await generateSessionAttendancePDF({
+                organization: activeOrganization,
+                session,
+                records: filteredRecordsForPDF,
+                totalEnrolled: stats?.totalEnrolled || members.length || 0
+            }, activeSettings);
         } catch (error) {
             console.error("Failed to export PDF", error);
             alert("Failed to load full attendance data for PDF export.");
+        } finally {
+            setExportingPDF(false);
         }
+    };
+
+    const handleApplySettingsAndExport = async (newSettings) => {
+        await savePdfExportSettings({ mode: 'session', courseId: session?.courseId?._id || 'default', settings: newSettings });
+        await exportToPDF(newSettings);
     };
 
     const exportQRToPDF = () => {
@@ -566,6 +546,68 @@ const SessionDetails = () => {
         (activeOrganization?.userRole === 'INSTRUCTOR' && session.instructorId?.userId?._id === user?._id)
     );
 
+    // Helper for Session Countdown status
+    const getCountdownInfo = () => {
+        if (!session) return null;
+        const startMs = new Date(session.startTime).getTime();
+        const expiryMs = new Date(session.expiresAt).getTime();
+        const deadlineMs = new Date(session.confirmationDeadline).getTime();
+
+        if (session.status === 'SCHEDULED' || currentTime < startMs) {
+            const diff = Math.max(0, startMs - currentTime);
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            return {
+                text: `Starts in: ${mins}m ${String(secs).padStart(2, '0')}s`,
+                style: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            };
+        }
+
+        if (session.status === 'ACTIVE' && currentTime < expiryMs) {
+            const diff = Math.max(0, expiryMs - currentTime);
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            const isUrgent = diff < 5 * 60000;
+            const isCritical = diff < 60000;
+            return {
+                text: `Expires in: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`,
+                style: isCritical 
+                    ? 'bg-rose-100 text-rose-700 border-rose-300 animate-pulse font-bold'
+                    : isUrgent 
+                    ? 'bg-amber-100 text-amber-800 border-amber-300 font-bold' 
+                    : 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
+            };
+        }
+
+        if (session.status === 'ACTIVE' && currentTime >= expiryMs) {
+            return {
+                text: 'Attendance Window Expired',
+                style: 'bg-amber-50 text-amber-700 border-amber-200'
+            };
+        }
+
+        if (session.status === 'PENDING_CONFIRMATION') {
+            const diff = Math.max(0, deadlineMs - currentTime);
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            return {
+                text: diff > 0 ? `Confirm by: ${mins}m ${String(secs).padStart(2, '0')}s` : 'Confirmation Overdue',
+                style: 'bg-amber-50 text-amber-700 border-amber-200'
+            };
+        }
+
+        if (session.status === 'CONFIRMED') {
+            return {
+                text: 'Session Concluded',
+                style: 'bg-slate-100 text-slate-600 border-slate-200'
+            };
+        }
+
+        return null;
+    };
+
+    const countdownInfo = getCountdownInfo();
+
     return (
         <div className="animate-fade-in">
             <Link 
@@ -586,10 +628,18 @@ const SessionDetails = () => {
                         {session.status === 'CONFIRMED' && <span className="badge badge-primary text-xs sm:text-sm">Confirmed</span>}
                     </h1>
                     <div className="flex justify-between items-center w-full">
-                        <p className="text-slate-400 text-xs sm:text-sm flex items-center flex-wrap">
-                            <Clock size={14} className="mr-1 shrink-0" />
-                            <span>{new Date(session.startTime).toLocaleString()} - {new Date(session.expiresAt).toLocaleString()}</span>
-                        </p>
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                            <p className="text-slate-400 text-xs sm:text-sm flex items-center flex-wrap">
+                                <Clock size={14} className="mr-1 shrink-0" />
+                                <span>{new Date(session.startTime).toLocaleString()} - {new Date(session.expiresAt).toLocaleString()}</span>
+                            </p>
+                            {countdownInfo && (
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${countdownInfo.style}`}>
+                                    <Clock size={12} />
+                                    <span>{countdownInfo.text}</span>
+                                </span>
+                            )}
+                        </div>
 
                         {/* Mobile Menu */}
                         <div className="relative sm:hidden">
@@ -677,7 +727,15 @@ const SessionDetails = () => {
                         <div className="flex items-center gap-4 sm:gap-6">
                             <CircleChart percentage={percentMarked} />
                             <div>
-                                <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1">Attendance Rate</h3>
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    <h3 className="text-base sm:text-lg font-bold text-slate-800">Attendance Rate</h3>
+                                    {session?.status === 'ACTIVE' && (
+                                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 transition-transform ${liveTickerPulse ? 'scale-105 bg-emerald-100' : ''}`}>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                                            <span>LIVE CHECK-IN</span>
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-xs sm:text-sm text-slate-500 flex flex-wrap gap-2 sm:gap-4">
                                     <div>
                                         <span className="font-semibold text-slate-700">{totalMarked}</span> / {totalEnrolled} Enrolled
@@ -700,9 +758,29 @@ const SessionDetails = () => {
                                     <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
                                 </div>
                             </label>
-                            <button className="btn btn-outline py-1.5 sm:py-2 text-xs sm:text-sm" onClick={exportToPDF}>
-                                <Download size={14} className="mr-1.5 sm:mr-2" /> Export PDF
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                                <button 
+                                    className="inline-flex items-center justify-center px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-semibold rounded-xl transition-all active:scale-98 disabled:opacity-60 disabled:pointer-events-none disabled:cursor-not-allowed shadow-sm bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-blue-500/20" 
+                                    onClick={() => exportToPDF()}
+                                    disabled={exportingPDF}
+                                >
+                                    {exportingPDF ? (
+                                        <Loader2 size={13} className="mr-1.5 animate-spin text-white shrink-0" />
+                                    ) : (
+                                        <Download size={13} className="mr-1.5 text-white shrink-0" />
+                                    )} 
+                                    Export PDF
+                                </button>
+                                <button 
+                                    type="button"
+                                    className="p-1.5 sm:p-2 text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition shadow-sm active:scale-98"
+                                    onClick={() => setIsPdfSettingsOpen(true)}
+                                    title="PDF Export Settings"
+                                    aria-label="PDF Export Settings"
+                                >
+                                    <Settings size={14} />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -721,10 +799,18 @@ const SessionDetails = () => {
 
                     <div className="card h-full bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl sm:rounded-3xl p-4 sm:p-6 relative">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                            <h2 className="text-xl font-bold flex items-center">
-                                <Users size={18} className="mr-2 text-indigo-400" /> 
-                                Attendance Records ({totalAttendanceRecordsCount})
-                            </h2>
+                            <div className="flex items-center gap-2.5">
+                                <h2 className="text-xl font-bold flex items-center">
+                                    <Users size={18} className="mr-2 text-indigo-400" /> 
+                                    Attendance Records ({totalAttendanceRecordsCount})
+                                </h2>
+                                {session?.status === 'ACTIVE' && (
+                                    <span className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 transition-all ${liveTickerPulse ? 'scale-105' : ''}`}>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span>{totalMarked} marked</span>
+                                    </span>
+                                )}
+                            </div>
                             <div className="relative w-full sm:w-64">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
@@ -933,13 +1019,24 @@ const SessionDetails = () => {
                                             {copied ? <Check size={14} /> : <Copy size={14} />}
                                         </button>
                                     </div>
-                                    <button 
-                                        className="btn btn-outline w-full text-sm flex items-center justify-center"
-                                        onClick={exportQRToPDF}
-                                    >
-                                        <Download size={16} className="mr-2" />
-                                        Export QR to PDF
-                                    </button>
+                                    <div className="flex flex-col gap-2">
+                                        {/* Classroom Projector Presentation Mode Button (Desktop Only) */}
+                                        <button 
+                                            type="button"
+                                            className="hidden md:flex btn w-full text-xs py-2.5 items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer"
+                                            onClick={() => setShowProjectorModal(true)}
+                                        >
+                                            <Tv size={15} className="text-brand-400" />
+                                            <span>Classroom Projector Mode</span>
+                                        </button>
+                                        <button 
+                                            className="btn btn-outline w-full text-xs py-2 flex items-center justify-center cursor-pointer"
+                                            onClick={exportQRToPDF}
+                                        >
+                                            <Download size={15} className="mr-2" />
+                                            Export QR to PDF
+                                        </button>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="mt-6 border-t border-slate-100 pt-6">
@@ -1050,6 +1147,25 @@ const SessionDetails = () => {
                 type={confirmModalConfig.type === 'delete' || confirmModalConfig.type === 'remove_attendance' ? 'delete' : confirmModalConfig.type === 'confirm' ? 'confirm' : 'warning'}
                 confirmText={confirmModalConfig.type === 'delete' ? "Delete" : confirmModalConfig.type === 'confirm' ? "Confirm" : "Remove"}
             />
+
+            {/* PDF Export Settings Modal */}
+            <PdfExportSettingsModal
+                isOpen={isPdfSettingsOpen}
+                onClose={() => setIsPdfSettingsOpen(false)}
+                mode="session"
+                initialSettings={getPdfExportSettings({ mode: 'session', course: session?.courseId, user })}
+                onApplyAndExport={handleApplySettingsAndExport}
+            />
+
+            {/* Classroom Projector Presentation Mode Modal (Desktop only) */}
+            {showProjectorModal && (
+                <ProjectorModal
+                    session={session}
+                    qrUrl={qrUrl}
+                    initialStats={stats}
+                    onClose={() => setShowProjectorModal(false)}
+                />
+            )}
 
             {/* Go to top button */}
             {showGoToTop && (

@@ -159,11 +159,23 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
+        // 15-minute buffer for form completion and recent lecture starts
+        const minAllowedStart = new Date(Date.now() - 15 * 60000);
         const start = new Date(formData.startTime);
         const expires = new Date(formData.expiresAt);
         
-        if (expires <= start) {
-            setError('Expiry time must be after the start time.');
+        if (isNaN(start.getTime())) {
+            setError('Please enter a valid session start time.');
+            return;
+        }
+
+        if (start < minAllowedStart) {
+            setError('Session start time cannot be more than 15 minutes in the past.');
+            return;
+        }
+
+        if (isNaN(expires.getTime()) || expires <= start) {
+            setError('Session expiry time must be after the start time.');
             return;
         }
         
@@ -184,6 +196,33 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const handleChange = (e) => {
         setIsUserModified(true);
         const { name, value } = e.target;
+
+        if (name === 'startTime' && value) {
+            const newStart = new Date(value);
+            const currentExpires = new Date(formData.expiresAt);
+
+            // Auto-advance expiresAt if it's unset or would be before/equal to the new start time
+            if (!formData.expiresAt || currentExpires <= newStart) {
+                const autoExpires = new Date(newStart.getTime() + 120 * 60000);
+                const autoExpiresLocal = new Date(autoExpires.getTime() - autoExpires.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+                setFormData(prev => ({
+                    ...prev,
+                    startTime: value,
+                    expiresAt: autoExpiresLocal
+                }));
+                setError('');
+                return;
+            }
+        }
+
+        if (name === 'expiresAt' && formData.startTime && value) {
+            if (new Date(value) <= new Date(formData.startTime)) {
+                setError('Expiry time must be after the start time.');
+            } else {
+                setError('');
+            }
+        }
+
         setFormData(prev => ({
             ...prev,
             [name]: value
@@ -246,8 +285,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
         }
     };
 
-    const tenMinsAgo = new Date(new Date().getTime() - 10 * 60000);
-    const minDateTime = new Date(tenMinsAgo.getTime() - tenMinsAgo.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60000);
+    const minDateTime = new Date(fifteenMinsAgo.getTime() - fifteenMinsAgo.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
     const assignedCoursesToMe = courses.filter(isCourseAssignedToMe);
     const otherOrganizationCourses = courses.filter(c => !isCourseAssignedToMe(c));
@@ -300,12 +339,12 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                             </div>
 
                             {/* Start Time & Expires At Skeleton */}
-                            <div className="flex gap-4">
-                                <div className="w-1/2 space-y-1.5">
+                            <div className="flex gap-4 min-w-0">
+                                <div className="w-1/2 min-w-0 space-y-1.5">
                                     <div className="skeleton w-20 h-4 rounded"></div>
                                     <div className="skeleton w-full h-10 rounded-lg"></div>
                                 </div>
-                                <div className="w-1/2 space-y-1.5">
+                                <div className="w-1/2 min-w-0 space-y-1.5">
                                     <div className="skeleton w-20 h-4 rounded"></div>
                                     <div className="skeleton w-full h-10 rounded-lg"></div>
                                 </div>
@@ -481,25 +520,25 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                <div className="form-group mb-0">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 min-w-0">
+                                <div className="form-group mb-0 min-w-0">
                                     <label className="form-label">Start Time</label>
                                     <input 
                                         type="datetime-local" 
                                         name="startTime"
-                                        className="form-input font-medium text-slate-700"
+                                        className="form-input font-medium text-slate-700 w-full min-w-0 max-w-full block"
                                         value={formData.startTime}
                                         onChange={handleChange}
                                         min={minDateTime}
                                         required
                                     />
                                 </div>
-                                <div className="form-group mb-0">
+                                <div className="form-group mb-0 min-w-0">
                                     <label className="form-label">Expires At</label>
                                     <input 
                                         type="datetime-local" 
                                         name="expiresAt"
-                                        className="form-input font-medium text-slate-700"
+                                        className="form-input font-medium text-slate-700 w-full min-w-0 max-w-full block"
                                         value={formData.expiresAt}
                                         onChange={handleChange}
                                         min={formData.startTime || minDateTime}

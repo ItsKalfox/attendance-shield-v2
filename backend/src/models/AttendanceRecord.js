@@ -55,4 +55,9 @@ const attendanceRecordSchema = new mongoose.Schema({
 // Prevent duplicate attendance
 attendanceRecordSchema.index({ sessionId: 1, userId: 1 }, { unique: true });
 
+// High-traffic performance indexes for rapid lookups and analytics
+attendanceRecordSchema.index({ sessionId: 1, markedAt: -1 });
+attendanceRecordSchema.index({ courseId: 1, userId: 1 });
+attendanceRecordSchema.index({ organizationId: 1, createdAt: -1 });
+
 module.exports = mongoose.model('AttendanceRecord', attendanceRecordSchema);

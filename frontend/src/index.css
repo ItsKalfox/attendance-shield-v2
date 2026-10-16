@@ -6,15 +6,13 @@
   html {
     background-color: #0c2b27;
     height: 100%;
-    height: -webkit-fill-available;
   }
 
   body {
     background-color: #0c2b27;
     @apply text-slate-800 font-sans antialiased selection:bg-brand-500/20 selection:text-brand-900;
-    min-height: 100vh;
+    min-height: 100%;
     min-height: 100dvh;
-    min-height: -webkit-fill-available;
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
   }
@@ -27,7 +25,7 @@
     height: 100vh;
     height: 100dvh;
     padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: 0px;
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
   }
@@ -54,7 +52,8 @@
   }
   
   .app-content {
-    @apply flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 pb-6 sm:pb-8 lg:pb-10;
+    @apply flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10;
+    padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom, 0px) + 1.5rem));
   }
 
   /* Cards */
@@ -68,7 +67,7 @@
 
   /* Form Elements */
   .form-group {
-    @apply mb-4;
+    @apply mb-4 min-w-0;
   }
   
   .form-label {
@@ -76,7 +75,8 @@
   }
   
   .form-input {
-    @apply w-full px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 placeholder:text-slate-400 shadow-sm text-slate-800;
+    @apply w-full max-w-full min-w-0 px-3.5 py-2 bg-white border border-slate-300 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 placeholder:text-slate-400 shadow-sm text-slate-800;
+    box-sizing: border-box;
   }
 
   /* Buttons */
@@ -139,17 +139,85 @@
   }
 }
 
-/* Modal fix for vertical centering */
+/* ==========================================================================
+   Modal Safe-Area & iOS PWA Standalone Fixes
+   ========================================================================== */
+
 .modal-overlay {
-  @apply fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm overflow-y-auto p-3 sm:p-4;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  /* Safe-area insets: never render behind iPhone hardware notch / Dynamic Island */
+  padding-top: max(1.25rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom, 0px) + 0.75rem));
+  padding-left: max(0.75rem, calc(env(safe-area-inset-left, 0px) + 0.5rem));
+  padding-right: max(0.75rem, calc(env(safe-area-inset-right, 0px) + 0.5rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+@media (min-width: 640px) {
+  .modal-overlay {
+    justify-content: center;
+    padding: 2rem 1.5rem;
+  }
 }
 
 .modal-container {
-  @apply min-h-full flex items-start sm:items-center justify-center p-2 sm:p-4 py-4 sm:py-8;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  min-height: 0;
 }
 
 .modal-content {
-  @apply bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 md:p-8 shadow-2xl w-full max-w-lg relative my-auto max-h-[calc(100dvh-2rem)] sm:max-h-[90dvh] overflow-y-auto animate-fade-in;
+  @apply bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-5 sm:p-7 shadow-2xl w-full relative animate-fade-in;
+  margin: auto;
+  /* Safe maximum height so modal never collides with notch or home indicator */
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2.5rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+@media (min-width: 640px) {
+  .modal-content {
+    max-height: min(88dvh, 850px);
+  }
+}
+
+/* For multi-section flex modals with fixed header/footer and scrollable body */
+.modal-flex-card {
+  @apply bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden w-full relative flex flex-col;
+  margin: auto;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 2.5rem);
+}
+
+@media (min-width: 640px) {
+  .modal-flex-card {
+    max-height: min(88dvh, 850px);
+  }
+}
+
+.modal-scroll-body {
+  @apply flex-1 overflow-y-auto min-h-0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Animations */
@@ -273,3 +341,95 @@ input[type="range"].slider-range::-moz-range-track {
   height: 8px;
   border-radius: 9999px;
 }
+
+/* ==========================================================================
+   iOS Safari & WebKit Date / DateTime / Time Normalization
+   ========================================================================== */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  background-color: #ffffff;
+}
+
+/* Ensure date/time text aligns to the left and matches regular text input line-height on iOS */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 1.4em;
+  line-height: inherit;
+  width: 100%;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+/* Clean calendar picker indicator across desktop browsers */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  padding: 0;
+  margin: 0;
+  margin-left: 0.5rem;
+  transition: opacity 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Input & Placeholder Typography Normalization
+   Keeps placeholders in all modal and web page textboxes cleanly proportioned
+   to normal UI text (14px text-sm or 12px text-xs) across mobile and desktop.
+   ========================================================================== */
+.form-input,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+select,
+textarea {
+  font-size: 0.875rem; /* 14px standard */
+}
+
+input::placeholder,
+textarea::placeholder,
+.form-input::placeholder {
+  font-size: 0.875rem !important;
+  color: #94a3b8;
+}
+
+@media screen and (max-width: 768px) {
+  .form-input,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: 0.875rem; /* 14px */
+  }
+
+  /* Refined, compact placeholder sizing on mobile screens */
+  input::placeholder,
+  textarea::placeholder,
+  .form-input::placeholder {
+    font-size: 0.8125rem !important; /* ~13px: perfectly matches normal mobile body/label text */
+  }
+
+  input.text-xs::placeholder,
+  textarea.text-xs::placeholder,
+  .text-xs input::placeholder,
+  .text-xs textarea::placeholder {
+    font-size: 0.75rem !important; /* 12px */
+  }
+}
+
+

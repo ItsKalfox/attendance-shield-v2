@@ -262,6 +262,10 @@ const ImportCoursesModal = ({ onClose, onCoursesImported }) => {
             toast.error('Course Name is required');
             return;
         }
+        if (cleanStartDate && cleanEndDate && new Date(cleanEndDate) < new Date(cleanStartDate)) {
+            toast.error('End date cannot be earlier than start date');
+            return;
+        }
         if (!cleanBatch || !cleanSemester) {
             toast.error('Batch and Semester are required');
             return;
@@ -385,7 +389,7 @@ const ImportCoursesModal = ({ onClose, onCoursesImported }) => {
     return createPortal(
         <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
             <div onClick={handleBackdropClick} className="modal-container px-2 sm:px-6">
-                <div className={`modal-content w-full max-w-6xl lg:max-w-7xl xl:max-w-[1420px] max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] flex flex-col p-0 overflow-hidden relative shadow-2xl rounded-2xl sm:rounded-3xl border-0 ${isShaking ? 'animate-modal-shake' : ''}`}>
+                <div className={`modal-flex-card max-w-6xl lg:max-w-7xl xl:max-w-[1420px] p-0 ${isShaking ? 'animate-modal-shake' : ''}`}>
                     {/* Top loader if importing */}
                     {importing && (
                         <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
@@ -395,7 +399,7 @@ const ImportCoursesModal = ({ onClose, onCoursesImported }) => {
                         </div>
                     )}
 
-                    <div className="p-6 sm:p-8 flex-1 overflow-y-auto min-h-0 flex flex-col relative">
+                    <div className="modal-scroll-body p-6 sm:p-8 flex flex-col relative">
                         <button 
                             onClick={onClose}
                             disabled={importing}
@@ -612,13 +616,20 @@ const ImportCoursesModal = ({ onClose, onCoursesImported }) => {
                                                         {/* Duration */}
                                                         <td className="py-3 px-4 text-slate-600 whitespace-nowrap">
                                                             {isEditing ? (
-                                                                <div className="flex items-center gap-1">
+                                                                <div className="flex items-center gap-1 min-w-0">
                                                                     <input 
                                                                         type="date" 
                                                                         value={editFormData.startDate}
-                                                                        onChange={(e) => setEditFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                                                                        onChange={(e) => {
+                                                                            const val = e.target.value;
+                                                                            setEditFormData(prev => ({
+                                                                                ...prev,
+                                                                                startDate: val,
+                                                                                endDate: (prev.endDate && val && new Date(prev.endDate) < new Date(val)) ? '' : prev.endDate
+                                                                            }));
+                                                                        }}
                                                                         onKeyDown={handleKeyDown}
-                                                                        className="form-input py-1 px-1 text-[11px] w-1/2 bg-white"
+                                                                        className="form-input py-1 px-1 text-[11px] w-1/2 min-w-0 max-w-full bg-white"
                                                                         title="Start Date"
                                                                     />
                                                                     <span className="text-slate-400">-</span>
@@ -627,7 +638,8 @@ const ImportCoursesModal = ({ onClose, onCoursesImported }) => {
                                                                         value={editFormData.endDate}
                                                                         onChange={(e) => setEditFormData(prev => ({ ...prev, endDate: e.target.value }))}
                                                                         onKeyDown={handleKeyDown}
-                                                                        className="form-input py-1 px-1 text-[11px] w-1/2 bg-white"
+                                                                        min={editFormData.startDate || undefined}
+                                                                        className="form-input py-1 px-1 text-[11px] w-1/2 min-w-0 max-w-full bg-white"
                                                                         title="End Date"
                                                                     />
                                                                 </div>

@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { 
     Building2, Users, Shield, Upload, Activity, 
     ChevronDown, ChevronUp, PlusCircle, Download, 
-    FileSpreadsheet, FileJson, Archive, CheckCircle2, Loader2, HardDriveDownload 
+    FileSpreadsheet, FileJson, Archive, Loader2, HardDriveDownload 
 } from 'lucide-react';
 import CreateOrganizationModal from '../organizations/CreateOrganizationModal';
 import JSZip from 'jszip';
@@ -422,15 +422,20 @@ const OrganizationDetails = () => {
     
     if (!activeOrganization || !organization) {
         return (
-            <div className="w-full animate-fade-in flex flex-col items-center justify-center py-16">
-                <div className="card max-w-md w-full text-center p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-3xl">
-                    <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-100">
-                        <Building2 size={32} />
+            <div className="w-full animate-fade-in flex flex-col items-center justify-center py-12 sm:py-16 px-4">
+                <div className="card max-w-md w-full text-center p-8 sm:p-10 bg-white border border-slate-200/90 shadow-xl rounded-3xl">
+                    <div className="w-14 h-14 bg-slate-100 text-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xs border border-slate-200/80">
+                        <Building2 size={26} className="text-brand-600" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">No Organization Selected</h3>
-                    <p className="text-xs text-slate-500 mb-6">Create an organization to begin managing courses, sessions, and attendance.</p>
-                    <button className="btn btn-primary w-full py-2.5 font-bold text-xs" onClick={() => setShowCreateModal(true)}>
-                        <PlusCircle size={15} className="mr-2" />
+                    <h3 className="text-xl font-extrabold text-slate-900 tracking-tight mb-2">No Organization Selected</h3>
+                    <p className="text-xs sm:text-sm text-slate-500 mb-7 leading-relaxed">
+                        Create an organization to begin managing member rosters, instructor assignments, and attendance policies.
+                    </p>
+                    <button 
+                        className="btn btn-primary w-full py-3 shadow-lg shadow-brand-500/25 flex items-center justify-center font-bold text-xs sm:text-sm rounded-xl transition hover:shadow-brand-500/40 active:scale-95" 
+                        onClick={() => setShowCreateModal(true)}
+                    >
+                        <PlusCircle size={16} className="mr-2 text-white shrink-0" />
                         Create Organization
                     </button>
                 </div>
@@ -460,7 +465,7 @@ const OrganizationDetails = () => {
                     )}
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                    <h2 className="text-lg font-bold text-slate-800 mb-3">Organization Logo</h2>
+                    <h2 className="text-lg font-bold text-slate-800 mb-3">{organization?.name || activeOrganization?.name || 'Organization'}</h2>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
                         <input 
                             type="file" 
@@ -502,7 +507,7 @@ const OrganizationDetails = () => {
                     </div>
                     {canEdit && <p className="text-xs text-slate-500 font-medium">We support PNGs, JPEGs and GIFs under 10MB</p>}
                 </div>
-                <div className="badge bg-brand-100 text-brand-700 font-semibold text-xs ml-auto self-start">
+                <div className="text-xs font-semibold text-slate-500 ml-auto self-start">
                     {userRole}
                 </div>
             </div>
@@ -641,19 +646,13 @@ const OrganizationDetails = () => {
             {/* In-App Data Export & Backups Section */}
             {canEdit && (
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-800">
-                                Data & Backups
-                            </h2>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Export full institutional datasets, rosters, attendance logs, and archives for compliance or backup.
-                            </p>
-                        </div>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                            <CheckCircle2 size={13} />
-                            Ready for Export
-                        </span>
+                    <div className="mb-4">
+                        <h2 className="text-xl font-bold text-slate-800">
+                            Data & Backups
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Export full institutional datasets, rosters, attendance logs, and archives for compliance or backup.
+                        </p>
                     </div>
 
                     <div className="card p-6 sm:p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl sm:rounded-3xl space-y-6">

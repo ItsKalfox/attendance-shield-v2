@@ -19,6 +19,7 @@ const {
     deleteCourse, 
     removeMemberFromCourse, 
     getCourseStudentAttendance,
+    getCourseAttendanceReport,
     validateImportCourses,
     bulkCreateCourses
 } = require('../controllers/courseController');
@@ -32,7 +33,7 @@ const { upload } = require('../config/cloudinary');
 // All organization routes require authentication
 router.use(protect);
 
-router.post('/', createOrganization);
+router.post('/', upload.single('avatar'), createOrganization);
 router.get('/', getOrganizations);
 
 router.get('/:organizationId', requireOrganizationRole(), getOrganizationById);
@@ -66,6 +67,7 @@ router.get('/:organizationId/courses/:courseId/members', requireOrganizationRole
 router.post('/:organizationId/courses/:courseId/members', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), enrollMembers);
 router.delete('/:organizationId/courses/:courseId/members/:memberId', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), removeMemberFromCourse);
 router.get('/:organizationId/courses/:courseId/students/:studentId/attendance', requireOrganizationRole(), getCourseStudentAttendance);
+router.get('/:organizationId/courses/:courseId/attendance-report', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), getCourseAttendanceReport);
 
 // Session routes
 router.get('/:organizationId/sessions', requireOrganizationRole(), getSessions);

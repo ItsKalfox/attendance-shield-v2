@@ -19,6 +19,8 @@ import {
 import api from '../services/api';
 import CreateOrganizationModal from '../features/organizations/CreateOrganizationModal';
 import PendingInvitationModal from '../features/organizations/PendingInvitationModal';
+import ConfirmModal from '../components/ConfirmModal';
+
 
 const AppLayout = () => {
     const { user, logout } = useAuth();
@@ -29,6 +31,7 @@ const AppLayout = () => {
     const [showCreateOrg, setShowCreateOrg] = useState(false);
     const [pendingInvitations, setPendingInvitations] = useState([]);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     // Close mobile drawer on route navigation
     useEffect(() => {
@@ -79,6 +82,11 @@ const AppLayout = () => {
     const activeIndex = navItems.findIndex(item => location.pathname.startsWith(item.path));
 
     const handleLogout = () => {
+        setMobileMenuOpen(false);
+        setShowLogoutConfirm(true);
+    };
+
+    const handleConfirmLogout = () => {
         logout();
         navigate('/login');
     };
@@ -87,7 +95,7 @@ const AppLayout = () => {
         <div className="app-container">
             {/* Floating Mobile Navigation Menu */}
             {mobileMenuOpen && (
-                <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-start items-center p-3 sm:p-4 animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-start items-center p-3 sm:p-4 pt-[max(1.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] pb-[max(1.25rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] animate-in fade-in duration-200">
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity duration-300"
@@ -95,7 +103,7 @@ const AppLayout = () => {
                     />
 
                     {/* Floating Navigation Card */}
-                    <div className="relative w-full max-w-sm bg-[#0c2b27]/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-slate-200 flex flex-col max-h-[calc(100dvh-max(2rem,env(safe-area-inset-top)+env(safe-area-inset-bottom)))] overflow-hidden animate-in fade-in zoom-in-95 duration-200 mt-2 sm:mt-4 z-10">
+                    <div className="relative w-full max-w-sm bg-[#0c2b27]/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-slate-200 flex flex-col max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2.5rem)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-10">
                         {/* Card Header */}
                         <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-brand-800/60 shrink-0">
                             <img src="/logo.png" alt="Attendance Shield" className="w-36 h-auto object-contain" />
@@ -109,7 +117,7 @@ const AppLayout = () => {
                         </div>
                         
                         {/* Navigation Links */}
-                        <div className="flex-1 px-3 py-3 overflow-y-auto space-y-1">
+                        <div className="flex-1 px-3 py-3 overflow-y-auto space-y-2">
                             <div className="px-3.5 py-1 text-[11px] font-semibold text-brand-300/60 uppercase tracking-wider">
                                 Navigation
                             </div>
@@ -261,6 +269,7 @@ const AppLayout = () => {
                         </h1>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+
                         {/* Date Chip */}
                         <div className="hidden sm:flex items-center px-3.5 py-1.5 rounded-xl bg-white/75 backdrop-blur-md border border-slate-200/80 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.04)] text-xs font-semibold text-slate-600 transition-all duration-300 hover:shadow-md hover:bg-white/95 select-none">
                             <Calendar size={13} className="text-slate-600 shrink-0 mr-2" />
@@ -360,6 +369,13 @@ const AppLayout = () => {
                     <Outlet />
                 </main>
             </div>
+
+            {/* iOS Safari Bottom Bar Tint Anchor: forces Mobile Safari's bottom toolbar to sample slate-50 and eliminate the dark green bottom margin */}
+            <div 
+                aria-hidden="true" 
+                className="fixed bottom-0 left-0 right-0 h-[max(env(safe-area-inset-bottom,0px),24px)] bg-slate-50 z-20 pointer-events-none lg:hidden" 
+            />
+
             {showCreateOrg && <CreateOrganizationModal onClose={() => setShowCreateOrg(false)} />}
             {pendingInvitations.length > 0 && (
                 <PendingInvitationModal 
@@ -367,6 +383,16 @@ const AppLayout = () => {
                     onResolved={handleInvitationResolved} 
                 />
             )}
+            <ConfirmModal
+                isOpen={showLogoutConfirm}
+                onClose={() => setShowLogoutConfirm(false)}
+                onConfirm={handleConfirmLogout}
+                title="Log Out"
+                message="Are you sure you want to log out of your session in Attendance Shield?"
+                type="logout"
+                confirmText="Log Out"
+                cancelText="Cancel"
+            />
         </div>
     );
 };

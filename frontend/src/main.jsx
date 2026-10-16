@@ -57,13 +57,13 @@ if (isMsalResponse) {
   const initMsalAndMount = async () => {
     if (msalInstance) {
       try {
-        // Race with a 1500ms timeout so MSAL network calls never block app rendering
+        // Fast-timeout race so MSAL network calls never stall initial React render
         await Promise.race([
           msalInstance.initialize(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('MSAL init timed out')), 1500))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('MSAL init timed out')), 200))
         ]);
       } catch (err) {
-        console.warn('MSAL initialization bypassed or handled:', err);
+        console.warn('MSAL initialization fast-path or backgrounded:', err);
       }
     }
 
@@ -86,5 +86,21 @@ if (isMsalResponse) {
   };
 
   initMsalAndMount();
+
+  // Only register Service Worker in production; unregister in development to avoid stale LAN caching
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch((err) => {
+        console.warn('PWA ServiceWorker registration failed:', err);
+      });
+    });
+  } else if ('serviceWorker' in navigator) {
+    // In dev mode, unregister any existing service worker to prevent frozen splash screens on LAN
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) {
+        reg.unregister().then(() => console.log('Development ServiceWorker unregistered'));
+      }
+    });
+  }
 }
 

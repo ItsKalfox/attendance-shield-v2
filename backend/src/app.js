@@ -19,9 +19,22 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
+// Trust proxy for reverse proxies (Render, Railway, Nginx) so client IP is accurately detected
+app.set('trust proxy', 1);
+
+// Security Headers (Helmet)
+const helmet = require('helmet');
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 // Body parser
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// NoSQL Operator Injection Sanitization
+const mongoSanitize = require('./middleware/mongoSanitize');
+app.use(mongoSanitize);
 
 // CORS configuration
 const corsOptions = {
@@ -31,6 +44,10 @@ const corsOptions = {
 
 // Enable CORS
 app.use(cors(corsOptions));
+
+// General API Rate Limiting
+const { generalApiLimiter } = require('./middleware/rateLimiters');
+app.use('/api', generalApiLimiter);
 
 // Setup socket.io
 const io = new Server(server, {

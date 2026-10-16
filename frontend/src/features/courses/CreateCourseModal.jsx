@@ -81,6 +81,15 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
             return;
         }
 
+        if (formData.startDate && formData.endDate) {
+            const start = new Date(formData.startDate);
+            const end = new Date(formData.endDate);
+            if (end < start) {
+                setError('Course end date cannot be earlier than start date.');
+                return;
+            }
+        }
+
         setLoading(true);
         setError('');
 
@@ -107,18 +116,27 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
     };
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
+        const { name, value } = e.target;
+        setFormData(prev => {
+            const next = { ...prev, [name]: value };
+            if (name === 'startDate' && value && next.endDate && new Date(next.endDate) < new Date(value)) {
+                next.endDate = '';
+            }
+            if (name === 'endDate' && value && next.startDate && new Date(value) < new Date(next.startDate)) {
+                setError('Course end date cannot be earlier than start date.');
+            } else {
+                setError('');
+            }
+            return next;
         });
     };
 
     return createPortal(
         <div 
             onClick={handleBackdropClick}
-            className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto cursor-default"
+            className="modal-overlay z-[100] cursor-default"
         >
-            <div className={`relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border-0 overflow-hidden my-auto flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] animate-in fade-in zoom-in-95 duration-200 ${isShaking ? 'animate-modal-shake' : ''}`}>
+            <div className={`modal-flex-card max-w-2xl animate-in fade-in zoom-in-95 duration-200 ${isShaking ? 'animate-modal-shake' : ''}`}>
                 {/* Header */}
                 <div className="shrink-0 px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/70 backdrop-blur-sm">
                     <div>
@@ -134,7 +152,7 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto min-h-0">
+                <form onSubmit={handleSubmit} className="modal-scroll-body p-4 sm:p-6 space-y-5">
                     {error && (
                         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm font-medium flex items-center">
                             <span className="w-2 h-2 rounded-full bg-red-500 mr-2.5"></span>
@@ -207,8 +225,8 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                     </div>
 
                     {/* Timeline: Start Date & End Date */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0">
+                        <div className="min-w-0">
                             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                                 <Calendar size={14} className="mr-1 text-slate-400" /> Start Date
                             </label>
@@ -217,10 +235,10 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                                 name="startDate"
                                 value={formData.startDate}
                                 onChange={handleChange}
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
+                                className="w-full min-w-0 max-w-full block px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
                             />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center">
                                 <Calendar size={14} className="mr-1 text-slate-400" /> End Date
                             </label>
@@ -229,7 +247,8 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                                 name="endDate"
                                 value={formData.endDate}
                                 onChange={handleChange}
-                                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
+                                min={formData.startDate || undefined}
+                                className="w-full min-w-0 max-w-full block px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 text-sm text-slate-800 transition"
                             />
                         </div>
                     </div>

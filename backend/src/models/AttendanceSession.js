@@ -66,4 +66,10 @@ const attendanceSessionSchema = new mongoose.Schema({
     timestamps: true
 });
 
+// High-traffic performance indexes for high-concurrency QR lookups
+attendanceSessionSchema.index({ qrTokenHash: 1 });
+attendanceSessionSchema.index({ organizationId: 1, status: 1 });
+attendanceSessionSchema.index({ courseId: 1, status: 1 });
+attendanceSessionSchema.index({ status: 1, confirmationDeadline: 1 });
+
 module.exports = mongoose.model('AttendanceSession', attendanceSessionSchema);

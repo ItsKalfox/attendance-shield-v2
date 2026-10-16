@@ -121,7 +121,7 @@ const getDashboardStats = async (req, res, next) => {
                     { $match: { sessionId: { $in: sessionIds }, status: 'PRESENT' } },
                     { $group: { _id: '$userId', attendanceCount: { $sum: 1 } } },
                     { $sort: { attendanceCount: -1 } },
-                    { $limit: 5 },
+                    { $limit: 10 },
                     { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
                     { $unwind: '$user' },
                     { $project: { _id: 1, attendanceCount: 1, 'user.firstName': 1, 'user.lastName': 1, 'user.email': 1 } }

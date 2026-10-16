@@ -7,10 +7,17 @@ import api from '../../services/api';
 import { 
     ArrowLeft, Users, UserPlus, Trash2, Calendar, 
     BookOpen, GraduationCap, CheckCircle2, Clock, 
-    Search, FileSpreadsheet, Eye, AlertCircle, RefreshCw 
+    Search, FileSpreadsheet, AlertCircle, RefreshCw,
+    MoreVertical, ArrowRight, Download, Loader2, Settings 
 } from 'lucide-react';
 import ConfirmModal from '../../components/ConfirmModal';
 import StudentAttendanceModal from './StudentAttendanceModal';
+import Pagination from '../../components/Pagination';
+import { generateCourseAttendancePDF } from './exportCourseAttendancePdf';
+import PdfExportSettingsModal from '../../components/PdfExportSettingsModal';
+import { getPdfExportSettings, savePdfExportSettings } from '../../utils/pdfSettingsStorage';
+
+const PAGE_SIZE = 20;
 
 const CourseDetails = () => {
     const { courseId } = useParams();
@@ -25,10 +32,16 @@ const CourseDetails = () => {
     const [loading, setLoading] = useState(true);
     const [enrolling, setEnrolling] = useState(false);
     const [statusToggling, setStatusToggling] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [exportingReport, setExportingReport] = useState(false);
+    const [isPdfSettingsOpen, setIsPdfSettingsOpen] = useState(false);
     
     // Search states
     const [memberSearch, setMemberSearch] = useState('');
     const [enrollSearch, setEnrollSearch] = useState('');
+    
+    // Pagination state
+    const [memberPage, setMemberPage] = useState(1);
     
     // Enrollment multi-select state
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
@@ -166,6 +179,49 @@ const CourseDetails = () => {
         }
     };
 
+    const handleExportCourseAttendancePDF = async (overrideSettings = null) => {
+        try {
+            setExportingReport(true);
+            const activeSettings = overrideSettings || getPdfExportSettings({ mode: 'course', course, user });
+            const params = new URLSearchParams();
+            if (activeSettings.threshold) {
+                params.append('threshold', activeSettings.threshold);
+            }
+            if (activeSettings.typeRequirements?.length) {
+                params.append('typeRequirements', JSON.stringify(activeSettings.typeRequirements));
+            }
+            const queryStr = params.toString() ? `?${params.toString()}` : '';
+            const res = await api.get(`/organizations/${activeOrganization._id}/courses/${courseId}/attendance-report${queryStr}`);
+            await generateCourseAttendancePDF(res.data, activeSettings);
+        } catch (error) {
+            console.error("Failed to export course attendance report:", error);
+            alert(error.response?.data?.message || "Failed to generate course attendance report");
+        } finally {
+            setExportingReport(false);
+        }
+    };
+
+    const handleApplySettingsAndExport = async (newSettings) => {
+        await savePdfExportSettings({ mode: 'course', courseId, settings: newSettings });
+        await handleExportCourseAttendancePDF(newSettings);
+    };
+
+    const handleSaveCourseDefault = async (newSettings) => {
+        await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
+            attendanceSettings: {
+                minOverallPercentage: newSettings.threshold,
+                typeRequirements: newSettings.typeRequirements
+            }
+        });
+        setCourse(prev => ({
+            ...prev,
+            attendanceSettings: {
+                minOverallPercentage: newSettings.threshold,
+                typeRequirements: newSettings.typeRequirements
+            }
+        }));
+    };
+
     const handleRemoveMemberClick = (memberId) => {
         setConfirmModalConfig({
             isOpen: true,
@@ -213,19 +269,30 @@ const CourseDetails = () => {
 
     if (loading) return (
         <div className="animate-fade-in space-y-6">
-            {/* Top Navigation Skeleton */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="skeleton w-36 h-8 rounded-xl"></div>
-                <div className="flex items-center gap-2">
-                    <div className="skeleton w-28 h-8 rounded-xl"></div>
-                    <div className="skeleton w-36 h-8 rounded-xl"></div>
+            {/* Top Back & Header Skeleton */}
+            <div className="skeleton w-36 h-5 rounded-lg mb-6"></div>
+
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+                <div className="w-full sm:w-auto space-y-2">
+                    <div className="flex items-center gap-3">
+                        <div className="skeleton w-56 sm:w-72 h-8 rounded-xl"></div>
+                        <div className="skeleton w-20 h-6 rounded-full"></div>
+                    </div>
+                    <div className="flex justify-between items-center w-full">
+                        <div className="skeleton w-48 sm:w-64 h-4 rounded-md"></div>
+                        <div className="skeleton w-7 h-7 rounded-full sm:hidden"></div>
+                    </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-2">
+                    <div className="skeleton w-36 h-9 rounded-xl"></div>
+                    <div className="skeleton w-8 h-8 rounded-full"></div>
                 </div>
             </div>
 
             {/* Main Layout: 2 Columns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left/Main Column Skeleton */}
-                <div className="lg:col-span-2 space-y-4">
+                {/* Left/Main Column Skeleton: Order 2 on mobile, Order 1 on desktop */}
+                <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
                     <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] overflow-hidden">
                         {/* Header bar / Search & Action */}
                         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
@@ -275,8 +342,8 @@ const CourseDetails = () => {
                     </div>
                 </div>
 
-                {/* Right Column Skeleton */}
-                <div className="space-y-4">
+                {/* Right Column Skeleton: Order 1 on mobile, Order 2 on desktop */}
+                <div className="space-y-4 order-1 lg:order-2">
                     <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 space-y-5">
                         <div className="border-b border-slate-100 pb-4 space-y-2">
                             <div className="skeleton w-20 h-6 rounded-lg"></div>
@@ -360,6 +427,10 @@ const CourseDetails = () => {
         return fullName.includes(query) || email.includes(query) || studentId.includes(query);
     });
 
+    const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+    const safePage = Math.min(memberPage, totalPages);
+    const paginatedMembers = filteredMembers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
     // Filter un-enrolled members in modal
     const filteredOrgMembers = orgMembers.filter(m => {
         const query = enrollSearch.toLowerCase();
@@ -374,69 +445,110 @@ const CourseDetails = () => {
     const isOngoing = (course.status || 'ONGOING') === 'ONGOING' || course.status === 'ACTIVE';
 
     return (
-        <div className="animate-fade-in space-y-6">
-            {/* Top Navigation */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <Link 
-                    to="/app/courses" 
-                    className="text-slate-700 hover:text-brand-600 flex items-center w-fit text-xs font-semibold bg-white/80 px-3.5 py-1.5 rounded-xl border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] transition select-none"
-                >
-                    <ArrowLeft size={15} className="mr-2 text-slate-500" /> Back to Courses
-                </Link>
+        <div className="animate-fade-in">
+            <Link 
+                to="/app/courses" 
+                className="text-slate-400 hover:text-slate-700 flex items-center mb-6 w-fit transition"
+            >
+                <ArrowLeft size={16} className="mr-2" /> Back to Courses
+            </Link>
 
-                {/* Course Status & Admin Controls */}
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)] text-xs font-semibold text-slate-700 select-none">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
+                <div className="w-full sm:w-auto">
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex flex-wrap items-center gap-2 sm:gap-3">
+                        <span>{course.code} - {course.name}</span>
                         {isOngoing ? (
-                            <>
-                                <span className="relative flex h-2 w-2 mr-0.5">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                </span>
-                                <span>Ongoing Course</span>
-                            </>
+                            <span className="badge badge-success text-xs sm:text-sm">Ongoing</span>
                         ) : (
-                            <>
-                                <span className="inline-flex rounded-full h-2 w-2 bg-slate-400 mr-0.5"></span>
-                                <span>Completed Course</span>
-                            </>
+                            <span className="badge bg-slate-100 text-slate-700 border border-slate-200/60 text-xs sm:text-sm">Completed</span>
+                        )}
+                    </h1>
+                    <div className="flex justify-between items-center w-full">
+                        <p className="text-slate-400 text-xs sm:text-sm flex items-center flex-wrap">
+                            <GraduationCap size={14} className="mr-1 shrink-0" />
+                            <span>{assignedInstructor?.userId ? `${assignedInstructor.userId.firstName} ${assignedInstructor.userId.lastName || ''}`.trim() : 'No lecturer assigned'} &bull; {course.batch || 'Batch Unspecified'} &bull; {course.semester || 'Semester Unspecified'}</span>
+                        </p>
+
+                        {/* Mobile Menu */}
+                        {canManageCourse && (
+                            <div className="relative sm:hidden">
+                                <button 
+                                    className="p-1.5 -mr-2 text-slate-400 hover:text-slate-700 rounded-full active:bg-slate-100 transition" 
+                                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                                >
+                                    <MoreVertical size={20} />
+                                </button>
+                                
+                                {showMobileMenu && (
+                                    <>
+                                        <div className="fixed inset-0 z-10" onClick={() => setShowMobileMenu(false)}></div>
+                                        <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-20 animate-fade-in">
+                                            <button 
+                                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center" 
+                                                onClick={() => { setShowMobileMenu(false); handleToggleStatus(); }}
+                                                disabled={statusToggling}
+                                            >
+                                                <RefreshCw size={16} className={`mr-2 text-brand-600 ${statusToggling ? 'animate-spin' : ''}`} /> 
+                                                {isOngoing ? 'Mark as Completed' : 'Reopen Course'}
+                                            </button>
+                                            <button 
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center" 
+                                                onClick={() => { setShowMobileMenu(false); handleDeleteCourse(); }}
+                                            >
+                                                <Trash2 size={16} className="mr-2" /> Delete Course
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         )}
                     </div>
+                </div>
 
-                    {/* Admin Status Toggle */}
-                    {canManageCourse && (
-                        <button
+                {/* Desktop Buttons */}
+                {canManageCourse && (
+                    <div className="hidden sm:flex items-center gap-2 w-auto">
+                        <button 
+                            className="btn btn-outline flex items-center text-sm justify-center py-2 px-3.5 shadow-sm"
                             onClick={handleToggleStatus}
                             disabled={statusToggling}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition flex items-center ${
-                                isOngoing 
-                                    ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                                    : 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700'
-                            }`}
                         >
-                            <RefreshCw size={13} className={`mr-1.5 ${statusToggling ? 'animate-spin' : ''}`} />
-                            {isOngoing ? 'Mark as Completed' : 'Reopen Course'}
+                            <RefreshCw size={14} className={`mr-1.5 ${statusToggling ? 'animate-spin' : ''}`} /> 
+                            <span>{isOngoing ? 'Mark as Completed' : 'Reopen Course'}</span>
                         </button>
-                    )}
-
-                    {/* Admin Delete Course */}
-                    {canManageCourse && (
-                        <button 
-                            className="px-3.5 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 shadow-sm shadow-rose-600/20 rounded-xl transition flex items-center"
-                            onClick={handleDeleteCourse}
-                            title="Delete this course"
-                        >
-                            <Trash2 size={14} className="mr-1.5" /> Delete
-                        </button>
-                    )}
-                </div>
+                        
+                        {/* Desktop Menu */}
+                        <div className="relative">
+                            <button 
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full active:bg-slate-100 transition" 
+                                onClick={() => setShowMobileMenu(!showMobileMenu)}
+                            >
+                                <MoreVertical size={20} />
+                            </button>
+                            
+                            {showMobileMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setShowMobileMenu(false)}></div>
+                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-20 animate-fade-in">
+                                        <button 
+                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center" 
+                                            onClick={() => { setShowMobileMenu(false); handleDeleteCourse(); }}
+                                        >
+                                            <Trash2 size={16} className="mr-2" /> Delete Course
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Main Layout: 2 Columns */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* Left/Main Column */}
-                <div className="lg:col-span-2 space-y-4">
+                {/* Left/Main Column: Order 2 on mobile, Order 1 on desktop */}
+                <div className="lg:col-span-2 space-y-4 order-2 lg:order-1">
                     {isAttendee ? (
                         <div className="space-y-6">
                             {/* Student Attendance Stats for this Course */}
@@ -591,7 +703,10 @@ const CourseDetails = () => {
                                     type="text" 
                                     placeholder="Search student by name, email, or Student ID..."
                                     value={memberSearch}
-                                    onChange={(e) => setMemberSearch(e.target.value)}
+                                    onChange={(e) => {
+                                        setMemberSearch(e.target.value);
+                                        setMemberPage(1);
+                                    }}
                                     className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
                                 />
                             </div>
@@ -613,99 +728,107 @@ const CourseDetails = () => {
                                 No students match "{memberSearch}".
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200">
-                                        <tr>
-                                            <th className="py-3 px-3.5 sm:px-5">Student</th>
-                                            <th className="py-3 px-4 hidden sm:table-cell">Student ID</th>
-                                            <th className="py-3 px-3.5 sm:px-5 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 font-medium">
-                                        {filteredMembers.map(m => {
-                                            const studentIdVal = m.organizationMemberId?.studentId || m.userId?.studentId || '-';
-                                            const fName = m.organizationMemberId?.firstName || m.userId?.firstName || '';
-                                            const lName = m.organizationMemberId?.lastName || m.userId?.lastName || '';
-                                            const studentName = `${fName} ${lName}`.trim() || 'Student';
-                                            const initial = fName ? fName.charAt(0) : 'S';
-                                            const studentOrgMemberId = m.organizationMemberId?._id || m._id;
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                        <thead className="bg-slate-50/80 text-slate-500 font-semibold border-b border-slate-200">
+                                            <tr>
+                                                <th className="py-3 px-3.5 sm:px-5">Student</th>
+                                                <th className="py-3 px-4 hidden sm:table-cell">Student ID</th>
+                                                <th className="py-3 px-3.5 sm:px-5 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 font-medium">
+                                            {paginatedMembers.map(m => {
+                                                const studentIdVal = m.organizationMemberId?.studentId || m.userId?.studentId || '-';
+                                                const fName = m.organizationMemberId?.firstName || m.userId?.firstName || '';
+                                                const lName = m.organizationMemberId?.lastName || m.userId?.lastName || '';
+                                                const studentName = `${fName} ${lName}`.trim() || 'Student';
+                                                const initial = fName ? fName.charAt(0) : 'S';
+                                                const studentOrgMemberId = m.organizationMemberId?._id || m._id;
 
-                                            return (
-                                                <tr key={m._id} className="hover:bg-slate-50/60 transition group">
-                                                    <td className="py-3 sm:py-3.5 px-3.5 sm:px-5">
-                                                        <div className="flex items-center space-x-2.5 sm:space-x-3">
-                                                            <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 border border-brand-100 flex items-center justify-center font-bold text-xs shrink-0">
-                                                                {initial}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <div className="font-semibold text-slate-900 group-hover:text-brand-600 transition truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
-                                                                    {studentName}
+                                                return (
+                                                    <tr key={m._id} className="hover:bg-slate-50/60 transition group">
+                                                        <td className="py-3 sm:py-3.5 px-3.5 sm:px-5">
+                                                            <div className="flex items-center space-x-2.5 sm:space-x-3">
+                                                                <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 border border-brand-100 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                    {initial}
                                                                 </div>
-                                                                <div className="text-[11px] text-slate-400 font-normal truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
-                                                                    {m.userId?.email}
-                                                                </div>
-                                                                {studentIdVal !== '-' && (
-                                                                    <div className="sm:hidden mt-0.5">
-                                                                        <span className="inline-block font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/70">
-                                                                            ID: {studentIdVal}
-                                                                        </span>
+                                                                <div className="min-w-0 flex-1">
+                                                                    <div className="font-semibold text-slate-900 group-hover:text-brand-600 transition truncate max-w-[140px] xs:max-w-[200px] sm:max-w-none">
+                                                                        {studentName}
                                                                     </div>
+                                                                    <div className="text-[11px] text-slate-400 font-normal truncate max-w-[220px] xs:max-w-[300px] sm:max-w-md md:max-w-lg lg:max-w-none">
+                                                                        {m.userId?.email}
+                                                                    </div>
+                                                                    {studentIdVal !== '-' && (
+                                                                        <div className="sm:hidden mt-0.5">
+                                                                            <span className="inline-block font-mono text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                                                {studentIdVal}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-3.5 px-4 font-mono text-slate-600 hidden sm:table-cell">
+                                                            {studentIdVal !== '-' ? (
+                                                                <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                                                    {studentIdVal}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-slate-300">-</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 text-right whitespace-nowrap">
+                                                            <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
+                                                                {/* View Attendance Button */}
+                                                                <button
+                                                                    onClick={() => setAttendanceModalConfig({
+                                                                        isOpen: true,
+                                                                        studentOrgMemberId: m.organizationMemberId?._id || m.organizationMemberId,
+                                                                        studentName
+                                                                    })}
+                                                                    className="inline-flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
+                                                                    title="View attendance metrics and export PDF"
+                                                                >
+                                                                    <span className="hidden sm:inline">View Attendance</span>
+                                                                    <span className="sm:hidden text-[11px]">View</span>
+                                                                    <ArrowRight size={13} className="ml-1 text-slate-400" />
+                                                                </button>
+
+                                                                {/* Remove Member Button */}
+                                                                {canManageStudents && (
+                                                                    <button 
+                                                                        className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
+                                                                        onClick={() => handleRemoveMemberClick(m._id)}
+                                                                        title="Remove from course"
+                                                                    >
+                                                                        <Trash2 size={14} className="sm:w-[15px] sm:h-[15px]" />
+                                                                    </button>
                                                                 )}
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-mono text-slate-600 hidden sm:table-cell">
-                                                        {studentIdVal !== '-' ? (
-                                                             <span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">
-                                                                {studentIdVal}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-slate-300">-</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-3 sm:py-3.5 px-3.5 sm:px-5 text-right whitespace-nowrap">
-                                                        <div className="flex items-center justify-end space-x-1.5 sm:space-x-2">
-                                                            {/* View Attendance Button */}
-                                                            <button
-                                                                onClick={() => setAttendanceModalConfig({
-                                                                    isOpen: true,
-                                                                    studentOrgMemberId: m.organizationMemberId?._id || m.organizationMemberId,
-                                                                    studentName
-                                                                })}
-                                                                className="flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"
-                                                                title="View attendance metrics and export PDF"
-                                                            >
-                                                                <Eye size={13} className="sm:mr-1.5 text-slate-500" />
-                                                                <span className="hidden sm:inline">View Attendance</span>
-                                                                <span className="sm:hidden text-[11px]">View</span>
-                                                            </button>
-
-                                                            {/* Remove Member Button */}
-                                                            {canManageStudents && (
-                                                                <button 
-                                                                    className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-rose-50 transition"
-                                                                    onClick={() => handleRemoveMemberClick(m._id)}
-                                                                    title="Remove from course"
-                                                                >
-                                                                    <Trash2 size={14} className="sm:w-[15px] sm:h-[15px]" />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <Pagination 
+                                    currentPage={safePage}
+                                    totalItems={filteredMembers.length}
+                                    pageSize={PAGE_SIZE}
+                                    onPageChange={setMemberPage}
+                                />
+                            </>
                         )}
                     </div>
                     )}
                 </div>
 
-                {/* Right Column: Course Specifications & Lecturer Info */}
-                <div className="space-y-4">
+                {/* Right Column: Course Specifications & Lecturer Info (Order 1 on mobile, Order 2 on desktop) */}
+                <div className="space-y-4 order-1 lg:order-2">
                     <div className="bg-white rounded-3xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] p-6 space-y-5">
                         <div className="border-b border-slate-100 pb-4">
                             <span className="font-mono text-xs font-semibold tracking-wide text-slate-500 bg-slate-100/90 px-2.5 py-1 rounded-lg">
@@ -791,14 +914,48 @@ const CourseDetails = () => {
                                 <div className="text-xs text-slate-400 italic">No lecturer assigned</div>
                             )}
                         </div>
+
+                        {/* Export Course Attendance Report */}
+                        {activeOrganization?.userRole !== 'ATTENDEE' && (
+                            <div className="pt-4 border-t border-slate-100 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleExportCourseAttendancePDF()}
+                                    disabled={exportingReport}
+                                    className="flex-1 py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center transition bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white active:scale-98 shadow-sm shadow-blue-500/20 disabled:opacity-60 disabled:pointer-events-none group"
+                                    title="Export full course attendance sheet as PDF"
+                                >
+                                    {exportingReport ? (
+                                        <>
+                                            <Loader2 size={14} className="mr-2 animate-spin text-white shrink-0" />
+                                            <span>Generating PDF...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download size={14} className="mr-2 text-white group-hover:translate-y-0.5 transition-transform shrink-0" />
+                                            <span>Export Attendance PDF</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPdfSettingsOpen(true)}
+                                    className="p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition shadow-sm shrink-0"
+                                    title="PDF Export Settings"
+                                    aria-label="PDF Export Settings"
+                                >
+                                    <Settings size={15} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Enroll Students Modal */}
             {showEnrollModal && createPortal(
-                <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
-                    <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)] sm:max-h-[85vh] my-auto">
+                <div className="modal-overlay z-[100] cursor-default">
+                    <div className="modal-flex-card max-w-xl">
                         {/* Header */}
                         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
                             <div>
@@ -850,7 +1007,7 @@ const CourseDetails = () => {
                         </div>
 
                         {/* Attendee Checklist */}
-                        <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-100">
+                        <div className="modal-scroll-body p-2 divide-y divide-slate-100">
                             {filteredOrgMembers.length === 0 ? (
                                 <div className="py-12 text-center text-slate-400 text-xs">
                                     {orgMembers.length === 0 
@@ -923,6 +1080,17 @@ const CourseDetails = () => {
                 organizationId={activeOrganization?._id}
                 courseId={courseId}
                 studentOrgMemberId={attendanceModalConfig.studentOrgMemberId}
+            />
+
+            {/* PDF Export Settings Modal */}
+            <PdfExportSettingsModal
+                isOpen={isPdfSettingsOpen}
+                onClose={() => setIsPdfSettingsOpen(false)}
+                mode="course"
+                initialSettings={getPdfExportSettings({ mode: 'course', course, user })}
+                onApplyAndExport={handleApplySettingsAndExport}
+                canSaveCourseDefault={activeOrganization?.userRole === 'OWNER' || activeOrganization?.userRole === 'ADMIN' || activeOrganization?.userRole === 'INSTRUCTOR'}
+                onSaveCourseDefault={handleSaveCourseDefault}
             />
 
             {/* Confirmation Modal */}

@@ -59,12 +59,12 @@ const PendingInvitationModal = ({ invitation, onResolved }) => {
     };
 
     return createPortal(
-        <div className="fixed inset-0 z-[150] flex items-start sm:items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto animate-fade-in">
-            <div className="relative w-full max-w-md bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 overflow-hidden transform transition-all animate-scale-up my-auto max-h-[calc(100dvh-1.5rem)] sm:max-h-[90dvh] flex flex-col">
+        <div className="modal-overlay z-[150] cursor-default">
+            <div className="modal-flex-card max-w-md animate-scale-up">
                 {/* Decorative Top Gradient Header */}
                 <div className="h-2.5 bg-gradient-to-r from-brand-500 via-indigo-500 to-emerald-500 shrink-0"></div>
 
-                <div className="p-5 sm:p-7 text-center overflow-y-auto min-h-0">
+                <div className="modal-scroll-body p-5 sm:p-7 text-center">
                     {/* Organization Logo / Badge */}
                     <div className="mx-auto mb-4 flex items-center justify-center">
                         {orgAvatar ? (

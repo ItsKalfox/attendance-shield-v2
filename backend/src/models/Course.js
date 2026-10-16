@@ -45,6 +45,16 @@ const courseSchema = new mongoose.Schema({
         type: String,
         enum: ['ONGOING', 'COMPLETED'],
         default: 'ONGOING'
+    },
+    attendanceSettings: {
+        minOverallPercentage: {
+            type: Number,
+            default: 80
+        },
+        typeRequirements: [{
+            lectureType: { type: String },
+            minSessions: { type: Number, default: 0 }
+        }]
     }
 }, {
     timestamps: true

@@ -23,11 +23,11 @@ api.interceptors.response.use(
     (error) => {
         if (error.response && error.response.status === 401) {
             const url = error.config?.url || '';
-            const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/verify-reset-otp');
+            const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/signup') || url.includes('/auth/verify-reset-otp') || url.includes('/auth/send-signup-otp') || url.includes('/auth/verify-signup-otp');
             if (!isAuthAttempt) {
                 safeStorage.removeItem('token');
                 safeStorage.removeItem('activeOrganizationId');
-                if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/attend') && !window.location.pathname.startsWith('/invitation') && !window.location.pathname.startsWith('/forgot-password') && !window.location.pathname.startsWith('/reset-password')) {
+                if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/signup') && !window.location.pathname.startsWith('/attend') && !window.location.pathname.startsWith('/invitation') && !window.location.pathname.startsWith('/forgot-password') && !window.location.pathname.startsWith('/reset-password')) {
                     window.location.href = '/login';
                 }
             }

@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { QRCodeCanvas } from 'qrcode.react';
-import { X, Copy, Check, Download } from 'lucide-react';
+import { X, Copy, Check, Download, Tv } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ProjectorModal from './ProjectorModal';
 
 const QRCodeModal = ({ qrToken, session, onClose }) => {
     const [copied, setCopied] = useState(false);
+    const [showProjector, setShowProjector] = useState(false);
 
     const { handleBackdropClick } = useModalDismiss({
         onClose,
@@ -65,6 +67,16 @@ const QRCodeModal = ({ qrToken, session, onClose }) => {
         doc.save(`QR_${session.courseId?.code || 'Session'}_${new Date(session.startTime).toISOString().split('T')[0]}.pdf`);
     };
 
+    if (showProjector) {
+        return (
+            <ProjectorModal 
+                session={session} 
+                qrUrl={attendUrl} 
+                onClose={() => setShowProjector(false)} 
+            />
+        );
+    }
+
     return createPortal(
         <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
             <div onClick={handleBackdropClick} className="modal-container">
@@ -104,16 +116,26 @@ const QRCodeModal = ({ qrToken, session, onClose }) => {
                         </button>
                     </div>
 
+                    {/* Classroom Projector Presentation Mode Button (Desktop Only) */}
+                    <button
+                        type="button"
+                        onClick={() => setShowProjector(true)}
+                        className="hidden md:flex btn w-full mb-3 items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 rounded-xl shadow-md transition-all active:scale-[0.98]"
+                    >
+                        <Tv size={16} className="text-brand-400" />
+                        <span>Classroom Projector Mode</span>
+                    </button>
+
                     <button 
-                        className="btn btn-outline w-full mb-3 flex items-center justify-center"
+                        className="btn btn-outline w-full mb-3 flex items-center justify-center text-xs py-2"
                         onClick={handleExportPDF}
                     >
-                        <Download size={18} className="mr-2" />
+                        <Download size={16} className="mr-2" />
                         Export QR to PDF
                     </button>
 
                     <button 
-                        className="btn btn-primary w-full"
+                        className="btn btn-primary w-full text-xs py-2 font-bold"
                         onClick={onClose}
                     >
                         Done

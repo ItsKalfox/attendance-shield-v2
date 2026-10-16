@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
+// Reference counter for nested modals to safely lock/unlock body scroll
+let openModalsCount = 0;
+let originalOverflow = '';
+let originalTouchAction = '';
+
 /**
  * Hook for intelligent modal dismissal via backdrop click and Escape key.
  * 
@@ -14,6 +19,26 @@ export function useModalDismiss({
 }) {
     const [isShaking, setIsShaking] = useState(false);
     const shakeTimeoutRef = useRef(null);
+
+    // Lock body scroll and prevent touch gesture competition on iOS WebKit
+    useEffect(() => {
+        if (openModalsCount === 0) {
+            originalOverflow = document.body.style.overflow;
+            originalTouchAction = document.body.style.touchAction;
+            document.body.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+        }
+        openModalsCount++;
+
+        return () => {
+            openModalsCount--;
+            if (openModalsCount <= 0) {
+                openModalsCount = 0;
+                document.body.style.overflow = originalOverflow;
+                document.body.style.touchAction = originalTouchAction;
+            }
+        };
+    }, []);
 
     const triggerShake = useCallback(() => {
         setIsShaking(true);

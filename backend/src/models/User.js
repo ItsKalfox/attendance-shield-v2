@@ -9,8 +9,8 @@ const userSchema = new mongoose.Schema({
     },
     lastName: {
         type: String,
-        required: [true, 'Last name is required'],
         trim: true,
+        default: '',
         maxlength: 50
     },
     email: {
@@ -42,6 +42,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['LOCAL', 'GOOGLE', 'MICROSOFT'],
         default: 'LOCAL'
+    },
+    preferences: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     }
 }, {
     timestamps: true

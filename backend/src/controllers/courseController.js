@@ -81,6 +81,14 @@ const createCourse = async (req, res, next) => {
             return res.status(400).json({ message: 'Selected instructor does not belong to this organization' });
         }
 
+        if (startDate && endDate) {
+            const sDate = new Date(startDate);
+            const eDate = new Date(endDate);
+            if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime()) && eDate < sDate) {
+                return res.status(400).json({ message: 'Course end date cannot be earlier than start date' });
+            }
+        }
+
         const course = await Course.create({
             organizationId,
             name: name.trim(),
@@ -164,22 +172,44 @@ const updateCourse = async (req, res, next) => {
             return res.status(404).json({ message: 'Course not found' });
         }
 
-        // Only OWNER/ADMIN can update course details
+        // Only OWNER/ADMIN or assigned INSTRUCTOR can update course
         const requesterRole = req.member.role;
-        if (requesterRole !== 'OWNER' && requesterRole !== 'ADMIN') {
-            return res.status(403).json({ message: 'Only organization administrators can modify courses' });
+        const isAssignedInstructor = course.instructor && course.instructor.toString() === req.member._id.toString();
+        if (requesterRole !== 'OWNER' && requesterRole !== 'ADMIN' && !isAssignedInstructor) {
+            return res.status(403).json({ message: 'Only organization administrators or assigned lecturers can modify course settings' });
         }
 
-        if (name) course.name = name.trim();
-        if (code) course.code = code.trim();
-        if (batch) course.batch = batch.trim();
-        if (semester) course.semester = semester.trim();
-        if (startDate !== undefined) course.startDate = startDate || null;
-        if (endDate !== undefined) course.endDate = endDate || null;
-        if (instructor) course.instructor = instructor;
+        const effectiveStart = (startDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) ? (startDate || null) : course.startDate;
+        const effectiveEnd = (endDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) ? (endDate || null) : course.endDate;
+        if (effectiveStart && effectiveEnd) {
+            const sDate = new Date(effectiveStart);
+            const eDate = new Date(effectiveEnd);
+            if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime()) && eDate < sDate) {
+                return res.status(400).json({ message: 'Course end date cannot be earlier than start date' });
+            }
+        }
+
+        if (name && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.name = name.trim();
+        if (code && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.code = code.trim();
+        if (batch && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.batch = batch.trim();
+        if (semester && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.semester = semester.trim();
+        if (startDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.startDate = startDate || null;
+        if (endDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.endDate = endDate || null;
+        if (instructor && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.instructor = instructor;
         if (description !== undefined) course.description = description ? description.trim() : '';
         if (status && ['ONGOING', 'COMPLETED'].includes(status)) {
             course.status = status;
+        }
+
+        if (req.body.attendanceSettings) {
+            course.attendanceSettings = {
+                minOverallPercentage: req.body.attendanceSettings.minOverallPercentage !== undefined 
+                    ? Number(req.body.attendanceSettings.minOverallPercentage) 
+                    : (course.attendanceSettings?.minOverallPercentage ?? 80),
+                typeRequirements: Array.isArray(req.body.attendanceSettings.typeRequirements)
+                    ? req.body.attendanceSettings.typeRequirements
+                    : (course.attendanceSettings?.typeRequirements ?? [])
+            };
         }
 
         await course.save();
@@ -469,6 +499,32 @@ const getCourseStudentAttendance = async (req, res, next) => {
 
         const activeInstructor = course.instructor;
 
+        const minPercentage = req.query.threshold 
+            ? Number(req.query.threshold) 
+            : (course.attendanceSettings?.minOverallPercentage ?? 80);
+
+        let isStudentEligible = overallPercentage >= minPercentage;
+        let typeRequirements = course.attendanceSettings?.typeRequirements || [];
+        if (req.query.typeRequirements) {
+            try {
+                const parsed = JSON.parse(req.query.typeRequirements);
+                if (Array.isArray(parsed)) typeRequirements = parsed;
+            } catch (e) {
+                // Ignore parse error
+            }
+        }
+        if (Array.isArray(typeRequirements) && typeRequirements.length > 0) {
+            for (const reqItem of typeRequirements) {
+                if (reqItem.minSessions > 0) {
+                    const attendedForType = breakdownMap[reqItem.lectureType]?.attended || 0;
+                    if (attendedForType < reqItem.minSessions) {
+                        isStudentEligible = false;
+                        break;
+                    }
+                }
+            }
+        }
+
         res.status(200).json({
             student: {
                 _id: studentMember._id,
@@ -490,7 +546,11 @@ const getCourseStudentAttendance = async (req, res, next) => {
                 instructor: activeInstructor ? {
                     name: `${activeInstructor.userId?.firstName || ''} ${activeInstructor.userId?.lastName || ''}`.trim(),
                     email: activeInstructor.userId?.email || ''
-                } : null
+                } : null,
+                attendanceSettings: {
+                    minOverallPercentage: minPercentage,
+                    typeRequirements
+                }
             },
             breakdown: breakdownList,
             summary: {
@@ -498,7 +558,8 @@ const getCourseStudentAttendance = async (req, res, next) => {
                 totalAttended,
                 totalAbsent,
                 overallPercentage,
-                isEligible: overallPercentage >= 80
+                threshold: minPercentage,
+                isEligible: isStudentEligible
             }
         });
     } catch (error) {
@@ -693,6 +754,10 @@ const bulkCreateCourses = async (req, res, next) => {
             const startDate = item.startDate ? new Date(item.startDate) : null;
             const endDate = item.endDate ? new Date(item.endDate) : null;
 
+            if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && endDate < startDate) {
+                throw new Error(`End date cannot be earlier than start date for course "${code || name || 'Unknown'}"`);
+            }
+
             if (!code || !name || !batch || !semester) {
                 throw new Error(`Missing required fields for course code: ${code || name || 'Unknown'}`);
             }
@@ -747,6 +812,212 @@ const bulkCreateCourses = async (req, res, next) => {
     }
 };
 
+// @desc    Get course attendance report for all enrolled students
+// @route   GET /api/organizations/:organizationId/courses/:courseId/attendance-report
+// @access  Private (OWNER, ADMIN, INSTRUCTOR)
+const getCourseAttendanceReport = async (req, res, next) => {
+    try {
+        const { organizationId, courseId } = req.params;
+
+        const course = await Course.findOne({ _id: courseId, organizationId })
+            .populate('organizationId', 'name avatarUrl')
+            .populate({
+                path: 'instructor',
+                populate: { path: 'userId', select: 'firstName lastName email' }
+            });
+
+        if (!course) {
+            return res.status(404).json({ message: 'Course not found' });
+        }
+
+        // Get all conducted sessions for this course (excluding CANCELLED)
+        const sessions = await AttendanceSession.find({
+            courseId,
+            organizationId,
+            status: { $ne: 'CANCELLED' }
+        }).sort({ startTime: 1 });
+
+        // Calculate session count by lectureType
+        const lectureTypeCounts = {};
+        sessions.forEach(s => {
+            const type = s.lectureType || 'Lecture';
+            lectureTypeCounts[type] = (lectureTypeCounts[type] || 0) + 1;
+        });
+
+        // Standard lecture types supported by Attendance Shield
+        const standardTypes = [
+            'Lecture',
+            'Tutorial',
+            'Practical',
+            'Workshop',
+            'Lab',
+            'Field Visit',
+            'Field Work',
+            'Presentation'
+        ];
+
+        // Combine standard types and any extra types that might have been recorded
+        const allTypesSet = new Set([...standardTypes, ...Object.keys(lectureTypeCounts)]);
+        const allLectureTypes = Array.from(allTypesSet);
+        const totalSessionsConducted = sessions.length;
+
+        // Get all enrolled students in this course
+        const enrolledMembers = await CourseMember.find({
+            courseId,
+            organizationId,
+            status: 'ACTIVE'
+        })
+        .populate({
+            path: 'organizationMemberId',
+            select: 'firstName lastName studentId userId'
+        })
+        .populate({
+            path: 'userId',
+            select: 'firstName lastName email studentId'
+        });
+
+        // Get all PRESENT attendance records for these sessions
+        const sessionIds = sessions.map(s => s._id);
+        const records = await AttendanceRecord.find({
+            sessionId: { $in: sessionIds },
+            courseId,
+            organizationId,
+            status: 'PRESENT'
+        }).select('sessionId organizationMemberId userId');
+
+        // Map session ID to lectureType
+        const sessionTypeMap = {};
+        sessions.forEach(s => {
+            sessionTypeMap[s._id.toString()] = s.lectureType || 'Lecture';
+        });
+
+        // Map student identifier -> set of attended session IDs
+        const studentAttendedMap = {};
+        records.forEach(r => {
+            const memberKey = r.organizationMemberId?.toString() || r.userId?.toString();
+            if (!studentAttendedMap[memberKey]) {
+                studentAttendedMap[memberKey] = new Set();
+            }
+            studentAttendedMap[memberKey].add(r.sessionId.toString());
+        });
+
+        const minPercentage = req.query.threshold 
+            ? Number(req.query.threshold) 
+            : (course.attendanceSettings?.minOverallPercentage ?? 80);
+
+        let typeRequirements = course.attendanceSettings?.typeRequirements || [];
+        if (req.query.typeRequirements) {
+            try {
+                const parsed = JSON.parse(req.query.typeRequirements);
+                if (Array.isArray(parsed)) typeRequirements = parsed;
+            } catch (e) {
+                // Ignore parse error
+            }
+        }
+
+        // Build student report rows
+        const studentRows = enrolledMembers.map(em => {
+            const orgMember = em.organizationMemberId;
+            const user = em.userId;
+
+            const memberKey = orgMember?._id?.toString() || user?._id?.toString();
+            const attendedSessions = studentAttendedMap[memberKey] || new Set();
+
+            const fName = orgMember?.firstName || user?.firstName || '';
+            const lName = orgMember?.lastName || user?.lastName || '';
+            const fullName = `${fName} ${lName}`.trim() || 'Student';
+            const studentId = orgMember?.studentId || user?.studentId || '-';
+            const email = user?.email || '';
+
+            // Count per lecture type
+            const attendanceByType = {};
+            allLectureTypes.forEach(type => {
+                attendanceByType[type] = 0;
+            });
+
+            attendedSessions.forEach(sessionId => {
+                const type = sessionTypeMap[sessionId];
+                if (type && attendanceByType[type] !== undefined) {
+                    attendanceByType[type] += 1;
+                }
+            });
+
+            const totalAttended = attendedSessions.size;
+            const percentage = totalSessionsConducted > 0 
+                ? Math.round((totalAttended / totalSessionsConducted) * 100) 
+                : 0;
+
+            let isEligible = percentage >= minPercentage;
+            if (Array.isArray(typeRequirements) && typeRequirements.length > 0) {
+                for (const reqItem of typeRequirements) {
+                    if (reqItem.minSessions > 0) {
+                        const attendedForType = attendanceByType[reqItem.lectureType] || 0;
+                        if (attendedForType < reqItem.minSessions) {
+                            isEligible = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return {
+                studentId,
+                name: fullName,
+                email,
+                attendanceByType,
+                totalAttended,
+                totalConducted: totalSessionsConducted,
+                percentage,
+                isEligible
+            };
+        });
+
+        // Sort students naturally by studentId, then name
+        studentRows.sort((a, b) => {
+            if (a.studentId !== '-' && b.studentId !== '-') {
+                return a.studentId.localeCompare(b.studentId, undefined, { numeric: true });
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        const instructorUser = course.instructor?.userId;
+        const instructorName = instructorUser 
+            ? `${instructorUser.firstName || ''} ${instructorUser.lastName || ''}`.trim() 
+            : 'Unassigned';
+
+        res.json({
+            organization: {
+                name: course.organizationId?.name || '',
+                logo: course.organizationId?.avatarUrl || ''
+            },
+            course: {
+                id: course._id,
+                name: course.name,
+                code: course.code,
+                batch: course.batch || '',
+                semester: course.semester || '',
+                instructor: {
+                    name: instructorName,
+                    email: instructorUser?.email || ''
+                },
+                attendanceSettings: {
+                    minOverallPercentage: minPercentage,
+                    typeRequirements
+                }
+            },
+            lectureTypeSummary: allLectureTypes.map(type => ({
+                type,
+                conducted: lectureTypeCounts[type] || 0
+            })),
+            totalSessionsConducted,
+            totalStudentsEnrolled: enrolledMembers.length,
+            students: studentRows
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 module.exports = {
     getCourses,
     createCourse,
@@ -757,6 +1028,7 @@ module.exports = {
     deleteCourse,
     removeMemberFromCourse,
     getCourseStudentAttendance,
+    getCourseAttendanceReport,
     validateImportCourses,
     bulkCreateCourses
 };

@@ -27,7 +27,7 @@ const AuthLayout = () => {
             <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-500/20 blur-[120px] pointer-events-none"></div>
 
             {/* Main Container */}
-            <div className="w-full max-w-6xl bg-white/10 backdrop-blur-xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row relative z-10 min-h-0 sm:min-h-[600px] lg:min-h-[750px]">
+            <div className="w-full max-w-6xl bg-transparent sm:bg-white/10 sm:backdrop-blur-xl rounded-none sm:rounded-[2.5rem] shadow-none sm:shadow-2xl overflow-hidden flex flex-col lg:flex-row relative z-10 min-h-0 sm:min-h-[600px] lg:min-h-[750px]">
 
                 {/* Left Side - Branding (Hidden on very small screens, visible on lg) */}
                 <div className="w-full lg:w-[45%] p-8 lg:p-16 flex flex-col relative order-2 lg:order-1 hidden sm:flex">
@@ -49,8 +49,8 @@ const AuthLayout = () => {
                 </div>
 
                 {/* Right Side - Form Container */}
-                <div className="w-full lg:w-[55%] p-2 sm:p-6 lg:p-6 flex items-stretch order-1 lg:order-2 bg-white/40 lg:bg-transparent">
-                    <div className="w-full h-full max-w-[580px] mx-auto bg-white rounded-2xl shadow-2xl border border-slate-100 px-5 sm:px-12 lg:px-20 py-8 sm:py-10 flex flex-col justify-center">
+                <div className="w-full lg:w-[55%] p-0 sm:p-6 lg:p-6 flex items-stretch order-1 lg:order-2 bg-transparent">
+                    <div className="w-full h-full max-w-[580px] mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-100 px-5 sm:px-12 lg:px-20 py-8 sm:py-10 flex flex-col justify-center">
                         <div className="sm:hidden mb-6 text-center flex justify-center">
                             <img src="/logo-dark.png" alt="Attendance Shield" className="h-8 w-auto object-contain" />
                         </div>
