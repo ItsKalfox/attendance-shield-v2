@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Social & Messaging Link Preview Meta Tags**: Configured Open Graph (`og:image`, `og:title`, `og:description`, `og:type`) and Twitter Card (`twitter:card`, `twitter:image`) metadata in `index.html` linked to `/og-image.png` (1733×908) to display rich visual preview cards when sharing links on WhatsApp, Twitter/X, Facebook, Discord, Slack, and LinkedIn.
 
+### Fixed
+- **Cloud SMTP IPv4 Resolution (`ENETUNREACH` Fix)**: Explicitly resolved `SMTP_HOST` to an IPv4 address before initializing the Nodemailer transport in `backend/src/utils/sendEmail.js` with SNI `servername` support and whitespace-safe password sanitization. Prevents `connect ENETUNREACH` and `ETIMEDOUT` connection errors on cloud environments (like Render) that lack outbound IPv6 routing.
+
 ---
 
 ## [0.0.2-beta] - 2026-10-18
