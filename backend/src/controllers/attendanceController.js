@@ -157,9 +157,15 @@ const scanAttendance = async (req, res, next) => {
         const sessionStartMs = new Date(session.startTime).getTime();
         const sessionExpiryMs = new Date(session.expiresAt).getTime();
 
-        if (session.status === 'SCHEDULED' && (nowMs + CLOCK_SKEW_GRACE_MS < sessionStartMs)) {
-            return res.status(400).json({ message: 'The session has not started yet.' });
+        if (session.status === 'SCHEDULED') {
+            if (nowMs + CLOCK_SKEW_GRACE_MS < sessionStartMs) {
+                return res.status(400).json({ message: 'The session has not started yet.' });
+            }
+            // Start time arrived - auto-transition session to ACTIVE on first scan
+            session.status = 'ACTIVE';
+            await session.save();
         }
+
         if (session.status !== 'ACTIVE' || (nowMs - CLOCK_SKEW_GRACE_MS >= sessionExpiryMs)) {
             return res.status(400).json({ message: 'Attendance Session Expired' });
         }

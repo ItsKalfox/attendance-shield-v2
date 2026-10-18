@@ -183,7 +183,13 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
         setError('');
 
         try {
-            const res = await api.post(`/organizations/${activeOrganization._id}/sessions`, formData);
+            const payload = {
+                ...formData,
+                startTime: start.toISOString(),
+                expiresAt: expires.toISOString(),
+                timezoneOffset: new Date().getTimezoneOffset()
+            };
+            const res = await api.post(`/organizations/${activeOrganization._id}/sessions`, payload);
             onSessionCreated(res.data);
             onClose();
         } catch (err) {

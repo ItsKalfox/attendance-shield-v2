@@ -36,22 +36,36 @@ const getSessions = async (req, res, next) => {
 // @access  Private (ADMIN/OWNER/INSTRUCTOR)
 const createSession = async (req, res, next) => {
     try {
-        const { courseId, instructorId, lectureType, startTime, expiresAt, isGeofenceEnabled, geofenceCoordinates, geofenceRadius } = req.body;
+        const { courseId, instructorId, lectureType, startTime, expiresAt, timezoneOffset, isGeofenceEnabled, geofenceCoordinates, geofenceRadius } = req.body;
         const organizationId = req.params.organizationId;
 
         if (!startTime || !expiresAt) {
             return res.status(400).json({ message: 'Session start time and expiry time are required' });
         }
 
-        const startDate = new Date(startTime);
-        const expiresAtDate = new Date(expiresAt);
+        // Helper to parse dates safely with or without explicit timezone indicators
+        const parseDateInput = (val, tzOffset) => {
+            if (!val) return null;
+            if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(val.trim())) {
+                // If string has no timezone indicator (no Z and no +/- offset) and client offset provided
+                if (typeof tzOffset === 'number' && !isNaN(tzOffset)) {
+                    const utcMs = new Date(val + 'Z').getTime() + tzOffset * 60000;
+                    return new Date(utcMs);
+                }
+            }
+            return new Date(val);
+        };
 
-        if (isNaN(startDate.getTime()) || isNaN(expiresAtDate.getTime())) {
+        const startDate = parseDateInput(startTime, timezoneOffset);
+        const expiresAtDate = parseDateInput(expiresAt, timezoneOffset);
+
+        if (!startDate || isNaN(startDate.getTime()) || !expiresAtDate || isNaN(expiresAtDate.getTime())) {
             return res.status(400).json({ message: 'Invalid start time or expiry time format' });
         }
 
         // Allow a 15-minute buffer for form filling and recent lecture starts
-        const nowBuffer = new Date(Date.now() - 15 * 60 * 1000);
+        const now = new Date();
+        const nowBuffer = new Date(now.getTime() - 15 * 60 * 1000);
         if (startDate < nowBuffer) {
             return res.status(400).json({ message: 'Session start time cannot be more than 15 minutes in the past' });
         }
@@ -84,17 +98,21 @@ const createSession = async (req, res, next) => {
             }
         }
 
+        // If startTime is more than 60 seconds into the future, treat as SCHEDULED; otherwise immediately ACTIVE
+        const isFuture = (startDate.getTime() - now.getTime()) > 60 * 1000;
+        const initialStatus = isFuture ? 'SCHEDULED' : 'ACTIVE';
+
         const sessionData = {
             organizationId,
             courseId,
             instructorId,
             lectureType,
-            startTime,
+            startTime: startDate,
             expiresAt: expiresAtDate,
             confirmationDeadline,
             qrToken,
             qrTokenHash,
-            status: new Date(startTime) > new Date() ? 'SCHEDULED' : 'ACTIVE'
+            status: initialStatus
         };
 
         if (isGeofenceEnabled) {
