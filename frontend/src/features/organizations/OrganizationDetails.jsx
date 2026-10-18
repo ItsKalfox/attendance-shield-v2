@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { 
     Building2, Users, Shield, Upload, Activity, 
     ChevronDown, ChevronUp, PlusCircle, Download, 
-    FileSpreadsheet, FileJson, Archive, Loader2, HardDriveDownload 
+    FileSpreadsheet, FileJson, Archive, Loader2, HardDriveDownload
 } from 'lucide-react';
 import CreateOrganizationModal from '../organizations/CreateOrganizationModal';
 import JSZip from 'jszip';
@@ -422,23 +422,23 @@ const OrganizationDetails = () => {
     
     if (!activeOrganization || !organization) {
         return (
-            <div className="w-full animate-fade-in flex flex-col items-center justify-center py-12 sm:py-16 px-4">
-                <div className="card max-w-md w-full text-center p-8 sm:p-10 bg-white border border-slate-200/90 shadow-xl rounded-3xl">
-                    <div className="w-14 h-14 bg-slate-100 text-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xs border border-slate-200/80">
-                        <Building2 size={26} className="text-brand-600" />
-                    </div>
-                    <h3 className="text-xl font-extrabold text-slate-900 tracking-tight mb-2">No Organization Selected</h3>
-                    <p className="text-xs sm:text-sm text-slate-500 mb-7 leading-relaxed">
-                        Create an organization to begin managing member rosters, instructor assignments, and attendance policies.
-                    </p>
-                    <button 
-                        className="btn btn-primary w-full py-3 shadow-lg shadow-brand-500/25 flex items-center justify-center font-bold text-xs sm:text-sm rounded-xl transition hover:shadow-brand-500/40 active:scale-95" 
-                        onClick={() => setShowCreateModal(true)}
-                    >
-                        <PlusCircle size={16} className="mr-2 text-white shrink-0" />
-                        Create Organization
-                    </button>
+            <div className="flex flex-col items-center justify-center min-h-[55vh] py-12 px-4 animate-fade-in text-center">
+                <div className="w-16 h-16 bg-slate-100 text-slate-700 rounded-2xl flex items-center justify-center mb-5 shadow-xs border border-slate-200/80">
+                    <Building2 size={32} className="text-brand-600" />
                 </div>
+
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-6">
+                    No Organization Selected
+                </h2>
+
+                <button 
+                    className="btn btn-primary px-8 py-3.5 shadow-lg shadow-brand-500/25 flex items-center justify-center font-bold text-sm rounded-xl transition hover:shadow-brand-500/40 active:scale-95" 
+                    onClick={() => setShowCreateModal(true)}
+                >
+                    <PlusCircle size={18} className="mr-2 text-white shrink-0" />
+                    Create Organization
+                </button>
+
                 {showCreateModal && <CreateOrganizationModal onClose={() => setShowCreateModal(false)} />}
             </div>
         );

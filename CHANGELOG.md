@@ -9,11 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.0.2-beta] - 2026-10-18
+
+### Changed
+- **Streamlined Navigation for New Users**: Restricted sidebar and mobile navigation to only **Dashboard** and **Settings** when no active organization exists, hiding the Organization tab until a workspace is created or joined.
+- **Empty State Desktop Layouts**: Re-architected the empty Dashboard view to render directly onto the page canvas without restrictive outer card boxing, eliminating awkward desktop whitespace.
+- **Quiet Documentation Workflow**: Replaced individual feature cards in the Dashboard empty state with a single, full-width, understated documentation card with gray point-wise guidance and no icons.
+- **Minimalist Organization Empty State**: Cleaned up `OrganizationDetails` to display a centered emblem, title, and action button without unnecessary description text or extra cards.
+
 ### Fixed
 - **Timezone Synchronization across Global Regions**: Converted frontend datetime picker inputs to explicit UTC ISO 8601 strings (`.toISOString()`) accompanied by client timezone offsets. Prevents the 5.5-hour offset bug when cloud servers run in UTC and users schedule sessions in local timezones.
 - **Immediate Session Auto-Activation**: Added a 60-second clock-drift grace window on session creation and on-the-fly status auto-transition upon the first student scan, eliminating false "Session not started yet" rejections caused by slight clock skew.
 - **Render / Node 24 Build Resolution**: Created `.npmrc` with `legacy-peer-deps=true` at both repository root and backend to resolve the peer-dependency conflict between `multer-storage-cloudinary` and `cloudinary` v2.
 - **CORS & WebSocket Origin Sanitization**: Implemented centralized URL normalization (`backend/src/config/client.js`) that automatically strips trailing slashes and supports comma-separated origins for production and local environments.
+- **Route Access Protection**: Enforced `RoleRoute` protection on `/app/organization` to smoothly redirect unassigned users back to `/app/dashboard`.
 
 ### Added
 - **Unified WebSocket Connection Utility**: Created `frontend/src/utils/socket.js` to centrally derive the WebSocket connection origin from `VITE_API_URL` and ensure consistent credentials across `ProjectorModal` and `SessionDetails`.

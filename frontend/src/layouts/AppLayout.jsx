@@ -62,7 +62,6 @@ const AppLayout = () => {
     // Dynamic Navigation Items
     const navItems = !activeOrganization ? [
         { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/app/organization', label: 'Organization', icon: Building2 },
         { path: '/app/settings', label: 'Settings', icon: Settings },
     ] : activeOrganization.userRole === 'ATTENDEE' ? [
         { path: '/app/dashboard', label: 'Dashboard', icon: LayoutDashboard },

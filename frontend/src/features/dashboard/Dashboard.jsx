@@ -18,7 +18,8 @@ import {
     AlertTriangle, 
     Radio, 
     FileText, 
-    Award
+    Award,
+    Check
 } from 'lucide-react';
 import CreateOrganizationModal from '../organizations/CreateOrganizationModal';
 
@@ -77,14 +78,11 @@ const Dashboard = () => {
         const userName = user?.firstName ? `, ${user.firstName}` : '';
 
         return (
-            <div className="animate-fade-in max-w-5xl mx-auto py-4 sm:py-8 px-1 sm:px-4 space-y-6 sm:space-y-8">
-                {/* Modern Hero Launchpad Card */}
-                <div className="relative overflow-hidden bg-white border border-slate-200/90 shadow-xl rounded-3xl p-6 sm:p-10 text-center">
-                    {/* Subtle ambient gradient glow */}
-                    <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
-                    
-                    {/* Attendance Shield Logo (Dark version for light card background) */}
-                    <div className="relative z-10 flex justify-center mb-6">
+            <div className="animate-fade-in space-y-8 sm:space-y-10 pb-10">
+                {/* Hero & Welcome Section directly on Dashboard canvas */}
+                <div className="text-center flex flex-col items-center pt-2 sm:pt-4">
+                    {/* Logo */}
+                    <div className="mb-5">
                         <img 
                             src="/logo-dark.png" 
                             alt="Attendance Shield" 
@@ -93,95 +91,89 @@ const Dashboard = () => {
                     </div>
 
                     {/* Headline */}
-                    <h1 className="relative z-10 text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight max-w-2xl mx-auto leading-tight">
+                    <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight mb-3">
                         Welcome to Attendance Shield{userName}!
                     </h1>
                     
-                    <p className="relative z-10 text-sm sm:text-base text-slate-500 max-w-xl mx-auto mt-3 mb-7 leading-relaxed">
+                    <p className="text-sm sm:text-base text-slate-500 leading-relaxed mb-6 max-w-2xl">
                         Let's get your organization's attendance workspace set up. Create an organization to start managing members, courses, and secure attendance sessions.
                     </p>
 
-                    {/* Primary Action Button (no awkward green square wrapper behind icon) */}
-                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    {/* Core Capability Badges */}
+                    <div className="flex flex-wrap gap-2 mb-7 justify-center">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs text-slate-600 text-xs font-medium">
+                            <Check size={12} className="text-brand-600 shrink-0" /> Anti-Spoofing QR
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs text-slate-600 text-xs font-medium">
+                            <Check size={12} className="text-brand-600 shrink-0" /> Geofence Protection
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs text-slate-600 text-xs font-medium">
+                            <Check size={12} className="text-brand-600 shrink-0" /> Projector Live Mode
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-slate-200/90 shadow-2xs text-slate-600 text-xs font-medium">
+                            <Check size={12} className="text-brand-600 shrink-0" /> Audit PDF Exports
+                        </span>
+                    </div>
+
+                    {/* Primary Action Button */}
+                    <div className="flex flex-col items-center gap-3">
                         <button 
-                            className="btn btn-primary w-full sm:w-auto px-7 py-3.5 shadow-lg shadow-brand-500/25 flex items-center justify-center font-bold text-sm rounded-xl transition hover:shadow-brand-500/40 active:scale-95"
+                            className="btn btn-primary px-8 py-3.5 shadow-lg shadow-brand-500/25 flex items-center justify-center font-bold text-sm rounded-xl transition hover:shadow-brand-500/40 active:scale-95"
                             onClick={() => setShowCreateOrgModal(true)}
                         >
                             <PlusCircle size={18} className="mr-2 text-white shrink-0" />
                             Create Organization to Get Started
                         </button>
-                    </div>
-
-                    {/* Helpful subtle footer note */}
-                    <div className="relative z-10 mt-6 pt-5 border-t border-slate-100 flex items-center justify-center text-xs text-slate-400">
-                        <span>Invited to an existing organization? Check your email or ask your organization administrator for an invite.</span>
+                        <p className="text-xs text-slate-400">
+                            Invited to an existing organization? Check your email or ask your organization administrator for an invite.
+                        </p>
                     </div>
                 </div>
 
-                {/* Documentation: How Attendance Shield Works */}
-                <div className="rounded-2xl border border-slate-200/75 bg-slate-50/60 p-5 sm:p-6 text-left">
-                    <div className="flex items-center justify-between pb-3.5 mb-5 border-b border-slate-200/60">
-                        <div className="flex items-center gap-2">
-                            <FileText size={15} className="text-slate-400" />
-                            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                                How Attendance Shield Works &bull; Workflow Documentation
-                            </h2>
-                        </div>
-                        <span className="hidden sm:inline-block text-[11px] font-mono text-slate-400">
-                            Quick Reference
-                        </span>
-                    </div>
+                {/* Workflow / Documentation in a single, understated card */}
+                <div className="card w-full bg-white p-6 sm:p-8 border border-slate-200/80 shadow-xs rounded-2xl sm:rounded-3xl">
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-6">
+                        How Attendance Shield Works
+                    </h2>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-5 lg:divide-x lg:divide-slate-200/60">
-                        {/* Step 01 */}
-                        <div className="space-y-1.5 lg:pr-4">
-                            <div className="text-[11px] font-mono font-semibold text-slate-400">
-                                Step 01
-                            </div>
-                            <h3 className="text-xs font-bold text-slate-700">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+                        {/* Point 1 */}
+                        <div className="space-y-1.5">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-700">
                                 1. Create Workspace
                             </h3>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Establish your organization profile, configure attendance tolerances, and initialize your academic departments.
+                                Set up your organization profile, institutional branding, and default attendance parameters.
                             </p>
                         </div>
 
-                        {/* Step 02 */}
-                        <div className="space-y-1.5 lg:px-4">
-                            <div className="text-[11px] font-mono font-semibold text-slate-400">
-                                Step 02
-                            </div>
-                            <h3 className="text-xs font-bold text-slate-700">
+                        {/* Point 2 */}
+                        <div className="space-y-1.5">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-700">
                                 2. Add Members & Staff
                             </h3>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Invite lecturers with role-based permissions and batch-import attendees or students directly via CSV templates.
+                                Invite lecturers with role-based access and batch-import attendees via CSV rosters.
                             </p>
                         </div>
 
-                        {/* Step 03 */}
-                        <div className="space-y-1.5 lg:px-4">
-                            <div className="text-[11px] font-mono font-semibold text-slate-400">
-                                Step 03
-                            </div>
-                            <h3 className="text-xs font-bold text-slate-700">
+                        {/* Point 3 */}
+                        <div className="space-y-1.5">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-700">
                                 3. Build Courses
                             </h3>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Structure courses by batch or term, assign teaching faculty, and designate minimum attendance criteria.
+                                Structure courses by batch or term, assign instructors, and set attendance thresholds.
                             </p>
                         </div>
 
-                        {/* Step 04 */}
-                        <div className="space-y-1.5 lg:pl-4">
-                            <div className="text-[11px] font-mono font-semibold text-slate-400">
-                                Step 04
-                            </div>
-                            <h3 className="text-xs font-bold text-slate-700">
+                        {/* Point 4 */}
+                        <div className="space-y-1.5">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-700">
                                 4. Run Sessions & Audits
                             </h3>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Host dynamic anti-spoofing QR code sessions with GPS validation and generate tamper-proof PDF audit sheets.
+                                Launch rotating QR sessions with GPS boundaries and export verified, tamper-proof audit sheets.
                             </p>
                         </div>
                     </div>

@@ -111,7 +111,7 @@ function App() {
                   <Route path="courses/:courseId" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><CourseDetails /></RoleRoute>} />
                   <Route path="attendance" element={<RoleRoute allowedRoles={['ATTENDEE', 'OWNER', 'INSTRUCTOR']}><MyAttendance /></RoleRoute>} />
                   <Route path="members" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR']}><Members /></RoleRoute>} />
-                  <Route path="organization" element={<OrganizationDetails />} />
+                  <Route path="organization" element={<RoleRoute allowedRoles={['OWNER', 'ADMIN', 'INSTRUCTOR', 'ATTENDEE']}><OrganizationDetails /></RoleRoute>} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
 
