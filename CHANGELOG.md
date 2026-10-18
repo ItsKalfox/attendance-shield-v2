@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Social & Messaging Link Preview Meta Tags**: Configured Open Graph (`og:image`, `og:title`, `og:description`, `og:type`) and Twitter Card (`twitter:card`, `twitter:image`) metadata in `index.html` linked to `/og-image.png` (1733×908) to display rich visual preview cards when sharing links on WhatsApp, Twitter/X, Facebook, Discord, Slack, and LinkedIn.
 
+### Changed
+- **Official Brand Favicon Standardization**: Unlinked and removed placeholder `favicon.svg` from the frontend public assets to prioritize the official 32×32 `favicon.png` and `favicon.ico` brand icon across browser tabs.
+
 ### Fixed
 - **Cloud SMTP IPv4 Resolution (`ENETUNREACH` Fix)**: Explicitly resolved `SMTP_HOST` to an IPv4 address before initializing the Nodemailer transport in `backend/src/utils/sendEmail.js` with SNI `servername` support and whitespace-safe password sanitization. Prevents `connect ENETUNREACH` and `ETIMEDOUT` connection errors on cloud environments (like Render) that lack outbound IPv6 routing.
 
