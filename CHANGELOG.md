@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.0.3-beta] - 2026-10-18
+
 ### Added
 - **Social & Messaging Link Preview Meta Tags**: Configured Open Graph (`og:image`, `og:title`, `og:description`, `og:type`) and Twitter Card (`twitter:card`, `twitter:image`) metadata in `index.html` linked to `/og-image.png` (1733×908) to display rich visual preview cards when sharing links on WhatsApp, Twitter/X, Facebook, Discord, Slack, and LinkedIn.
 
