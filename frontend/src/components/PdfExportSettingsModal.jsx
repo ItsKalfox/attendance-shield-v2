@@ -3,15 +3,10 @@ import { createPortal } from 'react-dom';
 import { useModalDismiss } from '../hooks/useModalDismiss';
 import { 
     X, 
-    SlidersHorizontal, 
     RotateCcw, 
     Download, 
     Check, 
     Building2, 
-    FileText, 
-    CheckCircle2, 
-    PenTool, 
-    Percent, 
     BookmarkCheck,
     Layers,
     Save,

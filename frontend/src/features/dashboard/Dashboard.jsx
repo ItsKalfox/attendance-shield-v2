@@ -18,12 +18,7 @@ import {
     AlertTriangle, 
     Radio, 
     FileText, 
-    ExternalLink,
-    Clock,
-    Award,
-    Shield,
-    Building2,
-    Sparkles
+    Award
 } from 'lucide-react';
 import CreateOrganizationModal from '../organizations/CreateOrganizationModal';
 

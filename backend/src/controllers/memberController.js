@@ -4,7 +4,6 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const dns = require('dns').promises;
-const sendEmail = require('../utils/sendEmail');
 
 // @desc    Get all members of an organization
 // @route   GET /api/organizations/:organizationId/members
@@ -34,8 +33,6 @@ const addMember = async (req, res, next) => {
         }
 
         let user = await User.findOne({ email });
-        let isNewUser = false;
-        let plainPassword = '';
 
         if (!user) {
             // Generate secure 64 character password
@@ -49,7 +46,6 @@ const addMember = async (req, res, next) => {
                 email,
                 passwordHash
             });
-            isNewUser = true;
         }
 
         // Check if already a member

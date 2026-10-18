@@ -27,7 +27,7 @@ const Sessions = lazy(() => import('./features/sessions/Sessions'));
 const SessionDetails = lazy(() => import('./features/sessions/SessionDetails'));
 const Members = lazy(() => import('./features/members/Members'));
 const MyAttendance = lazy(() => import('./features/attendance/MyAttendance'));
-const OrganizationDetails = lazy(() => import('./features/organization/OrganizationDetails'));
+const OrganizationDetails = lazy(() => import('./features/organizations/OrganizationDetails'));
 const Settings = lazy(() => import('./features/settings/Settings'));
 
 const PageFallback = () => (

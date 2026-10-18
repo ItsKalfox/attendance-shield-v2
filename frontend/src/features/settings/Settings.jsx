@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
-import { CloudUpload, User as UserIcon, Mail, KeyRound, Clock, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { User as UserIcon, Mail, KeyRound, Clock, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { MobileInstallAppCard } from '../../components/InstallPwaModal';
+import { APP_VERSION, RELEASE_CHANNEL } from '../../config/version';
 
 const Settings = () => {
     const { user, setUser } = useAuth();
@@ -13,7 +14,7 @@ const Settings = () => {
     const [savingProfile, setSavingProfile] = useState(false);
 
     // Email state
-    const [email, setEmail] = useState(user?.email || '');
+    const email = user?.email || '';
     
     // Password OTP state
     const [showPasswordFields, setShowPasswordFields] = useState(false);
@@ -48,15 +49,6 @@ const Settings = () => {
         return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
-    // Common function to update user context
-    const refreshUser = async () => {
-        try {
-            const res = await api.get('/auth/me');
-            setUser(res.data);
-        } catch (error) {
-            console.error(error);
-        }
-    };
 
     const handleSaveProfile = async () => {
         try {
@@ -490,6 +482,37 @@ const Settings = () => {
                 )}
             </div>
             
+            {/* Application & Version Information Card */}
+            <div className="card p-6 sm:p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl sm:rounded-3xl">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <img 
+                            src="/apple-touch-icon.png" 
+                            alt="Attendance Shield" 
+                            className="w-12 h-12 rounded-2xl object-cover shadow-sm border border-slate-200/80 shrink-0" 
+                        />
+                        <div>
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                                <h2 className="text-lg font-bold text-slate-800">Attendance Shield</h2>
+                                <span className="px-2 py-0.5 text-[11px] font-bold tracking-wider uppercase rounded-md bg-slate-100 border border-slate-200 text-slate-500 select-none">
+                                    {RELEASE_CHANNEL}
+                                </span>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                                Secure real-time classroom attendance verification platform
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                        <span className="text-xs font-semibold text-slate-500">Version</span>
+                        <span className="font-mono text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/80">
+                            v{APP_VERSION}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             {/* Permanent Mobile Install & Instructions Card (Mobile-only) */}
             <MobileInstallAppCard />
 

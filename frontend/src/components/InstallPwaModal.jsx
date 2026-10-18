@@ -8,9 +8,7 @@ import {
     X, 
     Check, 
     Smartphone, 
-    Sparkles, 
-    ArrowDown,
-    ExternalLink
+    ArrowDown
 } from 'lucide-react';
 
 /**

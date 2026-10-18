@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
 import api from '../../services/api';
-import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag, Trash2, Download, RefreshCw, MoreVertical, Search, ArrowUp, Info, Loader2, Settings, Tv, Radio } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle, Clock, Copy, Check, Flag, Trash2, Download, RefreshCw, MoreVertical, Search, ArrowUp, Info, Loader2, Settings, Tv } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/ConfirmModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { io } from 'socket.io-client';
+import { createSocketConnection } from '../../utils/socket';
 import { generateSessionAttendancePDF } from './exportSessionAttendancePdf';
 import PdfExportSettingsModal from '../../components/PdfExportSettingsModal';
 import { getPdfExportSettings, savePdfExportSettings } from '../../utils/pdfSettingsStorage';
@@ -72,7 +72,6 @@ const SessionDetails = () => {
     const [isPdfSettingsOpen, setIsPdfSettingsOpen] = useState(false);
     const [showProjectorModal, setShowProjectorModal] = useState(false);
     const [currentTime, setCurrentTime] = useState(Date.now());
-    const [liveTickerPulse, setLiveTickerPulse] = useState(false);
 
     // Live clock interval for expiry countdown
     useEffect(() => {
@@ -183,8 +182,7 @@ const SessionDetails = () => {
 
     // WebSockets
     useEffect(() => {
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-        const socket = io(socketUrl, { withCredentials: true });
+        const socket = createSocketConnection();
 
         socket.on('connect', () => socket.emit('join_session', sessionId));
 
@@ -195,8 +193,6 @@ const SessionDetails = () => {
                 return [newRecord, ...prev];
             });
             fetchStats();
-            setLiveTickerPulse(true);
-            setTimeout(() => setLiveTickerPulse(false), 2000);
         });
 
         socket.on('attendance_removed', (recordId) => {
@@ -555,51 +551,54 @@ const SessionDetails = () => {
 
         if (session.status === 'SCHEDULED' || currentTime < startMs) {
             const diff = Math.max(0, startMs - currentTime);
-            const mins = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
             const secs = Math.floor((diff % 60000) / 1000);
             return {
-                text: `Starts in: ${mins}m ${String(secs).padStart(2, '0')}s`,
-                style: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                text: `Starts in: ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`,
+                style: 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm'
             };
         }
 
         if (session.status === 'ACTIVE' && currentTime < expiryMs) {
             const diff = Math.max(0, expiryMs - currentTime);
-            const mins = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
             const secs = Math.floor((diff % 60000) / 1000);
             const isUrgent = diff < 5 * 60000;
             const isCritical = diff < 60000;
             return {
-                text: `Expires in: ${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`,
+                text: `Expires in: ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`,
                 style: isCritical 
-                    ? 'bg-rose-100 text-rose-700 border-rose-300 animate-pulse font-bold'
+                    ? 'bg-rose-600 text-white border-rose-600 animate-pulse font-bold shadow-sm'
                     : isUrgent 
-                    ? 'bg-amber-100 text-amber-800 border-amber-300 font-bold' 
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
+                    ? 'bg-amber-600 text-white border-amber-600 font-bold shadow-sm' 
+                    : 'bg-emerald-600 text-white border-emerald-600 font-bold shadow-sm'
             };
         }
 
         if (session.status === 'ACTIVE' && currentTime >= expiryMs) {
             return {
                 text: 'Attendance Window Expired',
-                style: 'bg-amber-50 text-amber-700 border-amber-200'
+                style: 'bg-amber-500 text-white border-amber-500 font-semibold shadow-sm'
             };
         }
 
         if (session.status === 'PENDING_CONFIRMATION') {
             const diff = Math.max(0, deadlineMs - currentTime);
-            const mins = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const mins = Math.floor((diff % 3600000) / 60000);
             const secs = Math.floor((diff % 60000) / 1000);
             return {
-                text: diff > 0 ? `Confirm by: ${mins}m ${String(secs).padStart(2, '0')}s` : 'Confirmation Overdue',
-                style: 'bg-amber-50 text-amber-700 border-amber-200'
+                text: diff > 0 ? `Confirm by: ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}` : 'Confirmation Overdue',
+                style: 'bg-amber-500 text-white border-amber-500 font-semibold shadow-sm'
             };
         }
 
         if (session.status === 'CONFIRMED') {
             return {
                 text: 'Session Concluded',
-                style: 'bg-slate-100 text-slate-600 border-slate-200'
+                style: 'bg-slate-700 text-white border-slate-700 font-medium'
             };
         }
 
@@ -635,7 +634,7 @@ const SessionDetails = () => {
                             </p>
                             {countdownInfo && (
                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${countdownInfo.style}`}>
-                                    <Clock size={12} />
+                                    <Clock size={12} className="text-white shrink-0" />
                                     <span>{countdownInfo.text}</span>
                                 </span>
                             )}
@@ -729,12 +728,6 @@ const SessionDetails = () => {
                             <div>
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <h3 className="text-base sm:text-lg font-bold text-slate-800">Attendance Rate</h3>
-                                    {session?.status === 'ACTIVE' && (
-                                        <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 transition-transform ${liveTickerPulse ? 'scale-105 bg-emerald-100' : ''}`}>
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                            <span>LIVE CHECK-IN</span>
-                                        </span>
-                                    )}
                                 </div>
                                 <div className="text-xs sm:text-sm text-slate-500 flex flex-wrap gap-2 sm:gap-4">
                                     <div>
@@ -804,12 +797,6 @@ const SessionDetails = () => {
                                     <Users size={18} className="mr-2 text-indigo-400" /> 
                                     Attendance Records ({totalAttendanceRecordsCount})
                                 </h2>
-                                {session?.status === 'ACTIVE' && (
-                                    <span className={`hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 transition-all ${liveTickerPulse ? 'scale-105' : ''}`}>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                        <span>{totalMarked} marked</span>
-                                    </span>
-                                )}
                             </div>
                             <div className="relative w-full sm:w-64">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />

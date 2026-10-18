@@ -6,8 +6,6 @@ const User = require('../models/User');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const { OAuth2Client } = require('google-auth-library');
-const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
     const R = 6371000; // Radius of the earth in m

@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { scanAttendance, getSessionInfo } = require('../controllers/attendanceController');
-const { protect } = require('../middleware/authMiddleware');
 const { scanLimiter } = require('../middleware/rateLimiters');
 
 router.post('/scan', scanLimiter, scanAttendance);

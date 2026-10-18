@@ -60,4 +60,6 @@ const courseSchema = new mongoose.Schema({
     timestamps: true
 });
 
+courseSchema.index({ organizationId: 1 });
+
 module.exports = mongoose.model('Course', courseSchema);

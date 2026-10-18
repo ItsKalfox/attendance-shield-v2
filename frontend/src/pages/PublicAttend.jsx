@@ -6,14 +6,8 @@ import {
     MapPin, 
     Loader2, 
     Navigation, 
-    BookOpen, 
-    User, 
-    Clock, 
     ShieldCheck, 
-    Building2,
-    Calendar,
-    Sparkles,
-    Check
+    Building2
 } from 'lucide-react';
 import api from '../services/api';
 import { useGoogleLogin } from '@react-oauth/google';

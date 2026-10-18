@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
-import { X, Calendar, BookOpen, Layers, Clock, UserCheck, ChevronDown } from 'lucide-react';
+import { X, Calendar, UserCheck, ChevronDown } from 'lucide-react';
 
 const CreateCourseModal = ({ onClose, onCourseCreated }) => {
     const { activeOrganization } = useOrganization();

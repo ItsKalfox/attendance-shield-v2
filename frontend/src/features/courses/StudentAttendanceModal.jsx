@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useAuth } from '../../context/AuthContext';
-import { X, Download, User, Calendar, BookOpen, CheckCircle, AlertTriangle, FileText, Loader2, Settings } from 'lucide-react';
+import { X, Download, FileText, Loader2, Settings } from 'lucide-react';
 import api from '../../services/api';
 import { generateStudentAttendancePDF } from './exportStudentAttendancePdf';
 import PdfExportSettingsModal from '../../components/PdfExportSettingsModal';

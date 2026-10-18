@@ -1,5 +1,5 @@
 // Attendance Shield Service Worker
-const CACHE_NAME = 'attendance-shield-v5-cache';
+const CACHE_NAME = 'attendance-shield-v7-cache';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -7,8 +7,10 @@ const STATIC_ASSETS = [
   '/pwa-192x192.png',
   '/pwa-512x512.png',
   '/apple-touch-icon.png',
-  '/apple-touch-icon-precomposed.png',
   '/apple-touch-icon-180x180.png',
+  '/apple-touch-icon-152x152.png',
+  '/apple-touch-icon-120x120.png',
+  '/apple-touch-icon-precomposed.png',
   '/logo.png'
 ];
 

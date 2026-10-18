@@ -106,7 +106,12 @@ const AppLayout = () => {
                     <div className="relative w-full max-w-sm bg-[#0c2b27]/95 backdrop-blur-2xl rounded-3xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] text-slate-200 flex flex-col max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2.5rem)] overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-10">
                         {/* Card Header */}
                         <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-brand-800/60 shrink-0">
-                            <img src="/logo.png" alt="Attendance Shield" className="w-36 h-auto object-contain" />
+                            <div className="flex items-center gap-2">
+                                <img src="/logo.png" alt="Attendance Shield" className="w-32 h-auto object-contain" />
+                                <span className="px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded-md bg-slate-800/90 border border-slate-700/80 text-slate-400 select-none">
+                                    BETA
+                                </span>
+                            </div>
                             <button 
                                 onClick={() => setMobileMenuOpen(false)} 
                                 className="w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white rounded-full bg-white/10 hover:bg-white/20 transition-all active:scale-95"
@@ -181,8 +186,11 @@ const AppLayout = () => {
 
             {/* Desktop Sidebar */}
             <div className="hidden lg:flex app-sidebar border-none text-slate-300">
-                <div className="flex items-center px-6 shrink-0 pt-8 pb-6">
-                    <img src="/logo.png" alt="Attendance Shield" className="w-44 h-auto drop-shadow-md object-contain" />
+                <div className="flex items-center gap-2.5 px-6 shrink-0 pt-8 pb-6">
+                    <img src="/logo.png" alt="Attendance Shield" className="w-40 h-auto drop-shadow-md object-contain" />
+                    <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-md bg-slate-800/90 border border-slate-700/80 text-slate-400 select-none">
+                        BETA
+                    </span>
                 </div>
                 
                 <div className="px-6 mb-4">

@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { getPrimaryClientUrl } = require('../config/client');
 
 /**
  * Return local logo attachment for inline email embedding (CID)
@@ -111,7 +112,7 @@ const getSignupOtpEmail = ({ name, otp }) => {
  */
 const getWelcomeEmail = ({ name, email }) => {
     const displayName = name ? name.trim().split(' ')[0] : 'there';
-    const clientUrl = process.env.CLIENT_URL || 'https://localhost:5173';
+    const clientUrl = getPrimaryClientUrl();
     const dashboardUrl = `${clientUrl}/app/dashboard`;
 
     const content = `
@@ -219,7 +220,7 @@ const getPasswordResetOtpEmail = ({ name, otp }) => {
  */
 const getPasswordChangedEmail = ({ name, email }) => {
     const displayName = name ? name.trim().split(' ')[0] : 'there';
-    const clientUrl = process.env.CLIENT_URL || 'https://localhost:5173';
+    const clientUrl = getPrimaryClientUrl();
     const loginUrl = `${clientUrl}/login`;
 
     const content = `

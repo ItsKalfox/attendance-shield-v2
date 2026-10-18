@@ -5,6 +5,7 @@ const User = require('../models/User');
 const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const { getLogoAttachment, getOrganizationInvitationEmail } = require('../utils/emailTemplates');
+const { getPrimaryClientUrl } = require('../config/client');
 
 // @desc    Invite a staff member
 // @route   POST /api/organizations/:organizationId/invitations
@@ -56,7 +57,7 @@ const inviteStaff = async (req, res, next) => {
         });
 
         // Send Email using standardized Attendance Shield template
-        const inviteLink = `${process.env.CLIENT_URL || 'https://localhost:5173'}/invitation/${token}`;
+        const inviteLink = `${getPrimaryClientUrl()}/invitation/${token}`;
         const message = `You have been invited to join ${orgName} on Attendance Shield.\n\nAccept your invitation here: ${inviteLink}`;
         const html = getOrganizationInvitationEmail({ orgName, role, inviteLink });
         const attachments = getLogoAttachment();

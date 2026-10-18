@@ -1,7 +1,6 @@
 const Course = require('../models/Course');
 const CourseMember = require('../models/CourseMember');
 const OrganizationMember = require('../models/OrganizationMember');
-const User = require('../models/User');
 const AttendanceSession = require('../models/AttendanceSession');
 const AttendanceRecord = require('../models/AttendanceRecord');
 const mongoose = require('mongoose');

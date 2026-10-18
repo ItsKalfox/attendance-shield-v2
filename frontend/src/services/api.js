@@ -1,8 +1,14 @@
 import axios from 'axios';
 import { safeStorage } from '../utils/storage';
 
+const getApiBaseUrl = () => {
+    const envUrl = import.meta.env.VITE_API_URL?.trim();
+    if (!envUrl) return '/api';
+    return envUrl.replace(/\/+$/, '');
+};
+
 const api = axios.create({
-    baseURL: '/api',
+    baseURL: getApiBaseUrl(),
 });
 
 // Add a request interceptor to include the auth token

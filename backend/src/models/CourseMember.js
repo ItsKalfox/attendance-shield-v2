@@ -36,5 +36,6 @@ const courseMemberSchema = new mongoose.Schema({
 
 // Prevent duplicate course enrollment
 courseMemberSchema.index({ courseId: 1, userId: 1 }, { unique: true });
+courseMemberSchema.index({ courseId: 1, status: 1 });
 
 module.exports = mongoose.model('CourseMember', courseMemberSchema);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Navigate, Link, useSearchParams } from 'react-router-dom';
+import { Outlet, Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const AuthLayout = () => {

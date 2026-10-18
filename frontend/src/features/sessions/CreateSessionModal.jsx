@@ -5,7 +5,7 @@ import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
-import { X, MapPin, Target, LocateFixed, Navigation, ChevronDown, Calendar, Search, BookOpen, Clock, Activity } from 'lucide-react';
+import { X, Target, Navigation, ChevronDown, Search } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';

@@ -11,7 +11,7 @@ const authLimiter = rateLimit({
     }
 });
 
-// Scan rate limiter (allows high concurrency from shared campus IP/NAT while preventing bot floods)
+// Scan rate limiter (allows high concurrency from shared organization network IP/NAT while preventing bot floods)
 const scanLimiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 minute
     max: 150, // 150 scans per minute per IP to accommodate classroom shared NAT/Wi-Fi

@@ -8,13 +8,9 @@ import {
     Copy, 
     Check, 
     Clock, 
-    Users, 
-    Radio, 
-    Building2,
-    Calendar,
     Tv
 } from 'lucide-react';
-import { io } from 'socket.io-client';
+import { createSocketConnection } from '../../utils/socket';
 
 const ProjectorModal = ({ session, qrUrl, initialStats, onClose }) => {
     const [copied, setCopied] = useState(false);
@@ -54,8 +50,7 @@ const ProjectorModal = ({ session, qrUrl, initialStats, onClose }) => {
     // Socket.IO real-time attendee counter
     useEffect(() => {
         if (!session?._id) return;
-        const socketUrl = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
-        const socket = io(socketUrl, { withCredentials: true });
+        const socket = createSocketConnection();
 
         socket.on('connect', () => {
             socket.emit('join_session', session._id);
@@ -105,7 +100,8 @@ const ProjectorModal = ({ session, qrUrl, initialStats, onClose }) => {
     const expiryTime = session?.expiresAt ? new Date(session.expiresAt).getTime() : 0;
     const diffMs = Math.max(0, expiryTime - now);
     const totalSeconds = Math.floor(diffMs / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     const isExpired = totalSeconds <= 0;
     const isUrgent = totalSeconds > 0 && totalSeconds < 300; // < 5 mins
@@ -120,12 +116,12 @@ const ProjectorModal = ({ session, qrUrl, initialStats, onClose }) => {
             {/* Top Navigation Bar */}
             <header className="flex items-center justify-between px-8 py-5 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
                 <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-500/40 flex items-center justify-center text-brand-400 font-bold shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-400 font-bold shrink-0">
                         <Tv size={20} />
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2.5">
-                            <span className="font-mono text-xs font-bold text-brand-400 uppercase tracking-wider bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
+                            <span className="font-mono text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                 {session?.courseId?.code || 'COURSE'}
                             </span>
                             <h1 className="text-lg font-bold text-white truncate tracking-tight">
@@ -200,8 +196,11 @@ const ProjectorModal = ({ session, qrUrl, initialStats, onClose }) => {
             <footer className="px-8 py-5 border-t border-slate-800/80 bg-slate-900/80 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-4">
                 {/* Live Check-in Counter */}
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold tracking-wide">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-600 text-white text-xs font-bold tracking-wide shadow-sm">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                        </span>
                         <span>LIVE CHECK-IN</span>
                     </div>
 
@@ -231,7 +230,7 @@ const ProjectorModal = ({ session, qrUrl, initialStats, onClose }) => {
                             ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
                             : 'bg-slate-800 border-slate-700 text-brand-300'
                     }`}>
-                        {isExpired ? 'EXPIRED' : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
+                        {isExpired ? 'EXPIRED' : `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
                     </div>
                 </div>
             </footer>

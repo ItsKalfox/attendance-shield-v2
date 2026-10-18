@@ -6,8 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { 
     ArrowLeft, Users, UserPlus, Trash2, Calendar, 
-    BookOpen, GraduationCap, CheckCircle2, Clock, 
-    Search, FileSpreadsheet, AlertCircle, RefreshCw,
+    GraduationCap, CheckCircle2, Clock, 
+    Search, AlertCircle, RefreshCw,
     MoreVertical, ArrowRight, Download, Loader2, Settings 
 } from 'lucide-react';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -786,7 +786,7 @@ const CourseDetails = () => {
                                                                 <button
                                                                     onClick={() => setAttendanceModalConfig({
                                                                         isOpen: true,
-                                                                        studentOrgMemberId: m.organizationMemberId?._id || m.organizationMemberId,
+                                                                        studentOrgMemberId,
                                                                         studentName
                                                                     })}
                                                                     className="inline-flex items-center px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 active:scale-95 shadow-sm rounded-xl transition border border-slate-200/80"

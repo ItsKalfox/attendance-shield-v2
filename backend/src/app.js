@@ -37,8 +37,18 @@ const mongoSanitize = require('./middleware/mongoSanitize');
 app.use(mongoSanitize);
 
 // CORS configuration
+const { getAllowedOrigins } = require('./config/client');
+const allowedOrigins = getAllowedOrigins();
+
 const corsOptions = {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or matched origins
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+            callback(null, true);
+        } else {
+            callback(new Error(`Origin ${origin} not allowed by CORS`));
+        }
+    },
     credentials: true,
 };
 

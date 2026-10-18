@@ -15,6 +15,7 @@ const {
 const { OAuth2Client } = require('google-auth-library');
 const axios = require('axios');
 const { cloudinary } = require('../config/cloudinary');
+const { getPrimaryClientUrl } = require('../config/client');
 
 const client = new OAuth2Client(process.env.VITE_GOOGLE_CLIENT_ID);
 
@@ -218,7 +219,7 @@ const signup = async (req, res, next) => {
         // Send Welcome Email asynchronously
         try {
             const welcomeHtml = getWelcomeEmail({ name: `${fName} ${lName}`.trim(), email: normalizedEmail });
-            const welcomeText = `Welcome to Attendance Shield, ${fName}! Your account is ready. Visit ${process.env.CLIENT_URL || 'https://localhost:5173'}/app/dashboard to get started.`;
+            const welcomeText = `Welcome to Attendance Shield, ${fName}! Your account is ready. Visit ${getPrimaryClientUrl()}/app/dashboard to get started.`;
             const welcomeAttachments = getLogoAttachment();
             await sendEmail({
                 email: normalizedEmail,
