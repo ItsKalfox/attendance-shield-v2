@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { User as UserIcon, Mail, KeyRound, Clock, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { MobileInstallAppCard } from '../../components/InstallPwaModal';
+import ReleaseNotesModal from '../../components/ReleaseNotesModal';
 import { APP_VERSION, RELEASE_CHANNEL } from '../../config/version';
 
 const Settings = () => {
@@ -12,6 +13,7 @@ const Settings = () => {
     const initialName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
     const [name, setName] = useState(initialName);
     const [savingProfile, setSavingProfile] = useState(false);
+    const [showReleaseNotes, setShowReleaseNotes] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -505,17 +507,33 @@ const Settings = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
-                        <span className="text-xs font-semibold text-slate-500">Version</span>
-                        <span className="font-mono text-xs font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/80">
-                            v{APP_VERSION}
-                        </span>
+                    <div className="flex items-center gap-3 self-stretch sm:self-auto justify-between sm:justify-end border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-slate-500">Version</span>
+                            <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200/80">
+                                v{APP_VERSION}
+                            </span>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowReleaseNotes(true)}
+                            className="inline-flex items-center justify-center px-3.5 py-1.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-sm shadow-blue-500/20 hover:shadow-md cursor-pointer"
+                        >
+                            Release Notes
+                        </button>
                     </div>
                 </div>
             </div>
 
             {/* Permanent Mobile Install & Instructions Card (Mobile-only) */}
             <MobileInstallAppCard />
+
+            {/* Release Notes Modal */}
+            <ReleaseNotesModal 
+                isOpen={showReleaseNotes} 
+                onClose={() => setShowReleaseNotes(false)} 
+            />
 
         </div>
     );
