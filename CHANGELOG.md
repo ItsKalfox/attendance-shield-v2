@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Expanded Desktop Session Creation Modal**: Increased the modal width on desktop screens (`md:max-w-xl lg:max-w-2xl`) while maintaining standard dimensions on mobile (`max-w-lg`), eliminating layout clutter and offering ample horizontal breathing room for scheduling and geofence controls.
 
 ### Fixed
+- **Course Details React Hook Order (`useMemo` Fix)**: Fixed a React hook rules violation in `CourseDetails.jsx` caused by a `useMemo` call located after early returns, resolving the crash and blank dark green screen when loading the course details page.
+- **Member Details Modal `ReferenceError` Fix**: Defined missing `initialFirstName` and `initialLastName` derived variables in `ViewMemberModal.jsx`, resolving the runtime `ReferenceError` and dark green crash when viewing member details in the Members tab.
 - **Course Coordinator Deduplication & Additional Instructors Count**:
   - Filtered out the assigned Course Coordinator from the `instructors` list and additional instructor counts across `courseController.js` (`getCourses`, `getCourseById`, `createCourse`, `updateCourse`), `CourseDetails.jsx`, and `Courses.jsx`.
   - Prevented the coordinator from erroneously appearing under the "Additional Instructors" sidebar and eliminated phantom `+1 additional` badges on courses having only a coordinator.

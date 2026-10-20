@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
@@ -509,13 +509,12 @@ const CourseDetails = () => {
         ? `${coordinatorUser.firstName} ${coordinatorUser.lastName || ''}`.trim()
         : (coordinatorUser?.name || 'Unassigned');
 
-    const additionalInstructors = useMemo(() => {
-        if (!Array.isArray(course.instructors)) return [];
-        return course.instructors.filter(inst => {
+    const additionalInstructors = Array.isArray(course.instructors)
+        ? course.instructors.filter(inst => {
             const id = (inst?._id || inst || '').toString();
             return id && id !== coordinatorIdStr;
-        });
-    }, [course.instructors, coordinatorIdStr]);
+        })
+        : [];
 
     const isCoInstructor = Boolean(
         additionalInstructors.some(inst => 

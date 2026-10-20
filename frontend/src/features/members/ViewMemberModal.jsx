@@ -16,6 +16,10 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         : (member.userId?.name || `${member.firstName || member.userId?.firstName || ''} ${member.lastName || member.userId?.lastName || ''}`.trim());
     const initialStudentId = member.studentId || '';
 
+    const nameParts = (initialName || '').trim().split(/\s+/);
+    const initialFirstName = member.firstName || member.userId?.firstName || nameParts[0] || '';
+    const initialLastName = member.lastName || member.userId?.lastName || nameParts.slice(1).join(' ') || '';
+
     const [formData, setFormData] = useState({
         name: initialName,
         studentId: initialStudentId

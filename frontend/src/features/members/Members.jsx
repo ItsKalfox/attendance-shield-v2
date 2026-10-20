@@ -54,10 +54,11 @@ const Members = () => {
     }, [activeOrganization]);
 
     const handleRemoveRequest = (member) => {
+        const memberName = member.name || member.userId?.name || `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim() || 'this member';
         setConfirmModalConfig({
             isOpen: true,
             memberId: member._id,
-            message: `Are you sure you want to remove ${member.userId?.firstName} from the organization? Their account will not be deleted.`
+            message: `Are you sure you want to remove ${memberName} from the organization? Their account will not be deleted.`
         });
     };
 
