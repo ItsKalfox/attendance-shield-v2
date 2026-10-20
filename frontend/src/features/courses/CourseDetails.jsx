@@ -8,7 +8,8 @@ import {
     ArrowLeft, Users, UserPlus, Trash2, Calendar, 
     GraduationCap, CheckCircle2, Clock, 
     Search, AlertCircle, RefreshCw,
-    MoreVertical, ArrowRight, Download, Loader2, Settings 
+    MoreVertical, ArrowRight, Download, Loader2, Settings,
+    Plus, Check, UserCheck, X
 } from 'lucide-react';
 import ConfirmModal from '../../components/ConfirmModal';
 import StudentAttendanceModal from './StudentAttendanceModal';
@@ -35,6 +36,15 @@ const CourseDetails = () => {
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [exportingReport, setExportingReport] = useState(false);
     const [isPdfSettingsOpen, setIsPdfSettingsOpen] = useState(false);
+
+    // Instructor management state
+    const [showManageInstructorsModal, setShowManageInstructorsModal] = useState(false);
+    const [showChangeCoordinatorModal, setShowChangeCoordinatorModal] = useState(false);
+    const [selectedCoInstructorIds, setSelectedCoInstructorIds] = useState([]);
+    const [selectedCoordinatorId, setSelectedCoordinatorId] = useState('');
+    const [savingInstructors, setSavingInstructors] = useState(false);
+    const [allStaffMembers, setAllStaffMembers] = useState([]);
+    const [coInstructorsSearch, setCoInstructorsSearch] = useState('');
     
     // Search states
     const [memberSearch, setMemberSearch] = useState('');
@@ -103,6 +113,10 @@ const CourseDetails = () => {
                 setMembers(courseMembersRes.data);
                 setSessions(sessionsRes.data);
                 
+                // Store all staff members for instructor assignments
+                const staff = orgMembersRes.data.filter(m => m.role === 'OWNER' || m.role === 'INSTRUCTOR');
+                setAllStaffMembers(staff);
+
                 // Filter out those already in the course and non-attendees
                 const enrolledUserIds = courseMembersRes.data.map(m => m.userId?._id);
                 setOrgMembers(orgMembersRes.data.filter(m => !enrolledUserIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
@@ -111,6 +125,78 @@ const CourseDetails = () => {
             console.error("Failed to load course details", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const ensureStaffMembers = async () => {
+        if (allStaffMembers.length > 0) return allStaffMembers;
+        try {
+            const res = await api.get(`/organizations/${activeOrganization._id}/members`);
+            const staff = res.data.filter(m => m.role === 'OWNER' || m.role === 'INSTRUCTOR');
+            setAllStaffMembers(staff);
+            return staff;
+        } catch (e) {
+            console.error("Failed to load staff", e);
+            return [];
+        }
+    };
+
+    const openManageInstructors = async () => {
+        await ensureStaffMembers();
+        const current = (course.instructors || []).map(i => (i._id || i).toString());
+        setSelectedCoInstructorIds(current);
+        setCoInstructorsSearch('');
+        setShowManageInstructorsModal(true);
+    };
+
+    const openChangeCoordinator = async () => {
+        await ensureStaffMembers();
+        const current = (course.instructor?._id || course.instructor || '').toString();
+        setSelectedCoordinatorId(current);
+        setShowChangeCoordinatorModal(true);
+    };
+
+    const handleSaveCoInstructors = async () => {
+        try {
+            setSavingInstructors(true);
+            const res = await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
+                instructors: selectedCoInstructorIds
+            });
+            setCourse(res.data);
+            setShowManageInstructorsModal(false);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to update additional instructors');
+        } finally {
+            setSavingInstructors(false);
+        }
+    };
+
+    const handleRemoveCoInstructor = async (instId) => {
+        const current = (course.instructors || []).map(i => (i._id || i).toString());
+        const updated = current.filter(id => id !== instId.toString());
+        try {
+            const res = await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
+                instructors: updated
+            });
+            setCourse(res.data);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to remove instructor');
+        }
+    };
+
+    const handleSaveCoordinator = async () => {
+        if (!selectedCoordinatorId) return;
+        try {
+            setSavingInstructors(true);
+            const res = await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
+                instructor: selectedCoordinatorId
+            });
+            setCourse(res.data);
+            setShowChangeCoordinatorModal(false);
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to change coordinator');
+        } finally {
+            setSavingInstructors(false);
         }
     };
 
@@ -133,6 +219,8 @@ const CourseDetails = () => {
                 api.get(`/organizations/${activeOrganization._id}/members`)
             ]);
             setMembers(courseMembersRes.data);
+            const staff = orgMembersRes.data.filter(m => m.role === 'OWNER' || m.role === 'INSTRUCTOR');
+            setAllStaffMembers(staff);
             const enrolledUserIds = courseMembersRes.data.map(m => m.userId?._id);
             setOrgMembers(orgMembersRes.data.filter(m => !enrolledUserIds.includes(m.userId?._id) && m.role === 'ATTENDEE'));
             
@@ -399,22 +487,38 @@ const CourseDetails = () => {
     const isOwnerOrAdmin = activeOrganization?.userRole === 'OWNER' || activeOrganization?.userRole === 'ADMIN';
     const isAttendee = activeOrganization?.userRole === 'ATTENDEE';
 
-    // Instructor check: single instructor or backward compat
-    const isAssignedInstructor = (course.instructor && (
-        course.instructor._id === activeOrganization?.memberId || 
-        course.instructor.userId?._id === user?._id
-    )) || (course.instructors && course.instructors.some(inst => 
-        inst._id === activeOrganization?.memberId || 
-        inst.userId?._id === user?._id
-    ));
+    // Coordinator check
+    const isCoordinator = Boolean(
+        course.instructor && (
+            (course.instructor._id && course.instructor._id.toString() === activeOrganization?.memberId?.toString()) ||
+            (course.instructor.userId?._id && course.instructor.userId._id.toString() === user?._id?.toString()) ||
+            course.instructor.toString() === activeOrganization?.memberId?.toString()
+        )
+    );
+
+    // Co-instructor check
+    const isCoInstructor = Boolean(
+        course.instructors && course.instructors.some(inst => 
+            (inst._id && inst._id.toString() === activeOrganization?.memberId?.toString()) ||
+            (inst.userId?._id && inst.userId._id.toString() === user?._id?.toString()) ||
+            inst.toString() === activeOrganization?.memberId?.toString()
+        )
+    );
 
     // Role capabilities based on user requests:
-    // 1. Only admin/owner can change status or delete
-    const canManageCourse = isOwnerOrAdmin;
-    // 2. Both admin and assigned instructor can enroll/remove students
-    const canManageStudents = isOwnerOrAdmin || isAssignedInstructor;
+    // 1. Only admin/owner can delete course or change coordinator
+    const canDeleteCourse = isOwnerOrAdmin;
+    const canChangeCoordinator = isOwnerOrAdmin;
+    // 2. Admin/owner and Course Coordinator can manage course settings, enroll students, and manage instructors
+    const canManageCourse = isOwnerOrAdmin || isCoordinator;
+    const canManageStudents = isOwnerOrAdmin || isCoordinator;
+    const canManageInstructors = isOwnerOrAdmin || isCoordinator;
+    const canCreateSession = isOwnerOrAdmin || isCoordinator || isCoInstructor;
 
-    const assignedInstructor = course.instructor || (course.instructors && course.instructors[0]);
+    const coordinatorUser = course.instructor?.userId || course.instructor;
+    const coordinatorName = coordinatorUser?.firstName 
+        ? `${coordinatorUser.firstName} ${coordinatorUser.lastName || ''}`.trim()
+        : (coordinatorUser?.name || 'Unassigned');
 
     // Filter enrolled members by search
     const filteredMembers = members.filter(m => {
@@ -466,11 +570,15 @@ const CourseDetails = () => {
                     <div className="flex justify-between items-center w-full">
                         <p className="text-slate-400 text-xs sm:text-sm flex items-center flex-wrap">
                             <GraduationCap size={14} className="mr-1 shrink-0" />
-                            <span>{assignedInstructor?.userId ? `${assignedInstructor.userId.firstName} ${assignedInstructor.userId.lastName || ''}`.trim() : 'No lecturer assigned'} &bull; {course.batch || 'Batch Unspecified'} &bull; {course.semester || 'Semester Unspecified'}</span>
+                            <span>
+                                Coordinator: {coordinatorName}
+                                {course.instructors && course.instructors.length > 0 ? ` (+${course.instructors.length} additional)` : ''}
+                                &bull; {course.batch || 'Batch Unspecified'} &bull; {course.semester || 'Semester Unspecified'}
+                            </span>
                         </p>
 
                         {/* Mobile Menu */}
-                        {canManageCourse && (
+                        {(canManageCourse || canDeleteCourse) && (
                             <div className="relative sm:hidden">
                                 <button 
                                     className="p-1.5 -mr-2 text-slate-400 hover:text-slate-700 rounded-full active:bg-slate-100 transition" 
@@ -483,20 +591,24 @@ const CourseDetails = () => {
                                     <>
                                         <div className="fixed inset-0 z-10" onClick={() => setShowMobileMenu(false)}></div>
                                         <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-20 animate-fade-in">
-                                            <button 
-                                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center" 
-                                                onClick={() => { setShowMobileMenu(false); handleToggleStatus(); }}
-                                                disabled={statusToggling}
-                                            >
-                                                <RefreshCw size={16} className={`mr-2 text-brand-600 ${statusToggling ? 'animate-spin' : ''}`} /> 
-                                                {isOngoing ? 'Mark as Completed' : 'Reopen Course'}
-                                            </button>
-                                            <button 
-                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center" 
-                                                onClick={() => { setShowMobileMenu(false); handleDeleteCourse(); }}
-                                            >
-                                                <Trash2 size={16} className="mr-2" /> Delete Course
-                                            </button>
+                                            {canManageCourse && (
+                                                <button 
+                                                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center" 
+                                                    onClick={() => { setShowMobileMenu(false); handleToggleStatus(); }}
+                                                    disabled={statusToggling}
+                                                >
+                                                    <RefreshCw size={16} className={`mr-2 text-brand-600 ${statusToggling ? 'animate-spin' : ''}`} /> 
+                                                    {isOngoing ? 'Mark as Completed' : 'Reopen Course'}
+                                                </button>
+                                            )}
+                                            {canDeleteCourse && (
+                                                <button 
+                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center" 
+                                                    onClick={() => { setShowMobileMenu(false); handleDeleteCourse(); }}
+                                                >
+                                                    <Trash2 size={16} className="mr-2" /> Delete Course
+                                                </button>
+                                            )}
                                         </div>
                                     </>
                                 )}
@@ -506,8 +618,8 @@ const CourseDetails = () => {
                 </div>
 
                 {/* Desktop Buttons */}
-                {canManageCourse && (
-                    <div className="hidden sm:flex items-center gap-2 w-auto">
+                <div className="hidden sm:flex items-center gap-2 w-auto">
+                    {canManageCourse && (
                         <button 
                             className="btn btn-outline flex items-center text-sm justify-center py-2 px-3.5 shadow-sm"
                             onClick={handleToggleStatus}
@@ -516,12 +628,14 @@ const CourseDetails = () => {
                             <RefreshCw size={14} className={`mr-1.5 ${statusToggling ? 'animate-spin' : ''}`} /> 
                             <span>{isOngoing ? 'Mark as Completed' : 'Reopen Course'}</span>
                         </button>
-                        
-                        {/* Desktop Menu */}
+                    )}
+                    
+                    {canDeleteCourse && (
                         <div className="relative">
                             <button 
                                 className="p-1.5 text-slate-400 hover:text-slate-700 rounded-full active:bg-slate-100 transition" 
                                 onClick={() => setShowMobileMenu(!showMobileMenu)}
+                                title="More actions"
                             >
                                 <MoreVertical size={20} />
                             </button>
@@ -540,8 +654,8 @@ const CourseDetails = () => {
                                 </>
                             )}
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Main Layout: 2 Columns */}
@@ -891,27 +1005,109 @@ const CourseDetails = () => {
                             </div>
                         </div>
 
-                        {/* Assigned Instructor Profile */}
+                        {/* Course Coordinator */}
                         <div className="pt-4 border-t border-slate-100">
-                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center">
-                                <GraduationCap size={15} className="mr-1 text-slate-500" /> Assigned Lecturer
+                            <div className="flex items-center justify-between mb-2.5">
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                                    <GraduationCap size={15} className="mr-1.5 text-brand-600" /> Course Coordinator
+                                </div>
+                                {canChangeCoordinator && (
+                                    <button
+                                        type="button"
+                                        onClick={openChangeCoordinator}
+                                        className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                                    >
+                                        Change
+                                    </button>
+                                )}
                             </div>
-                            {assignedInstructor?.userId ? (
-                                <div className="flex items-center p-3 rounded-xl bg-slate-50/80 border border-slate-100">
-                                    <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-sm mr-3 border border-brand-200 shrink-0">
-                                        {assignedInstructor.userId.firstName?.charAt(0)}
-                                    </div>
-                                    <div className="overflow-hidden">
-                                        <div className="font-bold text-slate-900 text-xs truncate">
-                                            {assignedInstructor.userId.firstName} {assignedInstructor.userId.lastName || ''}
+                            {coordinatorUser ? (
+                                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/90 border border-slate-100">
+                                    <div className="flex items-center min-w-0 mr-2">
+                                        <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs mr-3 border border-brand-200 shrink-0">
+                                            {coordinatorUser.firstName?.charAt(0) || 'C'}
                                         </div>
-                                        <div className="text-[11px] text-slate-400 truncate">
-                                            {assignedInstructor.userId.email}
+                                        <div className="overflow-hidden">
+                                            <div className="font-bold text-slate-900 text-xs truncate">
+                                                {coordinatorName}
+                                            </div>
+                                            <div className="text-[11px] text-slate-400 truncate">
+                                                {coordinatorUser.email || ''}
+                                            </div>
                                         </div>
                                     </div>
+                                    <span className="text-[10px] font-bold text-brand-700 bg-brand-50 border border-brand-200/60 px-2 py-0.5 rounded-full shrink-0">
+                                        Coordinator
+                                    </span>
                                 </div>
                             ) : (
-                                <div className="text-xs text-slate-400 italic">No lecturer assigned</div>
+                                <div className="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl">No coordinator assigned</div>
+                            )}
+                        </div>
+
+                        {/* Additional Instructors */}
+                        <div className="pt-4 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-2.5">
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                                    <Users size={14} className="mr-1.5 text-slate-500" /> Additional Instructors
+                                </div>
+                                {canManageInstructors && (
+                                    <button
+                                        type="button"
+                                        onClick={openManageInstructors}
+                                        className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 hover:underline inline-flex items-center gap-0.5"
+                                    >
+                                        <Plus size={12} /> Manage
+                                    </button>
+                                )}
+                            </div>
+
+                            {course.instructors && course.instructors.length > 0 ? (
+                                <div className="space-y-2">
+                                    {course.instructors.map(inst => {
+                                        const u = inst.userId || inst;
+                                        const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || u?.name || u?.email || 'Instructor';
+                                        const instId = inst._id || inst;
+                                        return (
+                                            <div key={instId} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100">
+                                                <div className="flex items-center min-w-0 mr-2">
+                                                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-[11px] mr-2.5 shrink-0">
+                                                        {u?.firstName?.charAt(0) || 'I'}
+                                                    </div>
+                                                    <div className="overflow-hidden">
+                                                        <div className="font-semibold text-slate-800 text-xs truncate">{name}</div>
+                                                        <div className="text-[10px] text-slate-400 truncate">{u?.email || ''}</div>
+                                                    </div>
+                                                </div>
+                                                {canManageInstructors && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveCoInstructor(instId)}
+                                                        className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition shrink-0"
+                                                        title="Remove additional instructor"
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="p-3 rounded-xl bg-slate-50/50 border border-dashed border-slate-200 text-center text-xs text-slate-400">
+                                    <span>No additional instructors assigned.</span>
+                                    {canManageInstructors && (
+                                        <div className="mt-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={openManageInstructors}
+                                                className="text-brand-600 font-semibold hover:underline inline-flex items-center text-xs"
+                                            >
+                                                <Plus size={12} className="mr-0.5" /> Add Instructors
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
 
@@ -1103,6 +1299,251 @@ const CourseDetails = () => {
                 type={confirmModalConfig.type}
                 confirmText={confirmModalConfig.action === 'delete_course' ? "Delete Course" : confirmModalConfig.action === 'remove_member' ? "Remove" : "Confirm"}
             />
+
+            {/* Manage Additional Instructors Modal */}
+            {showManageInstructorsModal && createPortal(
+                <div className="modal-overlay z-[100] cursor-default">
+                    <div className="modal-flex-card max-w-lg">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Manage Additional Instructors</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Assign up to 8 co-instructors to assist with sessions</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowManageInstructorsModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="p-4 border-b border-slate-100 space-y-3 bg-white">
+                            <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search staff by name or email..."
+                                    value={coInstructorsSearch}
+                                    onChange={(e) => setCoInstructorsSearch(e.target.value)}
+                                    className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+                                />
+                            </div>
+
+                            {/* Selected Co-Instructors Chips (NO counter badge per user constraint) */}
+                            {selectedCoInstructorIds.length > 0 && (
+                                <div className="space-y-1.5 pt-1">
+                                    <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                                        Selected Co-Instructors
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {selectedCoInstructorIds.map(id => {
+                                            const member = allStaffMembers.find(m => m._id.toString() === id.toString());
+                                            const name = member?.userId?.firstName 
+                                                ? `${member.userId.firstName} ${member.userId.lastName || ''}`.trim()
+                                                : (member?.userId?.name || member?.userId?.email || 'Instructor');
+                                            return (
+                                                <span 
+                                                    key={id}
+                                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-brand-50 border border-brand-200 text-xs font-medium text-brand-800"
+                                                >
+                                                    <span className="truncate max-w-[130px]">{name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedCoInstructorIds(prev => prev.filter(x => x !== id))}
+                                                        className="text-brand-400 hover:text-rose-600 p-0.5 rounded transition"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-scroll-body p-2 divide-y divide-slate-100 max-h-[280px]">
+                            {(() => {
+                                const coordId = (course.instructor?._id || course.instructor || '').toString();
+                                const candidates = allStaffMembers
+                                    .filter(m => m._id.toString() !== coordId)
+                                    .filter(m => {
+                                        if (!coInstructorsSearch.trim()) return true;
+                                        const q = coInstructorsSearch.toLowerCase();
+                                        const fn = (m.userId?.firstName || '').toLowerCase();
+                                        const ln = (m.userId?.lastName || '').toLowerCase();
+                                        const em = (m.userId?.email || '').toLowerCase();
+                                        return fn.includes(q) || ln.includes(q) || em.includes(q);
+                                    });
+
+                                if (candidates.length === 0) {
+                                    return (
+                                        <div className="py-8 text-center text-slate-400 text-xs">
+                                            No eligible staff members found.
+                                        </div>
+                                    );
+                                }
+
+                                return candidates.map(staff => {
+                                    const staffId = staff._id.toString();
+                                    const isSelected = selectedCoInstructorIds.includes(staffId);
+                                    const name = staff.userId?.firstName 
+                                        ? `${staff.userId.firstName} ${staff.userId.lastName || ''}`.trim()
+                                        : (staff.userId?.name || 'Staff Member');
+
+                                    return (
+                                        <div 
+                                            key={staffId}
+                                            onClick={() => {
+                                                if (isSelected) {
+                                                    setSelectedCoInstructorIds(prev => prev.filter(x => x !== staffId));
+                                                } else if (selectedCoInstructorIds.length < 8) {
+                                                    setSelectedCoInstructorIds(prev => [...prev, staffId]);
+                                                }
+                                            }}
+                                            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl cursor-pointer transition select-none ${
+                                                isSelected ? 'bg-brand-50/70 border border-brand-200/60' : 'hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="flex items-center min-w-0 mr-2">
+                                                <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs mr-2.5 shrink-0">
+                                                    {staff.userId?.firstName?.charAt(0) || 'S'}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="font-semibold text-slate-800 text-xs truncate">{name}</div>
+                                                    <div className="text-[10px] text-slate-400 truncate">{staff.userId?.email}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-1.5 py-0.5 rounded">
+                                                    {staff.role}
+                                                </span>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition ${
+                                                    isSelected ? 'bg-brand-600 border-brand-600 text-white' : 'border-slate-300'
+                                                }`}>
+                                                    {isSelected && <Check size={12} strokeWidth={3} />}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+
+                        {selectedCoInstructorIds.length >= 8 && (
+                            <div className="px-4 py-2 bg-amber-50 text-amber-700 text-[11px] font-medium border-t border-amber-100">
+                                Maximum limit of 8 additional instructors reached.
+                            </div>
+                        )}
+
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/40">
+                            <button
+                                type="button"
+                                onClick={() => setShowManageInstructorsModal(false)}
+                                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                                disabled={savingInstructors}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveCoInstructors}
+                                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition disabled:opacity-50"
+                                disabled={savingInstructors}
+                            >
+                                {savingInstructors ? 'Saving...' : 'Save Instructors'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Change Coordinator Modal (Admin/Owner only) */}
+            {showChangeCoordinatorModal && createPortal(
+                <div className="modal-overlay z-[100] cursor-default">
+                    <div className="modal-flex-card max-w-md">
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Change Course Coordinator</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Select a staff member to serve as lead coordinator</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowChangeCoordinatorModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200/60 transition"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="modal-scroll-body p-2 divide-y divide-slate-100 max-h-[300px]">
+                            {allStaffMembers.length === 0 ? (
+                                <div className="py-8 text-center text-slate-400 text-xs">
+                                    No staff members found in this organization.
+                                </div>
+                            ) : (
+                                allStaffMembers.map(staff => {
+                                    const staffId = staff._id.toString();
+                                    const isSelected = selectedCoordinatorId === staffId;
+                                    const name = staff.userId?.firstName 
+                                        ? `${staff.userId.firstName} ${staff.userId.lastName || ''}`.trim()
+                                        : (staff.userId?.name || 'Staff Member');
+
+                                    return (
+                                        <div 
+                                            key={staffId}
+                                            onClick={() => setSelectedCoordinatorId(staffId)}
+                                            className={`flex items-center justify-between px-3.5 py-3 rounded-xl cursor-pointer transition select-none ${
+                                                isSelected ? 'bg-brand-50/70 border border-brand-200/60' : 'hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            <div className="flex items-center min-w-0 mr-2">
+                                                <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs mr-3 shrink-0">
+                                                    {staff.userId?.firstName?.charAt(0) || 'S'}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="font-semibold text-slate-800 text-xs truncate">{name}</div>
+                                                    <div className="text-[11px] text-slate-400 truncate">{staff.userId?.email}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase bg-slate-100 px-1.5 py-0.5 rounded">
+                                                    {staff.role}
+                                                </span>
+                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition ${
+                                                    isSelected ? 'border-brand-600 bg-brand-600' : 'border-slate-300'
+                                                }`}>
+                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/40">
+                            <button
+                                type="button"
+                                onClick={() => setShowChangeCoordinatorModal(false)}
+                                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition"
+                                disabled={savingInstructors}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSaveCoordinator}
+                                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition disabled:opacity-50"
+                                disabled={savingInstructors || !selectedCoordinatorId}
+                            >
+                                {savingInstructors ? 'Updating...' : 'Update Coordinator'}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 };

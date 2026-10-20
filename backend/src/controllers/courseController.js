@@ -28,14 +28,21 @@ const getCourses = async (req, res, next) => {
             const courseIds = enrollments.map(e => e.courseId);
             query._id = { $in: courseIds };
         } else if (req.member.role === 'INSTRUCTOR') {
-            // Instructors only see courses where they are the assigned instructor
-            query.instructor = req.member._id;
+            // Instructors see courses where they are either the coordinator or an additional instructor
+            query.$or = [
+                { instructor: req.member._id },
+                { instructors: req.member._id }
+            ];
         }
         // OWNER and ADMIN see all courses
 
         const courses = await Course.find(query)
             .populate({
                 path: 'instructor',
+                populate: { path: 'userId', select: 'name firstName lastName email avatar' }
+            })
+            .populate({
+                path: 'instructors',
                 populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             })
             .sort({ createdAt: -1 })
@@ -64,20 +71,40 @@ const getCourses = async (req, res, next) => {
 // @access  Private (ADMIN/OWNER)
 const createCourse = async (req, res, next) => {
     try {
-        const { name, code, batch, semester, startDate, endDate, instructor, description } = req.body;
+        const { name, code, batch, semester, startDate, endDate, instructor, instructors, description } = req.body;
         const organizationId = req.params.organizationId;
 
         if (!name || !code || !batch || !semester || !instructor) {
-            return res.status(400).json({ message: 'Course name, code, batch, semester, and instructor are required' });
+            return res.status(400).json({ message: 'Course name, code, batch, semester, and course coordinator are required' });
         }
 
-        // Verify that instructor exists in organization
+        // Verify that primary instructor / coordinator exists in organization
         const instructorMember = await OrganizationMember.findOne({
             _id: instructor,
             organizationId
         });
         if (!instructorMember) {
-            return res.status(400).json({ message: 'Selected instructor does not belong to this organization' });
+            return res.status(400).json({ message: 'Selected course coordinator does not belong to this organization' });
+        }
+
+        let coInstructors = [];
+        if (Array.isArray(instructors) && instructors.length > 0) {
+            const coordIdStr = instructor.toString();
+            const uniqueIds = [...new Set(instructors.map(id => id.toString()))].filter(id => id !== coordIdStr);
+            if (uniqueIds.length > 8) {
+                return res.status(400).json({ message: 'A maximum of 8 additional instructors can be assigned to a course' });
+            }
+            if (uniqueIds.length > 0) {
+                const validStaff = await OrganizationMember.find({
+                    _id: { $in: uniqueIds },
+                    organizationId,
+                    role: { $in: ['OWNER', 'INSTRUCTOR'] }
+                });
+                if (validStaff.length !== uniqueIds.length) {
+                    return res.status(400).json({ message: 'One or more selected additional instructors are invalid or do not belong to this organization' });
+                }
+                coInstructors = uniqueIds;
+            }
         }
 
         if (startDate && endDate) {
@@ -97,6 +124,7 @@ const createCourse = async (req, res, next) => {
             startDate: startDate || null,
             endDate: endDate || null,
             instructor,
+            instructors: coInstructors,
             description: description ? description.trim() : '',
             status: 'ONGOING'
         });
@@ -104,6 +132,10 @@ const createCourse = async (req, res, next) => {
         const populatedCourse = await Course.findById(course._id)
             .populate({
                 path: 'instructor',
+                populate: { path: 'userId', select: 'name firstName lastName email avatar' }
+            })
+            .populate({
+                path: 'instructors',
                 populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             });
 
@@ -125,6 +157,10 @@ const getCourseById = async (req, res, next) => {
         .populate({
             path: 'instructor',
             populate: { path: 'userId', select: 'name firstName lastName email avatar' }
+        })
+        .populate({
+            path: 'instructors',
+            populate: { path: 'userId', select: 'name firstName lastName email avatar' }
         });
 
         if (!course) {
@@ -141,9 +177,10 @@ const getCourseById = async (req, res, next) => {
             }
         }
 
-        // If requester is an INSTRUCTOR, ensure they are assigned to this course
+        // If requester is an INSTRUCTOR, ensure they are assigned to this course (as coordinator or co-instructor)
         if (req.member.role === 'INSTRUCTOR') {
-            const isAssigned = course.instructor && course.instructor._id.toString() === req.member._id.toString();
+            const isAssigned = (course.instructor && (course.instructor._id || course.instructor).toString() === req.member._id.toString()) ||
+                (course.instructors && course.instructors.some(inst => (inst._id || inst).toString() === req.member._id.toString()));
             if (!isAssigned) {
                 return res.status(403).json({ message: 'You are not assigned to this course' });
             }
@@ -157,10 +194,10 @@ const getCourseById = async (req, res, next) => {
 
 // @desc    Update course
 // @route   PATCH /api/organizations/:organizationId/courses/:courseId
-// @access  Private (ADMIN/OWNER)
+// @access  Private (ADMIN/OWNER/INSTRUCTOR - Coordinator only)
 const updateCourse = async (req, res, next) => {
     try {
-        const { name, code, batch, semester, startDate, endDate, instructor, description, status } = req.body;
+        const { name, code, batch, semester, startDate, endDate, instructor, instructors, description, status } = req.body;
         
         const course = await Course.findOne({
             _id: req.params.courseId,
@@ -171,15 +208,17 @@ const updateCourse = async (req, res, next) => {
             return res.status(404).json({ message: 'Course not found' });
         }
 
-        // Only OWNER/ADMIN or assigned INSTRUCTOR can update course
+        // Only OWNER/ADMIN or assigned Course Coordinator can update course settings
         const requesterRole = req.member.role;
-        const isAssignedInstructor = course.instructor && course.instructor.toString() === req.member._id.toString();
-        if (requesterRole !== 'OWNER' && requesterRole !== 'ADMIN' && !isAssignedInstructor) {
-            return res.status(403).json({ message: 'Only organization administrators or assigned lecturers can modify course settings' });
+        const isCoordinator = course.instructor && course.instructor.toString() === req.member._id.toString();
+        const isAdmin = requesterRole === 'OWNER' || requesterRole === 'ADMIN';
+
+        if (!isAdmin && !isCoordinator) {
+            return res.status(403).json({ message: 'Only organization administrators or the course coordinator can modify course settings' });
         }
 
-        const effectiveStart = (startDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) ? (startDate || null) : course.startDate;
-        const effectiveEnd = (endDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) ? (endDate || null) : course.endDate;
+        const effectiveStart = (startDate !== undefined && isAdmin) ? (startDate || null) : course.startDate;
+        const effectiveEnd = (endDate !== undefined && isAdmin) ? (endDate || null) : course.endDate;
         if (effectiveStart && effectiveEnd) {
             const sDate = new Date(effectiveStart);
             const eDate = new Date(effectiveEnd);
@@ -188,13 +227,57 @@ const updateCourse = async (req, res, next) => {
             }
         }
 
-        if (name && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.name = name.trim();
-        if (code && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.code = code.trim();
-        if (batch && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.batch = batch.trim();
-        if (semester && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.semester = semester.trim();
-        if (startDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.startDate = startDate || null;
-        if (endDate !== undefined && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.endDate = endDate || null;
-        if (instructor && (requesterRole === 'OWNER' || requesterRole === 'ADMIN')) course.instructor = instructor;
+        if (name && isAdmin) course.name = name.trim();
+        if (code && isAdmin) course.code = code.trim();
+        if (batch && isAdmin) course.batch = batch.trim();
+        if (semester && isAdmin) course.semester = semester.trim();
+        if (startDate !== undefined && isAdmin) course.startDate = startDate || null;
+        if (endDate !== undefined && isAdmin) course.endDate = endDate || null;
+        
+        // Changing Course Coordinator is strictly allowed for ADMIN/OWNER
+        if (instructor && isAdmin) {
+            const coordMember = await OrganizationMember.findOne({
+                _id: instructor,
+                organizationId: req.params.organizationId,
+                role: { $in: ['OWNER', 'INSTRUCTOR'] }
+            });
+            if (!coordMember) {
+                return res.status(400).json({ message: 'Selected course coordinator does not belong to this organization' });
+            }
+            course.instructor = instructor;
+            // If new coordinator is present in instructors list, remove them
+            if (Array.isArray(course.instructors)) {
+                course.instructors = course.instructors.filter(id => id.toString() !== instructor.toString());
+            }
+        }
+
+        // Updating Additional Instructors (allowed for ADMIN/OWNER or Course Coordinator)
+        if (instructors !== undefined) {
+            if (!Array.isArray(instructors)) {
+                return res.status(400).json({ message: 'Additional instructors must be an array' });
+            }
+
+            const currentCoordId = course.instructor.toString();
+            const uniqueInstructors = [...new Set(instructors.map(id => id.toString()))].filter(id => id !== currentCoordId);
+
+            if (uniqueInstructors.length > 8) {
+                return res.status(400).json({ message: 'A maximum of 8 additional instructors can be assigned to a course' });
+            }
+
+            if (uniqueInstructors.length > 0) {
+                const validStaff = await OrganizationMember.find({
+                    _id: { $in: uniqueInstructors },
+                    organizationId: req.params.organizationId,
+                    role: { $in: ['OWNER', 'INSTRUCTOR'] }
+                });
+                if (validStaff.length !== uniqueInstructors.length) {
+                    return res.status(400).json({ message: 'One or more selected instructors are invalid or do not belong to this organization' });
+                }
+            }
+
+            course.instructors = uniqueInstructors;
+        }
+
         if (description !== undefined) course.description = description ? description.trim() : '';
         if (status && ['ONGOING', 'COMPLETED'].includes(status)) {
             course.status = status;
@@ -216,6 +299,10 @@ const updateCourse = async (req, res, next) => {
         const populatedCourse = await Course.findById(course._id)
             .populate({
                 path: 'instructor',
+                populate: { path: 'userId', select: 'name firstName lastName email avatar' }
+            })
+            .populate({
+                path: 'instructors',
                 populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             });
 
@@ -268,10 +355,10 @@ const enrollMembers = async (req, res, next) => {
         }
 
         const requesterRole = req.member.role;
-        const isAssigned = course.instructor && course.instructor.toString() === req.member._id.toString();
+        const isCoordinator = course.instructor && course.instructor.toString() === req.member._id.toString();
 
-        if (requesterRole === 'INSTRUCTOR' && !isAssigned) {
-            return res.status(403).json({ message: 'Only the assigned instructor or organization admin can enroll members in this course' });
+        if (requesterRole === 'INSTRUCTOR' && !isCoordinator) {
+            return res.status(403).json({ message: 'Only the course coordinator or organization admin can enroll members in this course' });
         }
 
         const enrolled = [];
@@ -331,10 +418,10 @@ const removeMemberFromCourse = async (req, res, next) => {
         }
 
         const requesterRole = req.member.role;
-        const isAssigned = course.instructor && course.instructor.toString() === req.member._id.toString();
+        const isCoordinator = course.instructor && course.instructor.toString() === req.member._id.toString();
 
-        if (requesterRole === 'INSTRUCTOR' && !isAssigned) {
-            return res.status(403).json({ message: 'Only the assigned instructor or organization admin can remove members from this course' });
+        if (requesterRole === 'INSTRUCTOR' && !isCoordinator) {
+            return res.status(403).json({ message: 'Only the course coordinator or organization admin can remove members from this course' });
         }
 
         const courseMember = await CourseMember.findOne({

@@ -61,7 +61,7 @@ router.post('/:organizationId/courses/validate-import', requireOrganizationRole(
 router.post('/:organizationId/courses/bulk-create', requireOrganizationRole('OWNER', 'ADMIN'), bulkCreateCourses);
 router.post('/:organizationId/courses', requireOrganizationRole('OWNER', 'ADMIN'), createCourse);
 router.get('/:organizationId/courses/:courseId', requireOrganizationRole(), getCourseById);
-router.patch('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'ADMIN'), updateCourse);
+router.patch('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), updateCourse);
 router.delete('/:organizationId/courses/:courseId', requireOrganizationRole('OWNER', 'ADMIN'), deleteCourse);
 router.get('/:organizationId/courses/:courseId/members', requireOrganizationRole(), getCourseMembers);
 router.post('/:organizationId/courses/:courseId/members', requireOrganizationRole('OWNER', 'ADMIN', 'INSTRUCTOR'), enrollMembers);

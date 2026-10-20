@@ -101,7 +101,7 @@ export const generateCourseAttendancePDF = async (reportData, customSettings = {
 
         const lecturerName = course.instructor?.name || 'Not assigned';
         const lecturerEmail = course.instructor?.email ? ` (${course.instructor.email})` : '';
-        doc.text(`Lecturer: ${lecturerName}${lecturerEmail}`, 14, metaY + 18);
+        doc.text(`Coordinator: ${lecturerName}${lecturerEmail}`, 14, metaY + 18);
 
         // Right Column
         doc.setFont('helvetica', 'bold');

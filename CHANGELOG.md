@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Course Coordinator & Multi-Instructor System**:
+  - Re-architected course instructor hierarchy by introducing **Course Coordinator** as the designated lead instructor (mandatory, 1 per course) alongside support for up to 8 additional co-instructors.
+  - Added an intuitive **"Allow Additional Instructors"** toggle in `CreateCourseModal` with instant co-instructor selection chips, exclusion of the designated coordinator, and duplicate prevention.
+  - Added interactive **Manage Additional Instructors** and **Change Coordinator** modals in `CourseDetails`.
+  - Enforced a strict role and permission matrix:
+    - **Admin/Owner**: Full authority to create courses, delete courses (strictly restricted to Admin/Owner), change Course Coordinator, add/remove co-instructors, enroll/remove students, and conduct sessions.
+    - **Course Coordinator**: Authority over course settings, add/remove co-instructors, enroll/remove students, and conduct sessions. Prohibited from deleting course or changing coordinator.
+    - **Co-Instructors**: Assigned lecturers permitted solely to conduct attendance sessions and view course attendance logs, strictly blocked from deleting courses, modifying instructors, or enrolling/removing students.
+  - Updated course cards, search filters, and PDF export reports to display the Course Coordinator and additional co-instructor counts.
 - **Maximized Geofence Map & Live Place Search**: Added an expandable full-screen Leaflet map overlay to the session creation modal with real-time location search and autocomplete (OpenStreetMap & Photon geocoding). Includes automatic camera flying, draggable pin repositioning, live geofence radius boundary visualization (`<Circle>`), and a Google Maps-style one-click GPS recalibration aim button (`<LocateFixed>`).
 - **Sleek Custom Scrollbar Styling**: Replaced default browser/OS scrollbars across the application with slim, rounded 6px scrollbars (`scrollbar-width: thin` & `::-webkit-scrollbar`) with inset padding to complement modern card and modal border radiuses.
 

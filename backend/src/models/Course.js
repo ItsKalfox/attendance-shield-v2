@@ -37,6 +37,10 @@ const courseSchema = new mongoose.Schema({
         ref: 'OrganizationMember',
         required: true
     },
+    instructors: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'OrganizationMember'
+    }],
     description: {
         type: String,
         default: ''

@@ -104,7 +104,7 @@ export const generateStudentAttendancePDF = async ({
 
         const lecturerName = course.instructor?.name || 'Not assigned';
         const lecturerEmail = course.instructor?.email ? ` (${course.instructor.email})` : '';
-        doc.text(`Lecturer: ${lecturerName}${lecturerEmail}`, 14, metaY + 18);
+        doc.text(`Coordinator: ${lecturerName}${lecturerEmail}`, 14, metaY + 18);
 
         // Right Column: Student Specifications & Attendance Rate
         doc.setFont('helvetica', 'bold');

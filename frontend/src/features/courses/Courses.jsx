@@ -77,7 +77,8 @@ const Courses = () => {
         const semester = (course.semester || '').toLowerCase();
         const instructor = course.instructor || (course.instructors && course.instructors[0]);
         const instructorName = `${instructor?.userId?.firstName || ''} ${instructor?.userId?.lastName || ''}`.toLowerCase();
-        return name.includes(q) || code.includes(q) || batch.includes(q) || semester.includes(q) || instructorName.includes(q);
+        const coInstructorNames = (course.instructors || []).map(i => `${i?.userId?.firstName || ''} ${i?.userId?.lastName || ''}`.toLowerCase()).join(' ');
+        return name.includes(q) || code.includes(q) || batch.includes(q) || semester.includes(q) || instructorName.includes(q) || coInstructorNames.includes(q);
     });
 
     const paginatedCourses = filteredCourses.slice((coursePage - 1) * PAGE_SIZE, coursePage * PAGE_SIZE);
@@ -284,16 +285,21 @@ const Courses = () => {
 
                                     {/* Right section: Lecturer, Term, Enrolled, Action Arrow */}
                                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
-                                        {/* Lecturer */}
+                                        {/* Coordinator & Co-Instructors */}
                                         <div className="min-w-[120px] max-w-[170px]">
                                             <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1 mb-0.5">
-                                                <GraduationCap size={12} /> Lecturer
+                                                <GraduationCap size={12} /> Coordinator
                                             </div>
                                             <div className="text-xs font-semibold text-slate-800 truncate">
                                                 {assignedInstructor?.userId?.firstName 
                                                     ? `${assignedInstructor.userId.firstName} ${assignedInstructor.userId.lastName || ''}`.trim()
                                                     : 'Unassigned'}
                                             </div>
+                                            {course.instructors && course.instructors.length > 0 && (
+                                                <div className="text-[10px] text-brand-600 font-medium">
+                                                    +{course.instructors.length} additional
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Term Date Range (visible on desktop) */}
