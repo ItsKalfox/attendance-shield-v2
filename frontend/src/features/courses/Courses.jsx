@@ -245,9 +245,6 @@ const Courses = () => {
                                     {/* Left section: Badges, Title, Description */}
                                     <div className="flex-1 min-w-0 space-y-2">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-mono text-xs font-bold tracking-wide text-brand-700 bg-brand-50 border border-brand-100 px-2.5 py-0.5 rounded-lg">
-                                                {course.code}
-                                            </span>
                                             {course.batch && (
                                                 <span className="text-[11px] font-semibold bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-md">
                                                     {course.batch}
@@ -277,8 +274,11 @@ const Courses = () => {
                                         </div>
 
                                         <div>
-                                            <h3 className="text-base md:text-lg font-bold text-slate-900 group-hover:text-brand-600 transition truncate">
-                                                {course.name}
+                                            <h3 className="text-base md:text-lg font-bold text-slate-900 group-hover:text-brand-600 transition flex items-center flex-wrap gap-2">
+                                                <span className="font-mono text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/80 px-2 py-0.5 rounded-md shrink-0 select-none">
+                                                    {course.code}
+                                                </span>
+                                                <span className="truncate">{course.name}</span>
                                             </h3>
                                             {course.description && (
                                                 <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">

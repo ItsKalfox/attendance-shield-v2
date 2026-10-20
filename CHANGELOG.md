@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sleek Custom Scrollbar Styling**: Replaced default browser/OS scrollbars across the application with slim, rounded 6px scrollbars (`scrollbar-width: thin` & `::-webkit-scrollbar`) with inset padding to complement modern card and modal border radiuses.
 
 ### Changed
+- **Course Card Header Redesign**: Relocated the course code badge from the green chip above the title into a clean gray chip (`bg-slate-100 text-slate-600 border-slate-200/80`) placed directly beside the course name in `Courses.jsx`, creating a cleaner visual hierarchy for cohort and semester metadata.
 - **Simplified Session Duration & Expiration Workflow**: Streamlined the session creation modal by replacing the manual "Expires At" datetime picker and preset button clutter with an inline lecture duration control featuring discrete hours (`0`–`10`) and minutes (`0`, `15`, `30`, `45`) dropdowns. Session expiry (`expiresAt`) is now calculated automatically in the background (`startTime + duration`).
 - **Expanded Desktop Session Creation Modal**: Increased the modal width on desktop screens (`md:max-w-xl lg:max-w-2xl`) while maintaining standard dimensions on mobile (`max-w-lg`), eliminating layout clutter and offering ample horizontal breathing room for scheduling and geofence controls.
 
