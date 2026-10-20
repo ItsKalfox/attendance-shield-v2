@@ -16,10 +16,6 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         : (member.userId?.name || `${member.firstName || member.userId?.firstName || ''} ${member.lastName || member.userId?.lastName || ''}`.trim());
     const initialStudentId = member.studentId || '';
 
-    const nameParts = (initialName || '').trim().split(/\s+/);
-    const initialFirstName = member.firstName || member.userId?.firstName || nameParts[0] || '';
-    const initialLastName = member.lastName || member.userId?.lastName || nameParts.slice(1).join(' ') || '';
-
     const [formData, setFormData] = useState({
         name: initialName,
         studentId: initialStudentId
@@ -81,9 +77,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         }
     };
 
-    const displayName = isAttendee 
-        ? (initialName || 'Attendee')
-        : (member.userId?.name || `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim() || 'Instructor');
+    const memberName = initialName || (member.userId?.name || `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim());
+    const displayName = memberName || (isAttendee ? 'Attendee' : 'Instructor');
 
     return (
         <div onClick={handleBackdropClick} className="modal-overlay z-50 cursor-default">
@@ -205,23 +200,12 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                         ) : (
                             /* VIEW MODE */
                             <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                                        <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                                            First Name
-                                        </div>
-                                        <div className="text-sm font-semibold text-slate-900 mt-1">
-                                            {initialFirstName || '-'}
-                                        </div>
+                                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
+                                    <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                                        Name
                                     </div>
-
-                                    <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-100">
-                                        <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                                            Last Name
-                                        </div>
-                                        <div className="text-sm font-semibold text-slate-900 mt-1">
-                                            {initialLastName || '-'}
-                                        </div>
+                                    <div className="text-sm font-semibold text-slate-900 mt-1">
+                                        {memberName || '-'}
                                     </div>
                                 </div>
 
