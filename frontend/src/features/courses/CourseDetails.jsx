@@ -174,12 +174,32 @@ const CourseDetails = () => {
         }
     };
 
-    const handleRemoveCoInstructor = async (instId) => {
+    const handleRequestRemoveCoInstructor = (inst) => {
+        const instId = (inst?._id || inst).toString();
+        const u = inst.userId || inst;
+        const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || u?.name || 'this instructor';
+
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'delete',
+            action: 'remove_co_instructor',
+            title: 'Remove Additional Instructor',
+            message: `Are you sure you want to remove ${name} from this course's additional instructors?`,
+            confirmText: 'Remove',
+            data: { instId }
+        });
+    };
+
+    const executeRemoveCoInstructor = async () => {
+        const instId = confirmModalConfig.data?.instId;
+        if (!instId) return;
+
         const coordId = (course.instructor?._id || course.instructor || '').toString();
         const current = (course.instructors || [])
             .map(i => (i._id || i).toString())
             .filter(id => id && id !== coordId);
         const updated = current.filter(id => id !== instId.toString());
+
         try {
             const res = await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
                 instructors: updated
@@ -190,12 +210,38 @@ const CourseDetails = () => {
         }
     };
 
-    const handleSaveCoordinator = async () => {
+    const handleRequestChangeCoordinator = () => {
         if (!selectedCoordinatorId) return;
+        const currentCoordId = (course.instructor?._id || course.instructor || '').toString();
+        if (selectedCoordinatorId === currentCoordId) {
+            setShowChangeCoordinatorModal(false);
+            return;
+        }
+
+        const targetStaff = allStaffMembers.find(s => s._id.toString() === selectedCoordinatorId);
+        const newCoordName = targetStaff?.userId?.firstName 
+            ? `${targetStaff.userId.firstName} ${targetStaff.userId.lastName || ''}`.trim()
+            : (targetStaff?.userId?.name || 'this staff member');
+
+        setConfirmModalConfig({
+            isOpen: true,
+            type: 'confirm',
+            action: 'change_coordinator',
+            title: 'Change Course Coordinator',
+            message: `Are you sure you want to appoint ${newCoordName} as the Course Coordinator for ${course.code}? They will become the primary lead coordinator for this course.`,
+            confirmText: 'Change Coordinator',
+            data: { newCoordinatorId: selectedCoordinatorId }
+        });
+    };
+
+    const executeChangeCoordinator = async () => {
+        const newCoordId = confirmModalConfig.data?.newCoordinatorId;
+        if (!newCoordId) return;
+
         try {
             setSavingInstructors(true);
             const res = await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
-                instructor: selectedCoordinatorId
+                instructor: newCoordId
             });
             setCourse(res.data);
             setShowChangeCoordinatorModal(false);
@@ -1096,7 +1142,7 @@ const CourseDetails = () => {
                                                 {canManageInstructors && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleRemoveCoInstructor(instId)}
+                                                        onClick={() => handleRequestRemoveCoInstructor(inst)}
                                                         className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition shrink-0"
                                                         title="Remove additional instructor"
                                                     >
@@ -1307,11 +1353,33 @@ const CourseDetails = () => {
             <ConfirmModal
                 isOpen={confirmModalConfig.isOpen}
                 onClose={() => setConfirmModalConfig({ ...confirmModalConfig, isOpen: false })}
-                onConfirm={confirmModalConfig.action === 'delete_course' ? executeDelete : confirmModalConfig.action === 'remove_member' ? executeRemoveMember : () => {}}
-                title={confirmModalConfig.action === 'delete_course' ? "Delete Course" : confirmModalConfig.action === 'remove_member' ? "Remove Member" : "Confirm"}
+                onConfirm={() => {
+                    if (confirmModalConfig.action === 'delete_course') executeDelete();
+                    else if (confirmModalConfig.action === 'remove_member') executeRemoveMember();
+                    else if (confirmModalConfig.action === 'remove_co_instructor') executeRemoveCoInstructor();
+                    else if (confirmModalConfig.action === 'change_coordinator') executeChangeCoordinator();
+                    else if (typeof confirmModalConfig.onConfirm === 'function') confirmModalConfig.onConfirm();
+                }}
+                title={
+                    confirmModalConfig.title || (
+                        confirmModalConfig.action === 'delete_course' ? "Delete Course" :
+                        confirmModalConfig.action === 'remove_member' ? "Remove Member" :
+                        confirmModalConfig.action === 'remove_co_instructor' ? "Remove Additional Instructor" :
+                        confirmModalConfig.action === 'change_coordinator' ? "Change Course Coordinator" :
+                        "Confirm"
+                    )
+                }
                 message={confirmModalConfig.message}
-                type={confirmModalConfig.type}
-                confirmText={confirmModalConfig.action === 'delete_course' ? "Delete Course" : confirmModalConfig.action === 'remove_member' ? "Remove" : "Confirm"}
+                type={confirmModalConfig.type || 'delete'}
+                confirmText={
+                    confirmModalConfig.confirmText || (
+                        confirmModalConfig.action === 'delete_course' ? "Delete Course" :
+                        confirmModalConfig.action === 'remove_member' ? "Remove" :
+                        confirmModalConfig.action === 'remove_co_instructor' ? "Remove" :
+                        confirmModalConfig.action === 'change_coordinator' ? "Change Coordinator" :
+                        "Confirm"
+                    )
+                }
             />
 
             {/* Manage Additional Instructors Modal */}
@@ -1547,7 +1615,7 @@ const CourseDetails = () => {
                             </button>
                             <button
                                 type="button"
-                                onClick={handleSaveCoordinator}
+                                onClick={handleRequestChangeCoordinator}
                                 className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 shadow-sm transition disabled:opacity-50"
                                 disabled={savingInstructors || !selectedCoordinatorId}
                             >

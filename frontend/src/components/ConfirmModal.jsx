@@ -25,7 +25,7 @@ const ConfirmModal = ({
     const isConfirm = type === 'confirm';
     
     return createPortal(
-        <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
+        <div onClick={handleBackdropClick} className="modal-overlay z-[110] cursor-default">
             <div className="modal-content max-w-sm text-center">
                 <div className={`mx-auto flex items-center justify-center h-12 w-12 rounded-full mb-4 ${isDelete ? 'bg-red-100' : isConfirm ? 'bg-emerald-100' : 'bg-amber-100'}`}>
                     {isLogout && <LogOut className="h-6 w-6 text-red-600" />}
