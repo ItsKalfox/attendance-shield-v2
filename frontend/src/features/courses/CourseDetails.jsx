@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useOrganization } from '../../context/OrganizationContext';
@@ -143,7 +143,10 @@ const CourseDetails = () => {
 
     const openManageInstructors = async () => {
         await ensureStaffMembers();
-        const current = (course.instructors || []).map(i => (i._id || i).toString());
+        const coordId = (course.instructor?._id || course.instructor || '').toString();
+        const current = (course.instructors || [])
+            .map(i => (i._id || i).toString())
+            .filter(id => id && id !== coordId);
         setSelectedCoInstructorIds(current);
         setCoInstructorsSearch('');
         setShowManageInstructorsModal(true);
@@ -172,7 +175,10 @@ const CourseDetails = () => {
     };
 
     const handleRemoveCoInstructor = async (instId) => {
-        const current = (course.instructors || []).map(i => (i._id || i).toString());
+        const coordId = (course.instructor?._id || course.instructor || '').toString();
+        const current = (course.instructors || [])
+            .map(i => (i._id || i).toString())
+            .filter(id => id && id !== coordId);
         const updated = current.filter(id => id !== instId.toString());
         try {
             const res = await api.patch(`/organizations/${activeOrganization._id}/courses/${courseId}`, {
@@ -497,8 +503,22 @@ const CourseDetails = () => {
     );
 
     // Co-instructor check
+    const coordinatorUser = course.instructor?.userId || course.instructor;
+    const coordinatorIdStr = (course.instructor?._id || course.instructor || '').toString();
+    const coordinatorName = coordinatorUser?.firstName 
+        ? `${coordinatorUser.firstName} ${coordinatorUser.lastName || ''}`.trim()
+        : (coordinatorUser?.name || 'Unassigned');
+
+    const additionalInstructors = useMemo(() => {
+        if (!Array.isArray(course.instructors)) return [];
+        return course.instructors.filter(inst => {
+            const id = (inst?._id || inst || '').toString();
+            return id && id !== coordinatorIdStr;
+        });
+    }, [course.instructors, coordinatorIdStr]);
+
     const isCoInstructor = Boolean(
-        course.instructors && course.instructors.some(inst => 
+        additionalInstructors.some(inst => 
             (inst._id && inst._id.toString() === activeOrganization?.memberId?.toString()) ||
             (inst.userId?._id && inst.userId._id.toString() === user?._id?.toString()) ||
             inst.toString() === activeOrganization?.memberId?.toString()
@@ -514,11 +534,6 @@ const CourseDetails = () => {
     const canManageStudents = isOwnerOrAdmin || isCoordinator;
     const canManageInstructors = isOwnerOrAdmin || isCoordinator;
     const canCreateSession = isOwnerOrAdmin || isCoordinator || isCoInstructor;
-
-    const coordinatorUser = course.instructor?.userId || course.instructor;
-    const coordinatorName = coordinatorUser?.firstName 
-        ? `${coordinatorUser.firstName} ${coordinatorUser.lastName || ''}`.trim()
-        : (coordinatorUser?.name || 'Unassigned');
 
     // Filter enrolled members by search
     const filteredMembers = members.filter(m => {
@@ -572,7 +587,7 @@ const CourseDetails = () => {
                             <GraduationCap size={14} className="mr-1 shrink-0" />
                             <span>
                                 Coordinator: {coordinatorName}
-                                {course.instructors && course.instructors.length > 0 ? ` (+${course.instructors.length} additional)` : ''}
+                                {additionalInstructors.length > 0 ? ` (+${additionalInstructors.length} additional)` : ''}
                                 &bull; {course.batch || 'Batch Unspecified'} &bull; {course.semester || 'Semester Unspecified'}
                             </span>
                         </p>
@@ -1062,9 +1077,9 @@ const CourseDetails = () => {
                                 )}
                             </div>
 
-                            {course.instructors && course.instructors.length > 0 ? (
+                            {additionalInstructors.length > 0 ? (
                                 <div className="space-y-2">
-                                    {course.instructors.map(inst => {
+                                    {additionalInstructors.map(inst => {
                                         const u = inst.userId || inst;
                                         const name = `${u?.firstName || ''} ${u?.lastName || ''}`.trim() || u?.name || u?.email || 'Instructor';
                                         const instId = inst._id || inst;

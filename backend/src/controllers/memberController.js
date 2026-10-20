@@ -1,5 +1,7 @@
 const OrganizationMember = require('../models/OrganizationMember');
 const User = require('../models/User');
+const Course = require('../models/Course');
+const CourseMember = require('../models/CourseMember');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
@@ -196,6 +198,32 @@ const removeMember = async (req, res, next) => {
         if (requester.role === 'INSTRUCTOR' && memberToRemove.role === 'INSTRUCTOR') {
             return res.status(403).json({ message: 'Instructors cannot remove other instructors' });
         }
+
+        // Prevent removing instructor if they are Course Coordinator of any active/ongoing course
+        const activeCoordinatedCourses = await Course.find({
+            organizationId: req.params.organizationId,
+            instructor: memberToRemove._id,
+            status: { $in: ['ONGOING', 'ACTIVE'] }
+        }).select('name code');
+
+        if (activeCoordinatedCourses.length > 0) {
+            const courseList = activeCoordinatedCourses.map(c => `${c.name} (${c.code})`).join(', ');
+            return res.status(400).json({
+                message: `Cannot remove this instructor because they are currently assigned as the Course Coordinator for active course(s): ${courseList}. Please reassign the Course Coordinator in course settings before removing this instructor.`
+            });
+        }
+
+        // Clean up member from additional instructors lists in courses
+        await Course.updateMany(
+            { organizationId: req.params.organizationId, instructors: memberToRemove._id },
+            { $pull: { instructors: memberToRemove._id } }
+        );
+
+        // Clean up course member enrollments associated with this organization member
+        await CourseMember.deleteMany({
+            organizationId: req.params.organizationId,
+            organizationMemberId: memberToRemove._id
+        });
 
         await OrganizationMember.findByIdAndDelete(req.params.memberId);
 

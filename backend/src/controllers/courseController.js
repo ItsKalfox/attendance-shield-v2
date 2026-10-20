@@ -58,6 +58,13 @@ const getCourses = async (req, res, next) => {
                     await Course.updateOne({ _id: course._id }, { $set: { instructor: ownerMember._id } });
                 }
             }
+            if (Array.isArray(course.instructors)) {
+                const coordIdStr = (course.instructor?._id || course.instructor || '').toString();
+                course.instructors = course.instructors.filter(inst => {
+                    const instIdStr = (inst?._id || inst || '').toString();
+                    return instIdStr && instIdStr !== coordIdStr;
+                });
+            }
         }
 
         res.status(200).json(courses);
@@ -139,7 +146,16 @@ const createCourse = async (req, res, next) => {
                 populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             });
 
-        res.status(201).json(populatedCourse);
+        const resultObj = populatedCourse.toObject();
+        if (Array.isArray(resultObj.instructors)) {
+            const coordIdStr = (resultObj.instructor?._id || resultObj.instructor || '').toString();
+            resultObj.instructors = resultObj.instructors.filter(inst => {
+                const instIdStr = (inst?._id || inst || '').toString();
+                return instIdStr && instIdStr !== coordIdStr;
+            });
+        }
+
+        res.status(201).json(resultObj);
     } catch (error) {
         next(error);
     }
@@ -177,16 +193,25 @@ const getCourseById = async (req, res, next) => {
             }
         }
 
+        let courseObj = course.toObject();
+        if (Array.isArray(courseObj.instructors)) {
+            const coordIdStr = (courseObj.instructor?._id || courseObj.instructor || '').toString();
+            courseObj.instructors = courseObj.instructors.filter(inst => {
+                const instIdStr = (inst?._id || inst || '').toString();
+                return instIdStr && instIdStr !== coordIdStr;
+            });
+        }
+
         // If requester is an INSTRUCTOR, ensure they are assigned to this course (as coordinator or co-instructor)
         if (req.member.role === 'INSTRUCTOR') {
-            const isAssigned = (course.instructor && (course.instructor._id || course.instructor).toString() === req.member._id.toString()) ||
-                (course.instructors && course.instructors.some(inst => (inst._id || inst).toString() === req.member._id.toString()));
+            const isAssigned = (courseObj.instructor && (courseObj.instructor._id || courseObj.instructor).toString() === req.member._id.toString()) ||
+                (courseObj.instructors && courseObj.instructors.some(inst => (inst._id || inst).toString() === req.member._id.toString()));
             if (!isAssigned) {
                 return res.status(403).json({ message: 'You are not assigned to this course' });
             }
         }
 
-        res.status(200).json(course);
+        res.status(200).json(courseObj);
     } catch (error) {
         next(error);
     }
@@ -306,7 +331,16 @@ const updateCourse = async (req, res, next) => {
                 populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             });
 
-        res.status(200).json(populatedCourse);
+        const resultObj = populatedCourse.toObject();
+        if (Array.isArray(resultObj.instructors)) {
+            const coordIdStr = (resultObj.instructor?._id || resultObj.instructor || '').toString();
+            resultObj.instructors = resultObj.instructors.filter(inst => {
+                const instIdStr = (inst?._id || inst || '').toString();
+                return instIdStr && instIdStr !== coordIdStr;
+            });
+        }
+
+        res.status(200).json(resultObj);
     } catch (error) {
         next(error);
     }

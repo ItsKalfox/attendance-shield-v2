@@ -229,6 +229,11 @@ const Courses = () => {
                     <div className="space-y-3.5">
                         {paginatedCourses.map(course => {
                             const assignedInstructor = course.instructor || (course.instructors && course.instructors[0]);
+                            const coordIdStr = (course.instructor?._id || course.instructor || '').toString();
+                            const coInstructors = (course.instructors || []).filter(inst => {
+                                const id = (inst?._id || inst || '').toString();
+                                return id && id !== coordIdStr;
+                            });
                             const dateRangeText = formatDateRange(course.startDate, course.endDate);
 
                             return (
@@ -295,9 +300,9 @@ const Courses = () => {
                                                     ? `${assignedInstructor.userId.firstName} ${assignedInstructor.userId.lastName || ''}`.trim()
                                                     : 'Unassigned'}
                                             </div>
-                                            {course.instructors && course.instructors.length > 0 && (
+                                            {coInstructors.length > 0 && (
                                                 <div className="text-[10px] text-brand-600 font-medium">
-                                                    +{course.instructors.length} additional
+                                                    +{coInstructors.length} additional
                                                 </div>
                                             )}
                                         </div>

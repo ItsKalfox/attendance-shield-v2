@@ -106,7 +106,7 @@ const CreateCourseModal = ({ onClose, onCourseCreated }) => {
                 startDate: formData.startDate || null,
                 endDate: formData.endDate || null,
                 instructor: formData.instructor,
-                instructors: allowAdditionalInstructors ? additionalInstructors : [],
+                instructors: allowAdditionalInstructors ? additionalInstructors.filter(id => id.toString() !== formData.instructor?.toString()) : [],
                 description: formData.description.trim()
             };
 
