@@ -26,6 +26,11 @@ const organizationMemberSchema = new mongoose.Schema({
         trim: true,
         default: ''
     },
+    name: {
+        type: String,
+        trim: true,
+        default: ''
+    },
     firstName: {
         type: String,
         trim: true,
@@ -46,5 +51,19 @@ const organizationMemberSchema = new mongoose.Schema({
 
 // Prevent duplicate membership
 organizationMemberSchema.index({ organizationId: 1, userId: 1 }, { unique: true });
+
+// Synchronize name <-> firstName & lastName
+organizationMemberSchema.pre('validate', function() {
+    if (this.name) {
+        this.name = this.name.trim();
+        if (!this.firstName && !this.lastName) {
+            const parts = this.name.split(/\s+/);
+            this.firstName = parts[0] || '';
+            this.lastName = parts.slice(1).join(' ') || '';
+        }
+    } else if (this.firstName || this.lastName) {
+        this.name = `${this.firstName || ''} ${this.lastName || ''}`.trim();
+    }
+});
 
 module.exports = mongoose.model('OrganizationMember', organizationMemberSchema);

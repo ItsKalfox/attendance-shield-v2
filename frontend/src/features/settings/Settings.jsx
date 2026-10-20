@@ -9,9 +9,15 @@ const Settings = () => {
     const { user, setUser } = useAuth();
     
     // Profile state
-    const [firstName, setFirstName] = useState(user?.firstName || '');
-    const [lastName, setLastName] = useState(user?.lastName || '');
+    const initialName = user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
+    const [name, setName] = useState(initialName);
     const [savingProfile, setSavingProfile] = useState(false);
+
+    useEffect(() => {
+        if (user) {
+            setName(user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim());
+        }
+    }, [user]);
 
     // Email state
     const email = user?.email || '';
@@ -49,11 +55,14 @@ const Settings = () => {
         return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
-
     const handleSaveProfile = async () => {
+        if (!name.trim()) {
+            alert('Name cannot be empty');
+            return;
+        }
         try {
             setSavingProfile(true);
-            const res = await api.patch('/auth/me', { firstName, lastName });
+            const res = await api.patch('/auth/me', { name: name.trim() });
             setUser(res.data);
             alert('Profile updated successfully!');
         } catch (error) {
@@ -185,7 +194,7 @@ const Settings = () => {
                     <UserIcon size={40} className={`text-slate-400 ${user?.avatar ? 'hidden' : ''}`} />
                 </div>
                 <div className="flex-1 text-center md:text-left">
-                    <h2 className="text-xl font-bold text-slate-800">{user?.firstName} {user?.lastName}</h2>
+                    <h2 className="text-xl font-bold text-slate-800">{user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()}</h2>
                     <p className="text-slate-500 font-medium mb-3">{user?.email}</p>
                     
                     {user?.authProvider === 'GOOGLE' && (
@@ -224,26 +233,18 @@ const Settings = () => {
             <div className="card p-6 sm:p-8 bg-white border-0 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl sm:rounded-3xl">
                 <div className="mb-6">
                     <h2 className="text-lg font-bold text-slate-800">Profile</h2>
-                    <p className="text-sm text-slate-500">Update your first and last name</p>
+                    <p className="text-sm text-slate-500">Update your name</p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="max-w-md mb-6">
                     <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">First Name</label>
+                        <label className="block text-xs font-bold text-slate-700 mb-2">Name</label>
                         <input 
                             type="text" 
                             className="form-input w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-2.5 focus:bg-white transition shadow-sm"
-                            value={firstName}
-                            onChange={e => setFirstName(e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2">Last Name</label>
-                        <input 
-                            type="text" 
-                            className="form-input w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-2.5 focus:bg-white transition shadow-sm"
-                            value={lastName}
-                            onChange={e => setLastName(e.target.value)}
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            placeholder="Your full name"
                         />
                     </div>
                 </div>
@@ -252,7 +253,7 @@ const Settings = () => {
                     <button 
                         className="btn bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-lg font-medium text-sm transition shadow-md disabled:opacity-50"
                         onClick={handleSaveProfile}
-                        disabled={savingProfile || (!firstName || !lastName)}
+                        disabled={savingProfile || !name.trim()}
                     >
                         {savingProfile ? 'Saving...' : 'Save Changes'}
                     </button>

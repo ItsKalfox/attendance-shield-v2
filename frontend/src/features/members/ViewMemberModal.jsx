@@ -11,17 +11,13 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
     const [loading, setLoading] = useState(false);
     
     // Organization-scoped roster values (fallback to userId attributes)
-    const initialFirstName = member.firstName !== undefined && member.firstName !== '' 
-        ? member.firstName 
-        : (member.userId?.firstName || '');
-    const initialLastName = member.lastName !== undefined && member.lastName !== '' 
-        ? member.lastName 
-        : (member.userId?.lastName || '');
+    const initialName = (member.name !== undefined && member.name !== '')
+        ? member.name 
+        : (member.userId?.name || `${member.firstName || member.userId?.firstName || ''} ${member.lastName || member.userId?.lastName || ''}`.trim());
     const initialStudentId = member.studentId || '';
 
     const [formData, setFormData] = useState({
-        firstName: initialFirstName,
-        lastName: initialLastName,
+        name: initialName,
         studentId: initialStudentId
     });
 
@@ -29,8 +25,7 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
     const isAttendee = member.role === 'ATTENDEE';
 
     const isDirty = Boolean(isEditing && isOwner && isAttendee && (
-        formData.firstName !== initialFirstName ||
-        formData.lastName !== initialLastName ||
+        formData.name !== initialName ||
         formData.studentId !== initialStudentId
     ));
 
@@ -50,8 +45,7 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         try {
             setLoading(true);
             const response = await api.patch(`/organizations/${activeOrganization._id}/members/${member._id}`, {
-                firstName: formData.firstName.trim(),
-                lastName: formData.lastName.trim(),
+                name: formData.name.trim(),
                 studentId: formData.studentId.trim()
             });
             onUpdated(response.data);
@@ -65,8 +59,7 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
 
     const handleCancelEdit = () => {
         setFormData({
-            firstName: initialFirstName,
-            lastName: initialLastName,
+            name: initialName,
             studentId: initialStudentId
         });
         setIsEditing(false);
@@ -85,8 +78,8 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
     };
 
     const displayName = isAttendee 
-        ? `${initialFirstName} ${initialLastName}`.trim() || 'Attendee'
-        : `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim() || 'Instructor';
+        ? (initialName || 'Attendee')
+        : (member.userId?.name || `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim() || 'Instructor');
 
     return (
         <div onClick={handleBackdropClick} className="modal-overlay z-50 cursor-default">
@@ -160,33 +153,19 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                         {isEditing && isAttendee ? (
                             /* EDIT MODE FOR ATTENDEE */
                             <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                                            First Name
-                                        </label>
-                                        <input 
-                                            type="text" 
-                                            name="firstName"
-                                            value={formData.firstName}
-                                            onChange={handleChange}
-                                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition font-medium"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                                            Last Name
-                                        </label>
-                                        <input 
-                                            type="text" 
-                                            name="lastName"
-                                            value={formData.lastName}
-                                            onChange={handleChange}
-                                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition font-medium"
-                                            required
-                                        />
-                                    </div>
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                                        Name
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition font-medium"
+                                        placeholder="Full Name"
+                                        required
+                                    />
                                 </div>
 
                                 <div>

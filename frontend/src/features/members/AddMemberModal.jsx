@@ -7,8 +7,7 @@ import { X } from 'lucide-react';
 const AddMemberModal = ({ onClose, onMemberAdded }) => {
     const { activeOrganization } = useOrganization();
     const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
+        name: '',
         email: '',
         role: 'ATTENDEE',
         studentId: ''
@@ -17,8 +16,7 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
     const [error, setError] = useState('');
 
     const isDirty = Boolean(
-        formData.firstName.trim() || 
-        formData.lastName.trim() || 
+        formData.name.trim() || 
         formData.email.trim() || 
         formData.studentId.trim()
     );
@@ -31,8 +29,8 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
-            setError('First name, last name, and email are required');
+        if (!formData.name.trim() || !formData.email.trim()) {
+            setError('Name and email are required');
             return;
         }
 
@@ -77,30 +75,17 @@ const AddMemberModal = ({ onClose, onMemberAdded }) => {
                     )}
                     
                     <form onSubmit={handleSubmit}>
-                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                            <div className="form-group w-full sm:w-1/2 mb-0">
-                                <label className="form-label">First Name</label>
-                                <input 
-                                    type="text" 
-                                    name="firstName"
-                                    className="form-input" 
-                                    placeholder="John"
-                                    value={formData.firstName}
-                                    onChange={handleChange}
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="form-group w-full sm:w-1/2 mb-0">
-                                <label className="form-label">Last Name</label>
-                                <input 
-                                    type="text" 
-                                    name="lastName"
-                                    className="form-input" 
-                                    placeholder="Doe"
-                                    value={formData.lastName}
-                                    onChange={handleChange}
-                                />
-                            </div>
+                        <div className="form-group mb-4">
+                            <label className="form-label">Name</label>
+                            <input 
+                                type="text" 
+                                name="name"
+                                className="form-input" 
+                                placeholder="e.g. John Doe"
+                                value={formData.name}
+                                onChange={handleChange}
+                                autoFocus
+                            />
                         </div>
 
                         <div className="form-group mb-4">

@@ -143,9 +143,7 @@ const Members = () => {
 
     const filteredAttendees = attendees.filter(m => {
         const q = attendeeSearch.toLowerCase();
-        const fName = m.firstName || m.userId?.firstName || '';
-        const lName = m.lastName || m.userId?.lastName || '';
-        const name = `${fName} ${lName}`.toLowerCase();
+        const name = (m.name || m.userId?.name || `${m.firstName || m.userId?.firstName || ''} ${m.lastName || m.userId?.lastName || ''}`).trim().toLowerCase();
         const email = (m.userId?.email || '').toLowerCase();
         const studentId = (m.studentId || '').toLowerCase();
         return name.includes(q) || email.includes(q) || studentId.includes(q);
@@ -153,7 +151,7 @@ const Members = () => {
 
     const filteredOrganizers = organizers.filter(m => {
         const q = organizerSearch.toLowerCase();
-        const name = `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`.toLowerCase();
+        const name = (m.userId?.name || `${m.userId?.firstName || ''} ${m.userId?.lastName || ''}`).trim().toLowerCase();
         const email = (m.userId?.email || '').toLowerCase();
         const role = (m.role || '').toLowerCase();
         return name.includes(q) || email.includes(q) || role.includes(q);
@@ -293,10 +291,8 @@ const Members = () => {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium">
                                         {paginatedAttendees.map(member => {
-                                            const fName = member.firstName || member.userId?.firstName || '';
-                                            const lName = member.lastName || member.userId?.lastName || '';
-                                            const fullName = `${fName} ${lName}`.trim() || 'Attendee';
-                                            const initial = fName ? fName.charAt(0) : 'A';
+                                            const fullName = member.name || member.userId?.name || `${member.firstName || member.userId?.firstName || ''} ${member.lastName || member.userId?.lastName || ''}`.trim() || 'Attendee';
+                                            const initial = fullName.charAt(0).toUpperCase() || 'A';
 
                                             return (
                                                 <tr key={member._id} className="hover:bg-slate-50/60 transition group">
@@ -436,11 +432,11 @@ const Members = () => {
                                                 <td className="py-3 sm:py-3.5 px-3.5 sm:px-5">
                                                     <div className="flex items-center space-x-2.5 sm:space-x-3">
                                                         <div className="w-8 h-8 rounded-full bg-brand-50 text-brand-600 border border-brand-100 flex items-center justify-center font-bold text-xs shrink-0">
-                                                            {member.userId?.firstName?.charAt(0) || 'U'}
+                                                            {(member.userId?.name || member.userId?.firstName || 'U').charAt(0).toUpperCase()}
                                                         </div>
                                                         <div className="min-w-0">
                                                             <div className="font-semibold text-slate-900 group-hover:text-brand-600 transition truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
-                                                                {member.userId?.firstName} {member.userId?.lastName}
+                                                                {member.userId?.name || `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim() || 'Organizer'}
                                                             </div>
                                                             <div className="text-[11px] text-slate-400 font-normal truncate max-w-[130px] xs:max-w-[180px] sm:max-w-none">
                                                                 {member.userId?.email}

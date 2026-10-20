@@ -204,8 +204,11 @@ const signup = async (req, res, next) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
+        const resolvedName = (name || `${fName} ${lName}`).trim() || 'User';
+
         // Create user
         const user = await User.create({
+            name: resolvedName,
             firstName: fName,
             lastName: lName,
             email: normalizedEmail,
@@ -218,7 +221,7 @@ const signup = async (req, res, next) => {
 
         // Send Welcome Email asynchronously
         try {
-            const welcomeHtml = getWelcomeEmail({ name: `${fName} ${lName}`.trim(), email: normalizedEmail });
+            const welcomeHtml = getWelcomeEmail({ name: resolvedName, email: normalizedEmail });
             const welcomeText = `Welcome to Attendance Shield, ${fName}! Your account is ready. Visit ${getPrimaryClientUrl()}/app/dashboard to get started.`;
             const welcomeAttachments = getLogoAttachment();
             await sendEmail({
@@ -235,6 +238,7 @@ const signup = async (req, res, next) => {
         if (user) {
             res.status(201).json({
                 _id: user.id,
+                name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
@@ -263,6 +267,7 @@ const login = async (req, res, next) => {
         if (user && (await bcrypt.compare(password, user.passwordHash))) {
             res.json({
                 _id: user.id,
+                name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
@@ -502,11 +507,24 @@ const resetPassword = async (req, res, next) => {
 // @access  Private
 const updateMe = async (req, res, next) => {
     try {
-        const { firstName, lastName, email } = req.body;
+        const { name, firstName, lastName, email } = req.body;
         const user = await User.findById(req.user._id);
 
-        if (firstName) user.firstName = firstName;
-        if (lastName) user.lastName = lastName;
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (name !== undefined) {
+            user.name = name.trim();
+            const parts = user.name.split(/\s+/);
+            user.firstName = parts[0] || 'User';
+            user.lastName = parts.slice(1).join(' ') || '';
+        } else {
+            if (firstName !== undefined) user.firstName = firstName.trim();
+            if (lastName !== undefined) user.lastName = lastName.trim();
+            user.name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        }
+
         if (email) {
             // Check if email is already used by another user
             const emailExists = await User.findOne({ email });
@@ -622,6 +640,8 @@ const googleAuth = async (req, res, next) => {
 
         let user = await User.findOne({ email });
 
+        const googleFullName = (payload.name || `${given_name || ''} ${family_name || ''}`).trim() || 'User';
+
         if (!user) {
             // Generate a random secure password for the user
             const randomPassword = crypto.randomBytes(32).toString('hex');
@@ -629,6 +649,7 @@ const googleAuth = async (req, res, next) => {
             const passwordHash = await bcrypt.hash(randomPassword, salt);
 
             user = await User.create({
+                name: googleFullName,
                 firstName: given_name || 'User',
                 lastName: family_name || '',
                 email,
@@ -642,6 +663,9 @@ const googleAuth = async (req, res, next) => {
             if (picture) {
                 user.avatar = picture;
             }
+            if (!user.name || user.name === 'Unknown' || user.name === 'User') {
+                user.name = googleFullName;
+            }
             if (given_name && (!user.firstName || user.firstName === 'Unknown' || user.firstName === 'User')) {
                 user.firstName = given_name;
             }
@@ -653,6 +677,7 @@ const googleAuth = async (req, res, next) => {
 
         res.status(200).json({
             _id: user.id,
+            name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
@@ -757,6 +782,8 @@ const microsoftAuth = async (req, res, next) => {
 
         let user = await User.findOne({ email });
 
+        const msFullName = (displayName || `${given_name || ''} ${family_name || ''}`).trim() || 'User';
+
         if (!user) {
             // Generate a random secure password for the user
             const randomPassword = crypto.randomBytes(32).toString('hex');
@@ -764,6 +791,7 @@ const microsoftAuth = async (req, res, next) => {
             const passwordHash = await bcrypt.hash(randomPassword, salt);
 
             user = await User.create({
+                name: msFullName,
                 firstName: given_name,
                 lastName: family_name,
                 email,
@@ -777,6 +805,9 @@ const microsoftAuth = async (req, res, next) => {
             if (avatarUrl) {
                 user.avatar = avatarUrl;
             }
+            if (!user.name || user.name === 'User' || user.name === 'Unknown') {
+                user.name = msFullName;
+            }
             if (given_name && (!user.firstName || user.firstName === 'User' || user.firstName === 'Unknown')) {
                 user.firstName = given_name;
             }
@@ -788,6 +819,7 @@ const microsoftAuth = async (req, res, next) => {
 
         res.status(200).json({
             _id: user.id,
+            name: user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,

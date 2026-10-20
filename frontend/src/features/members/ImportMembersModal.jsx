@@ -17,7 +17,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
     const [step, setStep] = useState(1);
     
     const [editingRowId, setEditingRowId] = useState(null);
-    const [editFormData, setEditFormData] = useState({ studentId: '', firstName: '', lastName: '', email: '' });
+    const [editFormData, setEditFormData] = useState({ studentId: '', name: '', email: '' });
 
     const isDirty = Boolean(csvFile || parsedData.length > 0 || importing);
 
@@ -27,7 +27,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
     });
 
     const downloadSampleCSV = () => {
-        const sampleContent = 'studentId,firstName,lastName,email\r\nSTU1001,John,Doe,john.doe@university.edu\r\nSTU1002,Jane,Smith,jane.smith@university.edu\r\nSTU1003,Alex,Taylor,alex.taylor@university.edu';
+        const sampleContent = 'studentId,name,email\r\nSTU1001,John Doe,john.doe@university.edu\r\nSTU1002,Jane Smith,jane.smith@university.edu\r\nSTU1003,Alex Taylor,alex.taylor@university.edu';
         const blob = new Blob([sampleContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -128,12 +128,14 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
 
             const rawHeaders = rows[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
             
-            // Map header positions flexibly (supporting studentId, firstName, lastName, email)
+            // Map header positions flexibly (supporting studentId, name, firstName, lastName, email)
             const headerMap = {};
             rawHeaders.forEach((h, index) => {
                 const clean = h.toLowerCase().replace(/[^a-z0-9]/g, '');
                 if (clean === 'studentid' || clean === 'id' || clean === 'regno' || clean === 'studentnumber' || clean === 'staffid') {
                     headerMap['studentId'] = index;
+                } else if (clean === 'name' || clean === 'fullname' || clean === 'studentname' || clean === 'attendeename') {
+                    headerMap['name'] = index;
                 } else if (clean === 'firstname' || clean === 'first' || clean === 'fname' || clean === 'givenname') {
                     headerMap['firstName'] = index;
                 } else if (clean === 'lastname' || clean === 'last' || clean === 'lname' || clean === 'surname' || clean === 'familyname') {
@@ -143,8 +145,8 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                 }
             });
             
-            if (headerMap['email'] === undefined || headerMap['firstName'] === undefined) {
-                setError('CSV must contain at least "studentId", "firstName", "lastName", and "email" columns.');
+            if (headerMap['email'] === undefined || (headerMap['name'] === undefined && headerMap['firstName'] === undefined)) {
+                setError('CSV must contain at least "name" (or "firstName") and "email" columns.');
                 setLoading(false);
                 return;
             }
@@ -153,16 +155,19 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
             for (let i = 1; i < rows.length; i++) {
                 const values = rows[i].split(',').map(v => v.trim().replace(/^["']|["']$/g, ''));
                 const studentId = headerMap['studentId'] !== undefined ? (values[headerMap['studentId']] || '') : '';
-                const firstName = headerMap['firstName'] !== undefined ? (values[headerMap['firstName']] || '') : '';
-                const lastName = headerMap['lastName'] !== undefined ? (values[headerMap['lastName']] || '') : '';
+                let name = headerMap['name'] !== undefined ? (values[headerMap['name']] || '') : '';
+                if (!name && headerMap['firstName'] !== undefined) {
+                    const firstName = values[headerMap['firstName']] || '';
+                    const lastName = headerMap['lastName'] !== undefined ? (values[headerMap['lastName']] || '') : '';
+                    name = `${firstName} ${lastName}`.trim();
+                }
                 const email = headerMap['email'] !== undefined ? (values[headerMap['email']] || '') : '';
                 
-                if (email && firstName) {
+                if (email && name) {
                     allRows.push({
                         _id: i.toString(),
                         studentId,
-                        firstName,
-                        lastName,
+                        name,
                         email
                     });
                 }
@@ -204,20 +209,18 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
         setEditingRowId(row._id);
         setEditFormData({
             studentId: row.studentId || '',
-            firstName: row.firstName || '',
-            lastName: row.lastName || '',
+            name: row.name || `${row.firstName || ''} ${row.lastName || ''}`.trim(),
             email: row.email || ''
         });
     };
 
     const saveRowEdits = async (rowId) => {
-        const cleanFirstName = editFormData.firstName.trim();
-        const cleanLastName = editFormData.lastName.trim();
+        const cleanName = editFormData.name.trim();
         const cleanEmail = editFormData.email.trim();
         const cleanStudentId = editFormData.studentId.trim();
 
-        if (!cleanFirstName) {
-            toast.error('First Name is required');
+        if (!cleanName) {
+            toast.error('Name is required');
             return;
         }
         if (!cleanEmail) {
@@ -242,8 +245,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                         return {
                             ...row,
                             studentId: cleanStudentId,
-                            firstName: cleanFirstName,
-                            lastName: cleanLastName,
+                            name: cleanName,
                             email: cleanEmail,
                             isValidEmail: validation ? validation.valid : false,
                             provider: validation ? validation.provider : null,
@@ -284,8 +286,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
         try {
             const membersToImport = parsedData.map(r => ({
                 studentId: r.studentId || '',
-                firstName: r.firstName,
-                lastName: r.lastName || '',
+                name: r.name || `${r.firstName || ''} ${r.lastName || ''}`.trim(),
                 email: r.email
             }));
 
@@ -364,7 +365,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                                         </div>
                                         <h3 className="text-lg font-bold text-slate-800 mb-2">Upload CSV File</h3>
                                         <p className="text-slate-500 text-xs sm:text-sm mb-3 text-center max-w-lg">
-                                            Format: <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-brand-700 font-semibold">studentId</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-700">firstName</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-700">lastName</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-700">email</code>
+                                            Format: <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-brand-700 font-semibold">studentId</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-700 font-semibold">name</code>, <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm text-slate-700 font-semibold">email</code>
                                         </p>
                                         
                                         <button 
@@ -426,12 +427,11 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                                     <table className="table w-full text-xs">
                                         <thead className="sticky top-0 bg-slate-50/95 backdrop-blur-sm shadow-sm z-10 border-b border-slate-200">
                                             <tr>
-                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[15%] whitespace-nowrap">Student ID</th>
-                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[16%]">First Name</th>
-                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[16%]">Last Name</th>
-                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[26%]">Email</th>
-                                                <th className="py-3 px-5 text-center font-bold text-slate-600 uppercase tracking-wider w-[18%] whitespace-nowrap">Status</th>
-                                                <th className="py-3 px-5 text-right font-bold text-slate-600 uppercase tracking-wider w-[9%] whitespace-nowrap">Actions</th>
+                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[18%] whitespace-nowrap">Student ID</th>
+                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[30%]">Name</th>
+                                                <th className="py-3 px-5 text-left font-bold text-slate-600 uppercase tracking-wider w-[30%]">Email</th>
+                                                <th className="py-3 px-5 text-center font-bold text-slate-600 uppercase tracking-wider w-[14%] whitespace-nowrap">Status</th>
+                                                <th className="py-3 px-5 text-right font-bold text-slate-600 uppercase tracking-wider w-[8%] whitespace-nowrap">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -450,7 +450,7 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                                                 return (
                                                     <tr key={row._id} className={`hover:bg-slate-50/60 transition ${row.hasError ? 'bg-red-50/40' : ''} ${isEditing ? 'bg-brand-50/30' : ''}`}>
                                                         <td className="py-3 px-5 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">
-                                                            {isEditing ? (
+                                                             {isEditing ? (
                                                                 <input 
                                                                     type="text" 
                                                                     value={editFormData.studentId}
@@ -473,28 +473,14 @@ const ImportMembersModal = ({ onClose, onMembersImported }) => {
                                                             {isEditing ? (
                                                                 <input 
                                                                     type="text" 
-                                                                    value={editFormData.firstName}
-                                                                    onChange={(e) => setEditFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                                                                    value={editFormData.name}
+                                                                    onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
                                                                     onKeyDown={handleKeyDown}
-                                                                    placeholder="First Name"
+                                                                    placeholder="Full Name"
                                                                     className="form-input py-1 px-2.5 text-xs w-full font-bold text-slate-800 bg-white"
                                                                 />
                                                             ) : (
-                                                                row.firstName
-                                                            )}
-                                                        </td>
-                                                        <td className="py-3 px-5 text-slate-600">
-                                                            {isEditing ? (
-                                                                <input 
-                                                                    type="text" 
-                                                                    value={editFormData.lastName}
-                                                                    onChange={(e) => setEditFormData(prev => ({ ...prev, lastName: e.target.value }))}
-                                                                    onKeyDown={handleKeyDown}
-                                                                    placeholder="Last Name"
-                                                                    className="form-input py-1 px-2.5 text-xs w-full text-slate-700 bg-white"
-                                                                />
-                                                            ) : (
-                                                                row.lastName || <span className="text-slate-300 italic">-</span>
+                                                                row.name || `${row.firstName || ''} ${row.lastName || ''}`.trim()
                                                             )}
                                                         </td>
                                                         <td className="py-3 px-5">

@@ -1,10 +1,15 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        trim: true,
+        maxlength: 100
+    },
     firstName: {
         type: String,
-        required: [true, 'First name is required'],
         trim: true,
+        default: '',
         maxlength: 50
     },
     lastName: {
@@ -49,6 +54,24 @@ const userSchema = new mongoose.Schema({
     }
 }, {
     timestamps: true
+});
+
+// Synchronize name <-> firstName & lastName
+userSchema.pre('validate', function() {
+    if (this.name) {
+        this.name = this.name.trim();
+        if (!this.firstName && !this.lastName) {
+            const parts = this.name.split(/\s+/);
+            this.firstName = parts[0] || 'User';
+            this.lastName = parts.slice(1).join(' ') || '';
+        }
+    } else if (this.firstName || this.lastName) {
+        this.name = `${this.firstName || ''} ${this.lastName || ''}`.trim();
+    }
+    if (!this.firstName && !this.name) {
+        this.firstName = 'User';
+        this.name = 'User';
+    }
 });
 
 module.exports = mongoose.model('User', userSchema);

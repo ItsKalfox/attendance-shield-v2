@@ -12,7 +12,7 @@ const getMembers = async (req, res, next) => {
     try {
         const members = await OrganizationMember.find({ 
             organizationId: req.params.organizationId 
-        }).populate('userId', 'firstName lastName email avatar');
+        }).populate('userId', 'name firstName lastName email avatar');
 
         res.status(200).json(members);
     } catch (error) {
@@ -25,11 +25,12 @@ const getMembers = async (req, res, next) => {
 // @access  Private (INSTRUCTOR/OWNER)
 const addMember = async (req, res, next) => {
     try {
-        const { firstName, lastName, email, role, studentId } = req.body;
+        const { name, firstName, lastName, email, role, studentId } = req.body;
         const organizationId = req.params.organizationId;
+        const resolvedName = (name || `${firstName || ''} ${lastName || ''}`).trim();
 
-        if (!firstName || !lastName || !email) {
-            return res.status(400).json({ message: 'Missing required fields' });
+        if (!resolvedName || !email) {
+            return res.status(400).json({ message: 'Name and email are required' });
         }
 
         let user = await User.findOne({ email });
@@ -41,8 +42,7 @@ const addMember = async (req, res, next) => {
             const passwordHash = await bcrypt.hash(securePassword, salt);
 
             user = await User.create({
-                firstName,
-                lastName,
+                name: resolvedName,
                 email,
                 passwordHash
             });
@@ -63,11 +63,10 @@ const addMember = async (req, res, next) => {
             userId: user._id,
             role: role || 'ATTENDEE',
             studentId: studentId ? studentId.trim() : '',
-            firstName: firstName ? firstName.trim() : '',
-            lastName: lastName ? lastName.trim() : ''
+            name: resolvedName
         });
 
-        const populatedMember = await OrganizationMember.findById(member._id).populate('userId', 'firstName lastName email avatar');
+        const populatedMember = await OrganizationMember.findById(member._id).populate('userId', 'name firstName lastName email avatar');
         res.status(201).json(populatedMember);
     } catch (error) {
         next(error);
@@ -102,11 +101,12 @@ const importMembers = async (req, res, next) => {
 
         for (const data of members) {
             try {
-                const { firstName, lastName, email, studentId } = data;
+                const { name, firstName, lastName, email, studentId } = data;
+                const resolvedName = (name || `${firstName || ''} ${lastName || ''}`).trim() || 'Attendee';
                 
                 if (!email) {
                     results.failed++;
-                    results.errors.push(`Missing email for ${firstName} ${lastName}`);
+                    results.errors.push(`Missing email for ${resolvedName}`);
                     continue;
                 }
 
@@ -119,8 +119,7 @@ const importMembers = async (req, res, next) => {
                     const passwordHash = await bcrypt.hash(securePassword, salt);
 
                     const createdUsers = await User.create([{
-                        firstName: firstName ? firstName.trim() : 'Unknown',
-                        lastName: lastName ? lastName.trim() : 'Unknown',
+                        name: resolvedName,
                         email,
                         passwordHash
                     }], { session });
@@ -144,8 +143,7 @@ const importMembers = async (req, res, next) => {
                     userId: user._id,
                     role: 'ATTENDEE',
                     studentId: studentId ? studentId.trim() : '',
-                    firstName: firstName ? firstName.trim() : (user.firstName || ''),
-                    lastName: lastName ? lastName.trim() : (user.lastName || '')
+                    name: resolvedName || user.name || ''
                 }], { session });
 
                 if (!isNewUser) {
@@ -212,12 +210,12 @@ const removeMember = async (req, res, next) => {
 // @access  Private (INSTRUCTOR/OWNER)
 const updateMember = async (req, res, next) => {
     try {
-        const { firstName, lastName, studentId } = req.body;
+        const { name, firstName, lastName, studentId } = req.body;
         
         const member = await OrganizationMember.findOne({
             _id: req.params.memberId,
             organizationId: req.params.organizationId
-        }).populate('userId', 'firstName lastName email avatar');
+        }).populate('userId', 'name firstName lastName email avatar');
 
         if (!member) {
             return res.status(404).json({ message: 'Member not found' });
@@ -243,16 +241,26 @@ const updateMember = async (req, res, next) => {
         if (studentId !== undefined) {
             member.studentId = studentId.trim();
         }
-        if (firstName !== undefined) {
-            member.firstName = firstName.trim();
-        }
-        if (lastName !== undefined) {
-            member.lastName = lastName.trim();
+        if (name !== undefined) {
+            member.name = name.trim();
+            const parts = member.name.split(/\s+/);
+            member.firstName = parts[0] || '';
+            member.lastName = parts.slice(1).join(' ') || '';
+        } else {
+            if (firstName !== undefined) {
+                member.firstName = firstName.trim();
+            }
+            if (lastName !== undefined) {
+                member.lastName = lastName.trim();
+            }
+            if (firstName !== undefined || lastName !== undefined) {
+                member.name = `${member.firstName || ''} ${member.lastName || ''}`.trim();
+            }
         }
 
         await member.save();
 
-        const updatedMember = await OrganizationMember.findById(member._id).populate('userId', 'firstName lastName email avatar');
+        const updatedMember = await OrganizationMember.findById(member._id).populate('userId', 'name firstName lastName email avatar');
         res.status(200).json(updatedMember);
     } catch (error) {
         next(error);
