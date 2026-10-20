@@ -5,7 +5,7 @@ import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
-import { X, Target, Navigation, ChevronDown, Search, Maximize2, Minimize2, MapPin, Check, Loader2, LocateFixed } from 'lucide-react';
+import { X, Target, Navigation, ChevronDown, ChevronUp, Search, Maximize2, Minimize2, MapPin, Check, Loader2, LocateFixed, Clock } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -48,6 +48,16 @@ const MapResizeHandler = () => {
     return null;
 };
 
+const calculateExpiresAt = (startStr, hours, minutes) => {
+    if (!startStr) return '';
+    const start = new Date(startStr);
+    if (isNaN(start.getTime())) return '';
+    const totalMs = (hours * 60 + minutes) * 60000;
+    const end = new Date(start.getTime() + totalMs);
+    const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    return endLocal;
+};
+
 const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const { activeOrganization } = useOrganization();
     const { user } = useAuth();
@@ -77,6 +87,26 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const [searchResults, setSearchResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [durationHours, setDurationHours] = useState(2);
+    const [durationMinutes, setDurationMinutes] = useState(0);
+
+    const handleDurationChange = (newHours, newMinutes) => {
+        setIsUserModified(true);
+        if (newHours === 0 && newMinutes === 0) {
+            newMinutes = 15;
+        }
+        setError('');
+        setDurationHours(newHours);
+        setDurationMinutes(newMinutes);
+
+        if (formData.startTime) {
+            const newExpires = calculateExpiresAt(formData.startTime, newHours, newMinutes);
+            setFormData(prev => ({
+                ...prev,
+                expiresAt: newExpires
+            }));
+        }
+    };
 
     // Debounced location search for place autocomplete
     useEffect(() => {
@@ -241,6 +271,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                     startTime: nowLocal,
                     expiresAt: expiresLocal
                 }));
+                setDurationHours(2);
+                setDurationMinutes(0);
             } catch (err) {
                 console.error("Failed to load form data", err);
                 setError("Failed to connect to the server to load session details.");
@@ -274,6 +306,12 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
             return;
         }
         
+        const diffMinutes = Math.round((expires.getTime() - start.getTime()) / 60000);
+        if (diffMinutes < 5) {
+            setError('Session duration must be at least 5 minutes.');
+            return;
+        }
+        
         setLoading(true);
         setError('');
 
@@ -300,28 +338,58 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
 
         if (name === 'startTime' && value) {
             const newStart = new Date(value);
-            const currentExpires = new Date(formData.expiresAt);
-
-            // Auto-advance expiresAt if it's unset or would be before/equal to the new start time
-            if (!formData.expiresAt || currentExpires <= newStart) {
-                const autoExpires = new Date(newStart.getTime() + 120 * 60000);
-                const autoExpiresLocal = new Date(autoExpires.getTime() - autoExpires.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                setFormData(prev => ({
-                    ...prev,
-                    startTime: value,
-                    expiresAt: autoExpiresLocal
-                }));
-                setError('');
-                return;
-            }
-        }
-
-        if (name === 'expiresAt' && formData.startTime && value) {
-            if (new Date(value) <= new Date(formData.startTime)) {
-                setError('Expiry time must be after the start time.');
+            const minAllowed = new Date(Date.now() - 15 * 60000);
+            
+            if (newStart < minAllowed) {
+                setError('Session start time cannot be more than 15 minutes in the past.');
             } else {
                 setError('');
             }
+
+            // Recalculate expiresAt based on current duration
+            const totalMinutes = durationHours * 60 + durationMinutes;
+            const validDuration = totalMinutes >= 5 ? totalMinutes : 120;
+            const newExpires = calculateExpiresAt(value, Math.floor(validDuration / 60), validDuration % 60);
+
+            setFormData(prev => ({
+                ...prev,
+                startTime: value,
+                expiresAt: newExpires
+            }));
+            return;
+        }
+
+        if (name === 'expiresAt' && value) {
+            const start = new Date(formData.startTime);
+            const newExpires = new Date(value);
+
+            if (formData.startTime && newExpires <= start) {
+                setError('Expiry time must be after the start time.');
+                setFormData(prev => ({ ...prev, expiresAt: value }));
+                return;
+            }
+
+            setError('');
+            if (formData.startTime && !isNaN(start.getTime()) && !isNaN(newExpires.getTime())) {
+                const diffMinutes = Math.max(15, Math.round((newExpires.getTime() - start.getTime()) / 60000));
+                let h = Math.floor(diffMinutes / 60);
+                let m = diffMinutes % 60;
+                m = Math.round(m / 15) * 15;
+                if (m === 60) {
+                    h += 1;
+                    m = 0;
+                }
+                h = Math.min(10, Math.max(0, h));
+                if (h === 0 && m === 0) m = 15;
+                setDurationHours(h);
+                setDurationMinutes(m);
+            }
+
+            setFormData(prev => ({
+                ...prev,
+                expiresAt: value
+            }));
+            return;
         }
 
         setFormData(prev => ({
@@ -404,7 +472,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
         <>
         <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
             <div onClick={handleBackdropClick} className="modal-container">
-                <div className={`modal-content max-w-lg ${isShaking ? 'animate-modal-shake' : ''}`}>
+                <div className={`modal-content max-w-lg md:max-w-xl lg:max-w-2xl ${isShaking ? 'animate-modal-shake' : ''}`}>
                     <button 
                         onClick={onClose}
                         className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition bg-slate-100 hover:bg-slate-200 p-1 rounded-full"
@@ -620,9 +688,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                         </>
                                     )}
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 min-w-0">
+                            </div>                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 min-w-0">
                                 <div className="form-group mb-0 min-w-0">
                                     <label className="form-label">Start Time</label>
                                     <input 
@@ -636,16 +702,34 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                                     />
                                 </div>
                                 <div className="form-group mb-0 min-w-0">
-                                    <label className="form-label">Expires At</label>
-                                    <input 
-                                        type="datetime-local" 
-                                        name="expiresAt"
-                                        className="form-input font-medium text-slate-700 w-full min-w-0 max-w-full block"
-                                        value={formData.expiresAt}
-                                        onChange={handleChange}
-                                        min={formData.startTime || minDateTime}
-                                        required
-                                    />
+                                    <label className="form-label">Lecture Duration</label>
+                                    <div className="flex items-center gap-2 h-[42px]">
+                                        <select
+                                            value={durationHours}
+                                            onChange={(e) => handleDurationChange(parseInt(e.target.value, 10), durationMinutes)}
+                                            className="form-input py-2 px-2.5 text-sm font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg cursor-pointer hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        >
+                                            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((h) => (
+                                                <option key={h} value={h}>
+                                                    {h}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="text-sm font-medium text-slate-600">hours</span>
+
+                                        <select
+                                            value={durationMinutes}
+                                            onChange={(e) => handleDurationChange(durationHours, parseInt(e.target.value, 10))}
+                                            className="form-input py-2 px-2.5 text-sm font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg cursor-pointer hover:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 ml-1.5"
+                                        >
+                                            {[0, 15, 30, 45].map((m) => (
+                                                <option key={m} value={m} disabled={durationHours === 0 && m === 0}>
+                                                    {m}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <span className="text-sm font-medium text-slate-600">minutes</span>
+                                    </div>
                                 </div>
                             </div>
 

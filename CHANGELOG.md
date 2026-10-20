@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Maximized Geofence Map & Live Place Search**: Added an expandable full-screen Leaflet map overlay to the session creation modal with real-time location search and autocomplete (OpenStreetMap & Photon geocoding). Includes automatic camera flying, draggable pin repositioning, live geofence radius boundary visualization (`<Circle>`), and a Google Maps-style one-click GPS recalibration aim button (`<LocateFixed>`).
 - **Sleek Custom Scrollbar Styling**: Replaced default browser/OS scrollbars across the application with slim, rounded 6px scrollbars (`scrollbar-width: thin` & `::-webkit-scrollbar`) with inset padding to complement modern card and modal border radiuses.
 
+### Changed
+- **Simplified Session Duration & Expiration Workflow**: Streamlined the session creation modal by replacing the manual "Expires At" datetime picker and preset button clutter with an inline lecture duration control featuring discrete hours (`0`–`10`) and minutes (`0`, `15`, `30`, `45`) dropdowns. Session expiry (`expiresAt`) is now calculated automatically in the background (`startTime + duration`).
+- **Expanded Desktop Session Creation Modal**: Increased the modal width on desktop screens (`md:max-w-xl lg:max-w-2xl`) while maintaining standard dimensions on mobile (`max-w-lg`), eliminating layout clutter and offering ample horizontal breathing room for scheduling and geofence controls.
+
 ### Fixed
 - **Unified Name Handling & CSV Roster Import**: Standardized user profile settings, manual attendee creation, view/edit member modals, and bulk CSV uploads to a single unified `name` field (`studentId,name,email`), eliminating previous inconsistencies between signup, OAuth, and member rosters while retaining full backward compatibility for legacy records.
 
