@@ -517,6 +517,7 @@ const Members = () => {
                 member={viewingMember}
                 onClose={() => setViewingMember(null)}
                 onUpdated={(updatedMember) => {
+                    setViewingMember(updatedMember);
                     setMembers(prev => prev.map(m => m._id === updatedMember._id ? updatedMember : m));
                 }}
                 onDelete={async (member) => {

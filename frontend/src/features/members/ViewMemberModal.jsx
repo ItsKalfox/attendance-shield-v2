@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Save, Trash2, Edit3 } from 'lucide-react';
 import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
@@ -10,19 +10,32 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     
+    const [currentMember, setCurrentMember] = useState(member);
+
+    useEffect(() => {
+        setCurrentMember(member);
+    }, [member]);
+
     // Organization-scoped roster values (fallback to userId attributes)
-    const initialName = (member.name !== undefined && member.name !== '')
-        ? member.name 
-        : (member.userId?.name || `${member.firstName || member.userId?.firstName || ''} ${member.lastName || member.userId?.lastName || ''}`.trim());
-    const initialStudentId = member.studentId || '';
+    const initialName = (currentMember?.name !== undefined && currentMember?.name !== '')
+        ? currentMember.name 
+        : (currentMember?.userId?.name || `${currentMember?.firstName || currentMember?.userId?.firstName || ''} ${currentMember?.lastName || currentMember?.userId?.lastName || ''}`.trim());
+    const initialStudentId = currentMember?.studentId || '';
 
     const [formData, setFormData] = useState({
         name: initialName,
         studentId: initialStudentId
     });
 
+    useEffect(() => {
+        setFormData({
+            name: initialName,
+            studentId: initialStudentId
+        });
+    }, [initialName, initialStudentId]);
+
     const isOwner = activeOrganization?.userRole === 'OWNER';
-    const isAttendee = member.role === 'ATTENDEE';
+    const isAttendee = currentMember?.role === 'ATTENDEE';
 
     const isDirty = Boolean(isEditing && isOwner && isAttendee && (
         formData.name !== initialName ||
@@ -44,9 +57,14 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         if (e) e.preventDefault();
         try {
             setLoading(true);
-            const response = await api.patch(`/organizations/${activeOrganization._id}/members/${member._id}`, {
+            const response = await api.patch(`/organizations/${activeOrganization._id}/members/${currentMember._id}`, {
                 name: formData.name.trim(),
                 studentId: formData.studentId.trim()
+            });
+            setCurrentMember(response.data);
+            setFormData({
+                name: response.data.name !== undefined ? response.data.name : formData.name.trim(),
+                studentId: response.data.studentId !== undefined ? response.data.studentId : formData.studentId.trim()
             });
             onUpdated(response.data);
             setIsEditing(false);
@@ -68,7 +86,7 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
     const executeDelete = async () => {
         try {
             setLoading(true);
-            await onDelete(member);
+            await onDelete(currentMember);
             onClose();
         } catch (error) {
             console.error('Delete failed', error);
@@ -77,7 +95,7 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
         }
     };
 
-    const memberName = initialName || (member.userId?.name || `${member.userId?.firstName || ''} ${member.userId?.lastName || ''}`.trim());
+    const memberName = initialName || (currentMember?.userId?.name || `${currentMember?.userId?.firstName || ''} ${currentMember?.userId?.lastName || ''}`.trim());
     const displayName = memberName || (isAttendee ? 'Attendee' : 'Instructor');
 
     return (
@@ -91,13 +109,13 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                             Member Details
                         </h2>
                         <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            member.role === 'OWNER' 
+                            currentMember?.role === 'OWNER' 
                                 ? 'bg-brand-50 text-brand-700 border border-brand-200/60' 
-                                : member.role === 'INSTRUCTOR'
+                                : currentMember?.role === 'INSTRUCTOR'
                                     ? 'bg-blue-50 text-blue-700 border border-blue-200/60'
                                     : 'bg-slate-100 text-slate-700 border border-slate-200/60'
                         }`}>
-                            {member.role === 'OWNER' ? 'Owner' : member.role === 'INSTRUCTOR' ? 'Instructor' : 'Attendee'}
+                            {currentMember?.role === 'OWNER' ? 'Owner' : currentMember?.role === 'INSTRUCTOR' ? 'Instructor' : 'Attendee'}
                         </span>
                     </div>
 
@@ -186,14 +204,14 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                         Email Address
                                     </div>
                                     <div className="text-sm font-semibold text-slate-700 mt-1 break-all">
-                                        {member.userId?.email || '-'}
+                                        {currentMember?.userId?.email || '-'}
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between px-3 py-2.5 text-xs text-slate-500 bg-slate-50/50 rounded-xl">
                                     <span className="text-slate-400 font-medium">Joined Organization:</span>
                                     <span className="font-semibold text-slate-700">
-                                        {new Date(member.joinedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                        {new Date(currentMember?.joinedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                                     </span>
                                 </div>
                             </div>
@@ -225,21 +243,21 @@ const ViewMemberModal = ({ member, onClose, onUpdated, onDelete }) => {
                                         Email Address
                                     </div>
                                     <div className="text-sm font-semibold text-slate-900 mt-1 break-all">
-                                        {member.userId?.email || '-'}
+                                        {currentMember?.userId?.email || '-'}
                                     </div>
                                 </div>
 
                                 <div className="flex items-center justify-between px-3 py-2.5 text-xs text-slate-500 bg-slate-50/50 rounded-xl">
                                     <span className="text-slate-400 font-medium">Joined Organization:</span>
                                     <span className="font-semibold text-slate-700">
-                                        {new Date(member.joinedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                        {new Date(currentMember?.joinedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                                     </span>
                                 </div>
                             </div>
                         )}
 
                         {/* Solid Red Delete from Organization Action Button */}
-                        {isOwner && member.role !== 'OWNER' && (
+                        {isOwner && currentMember?.role !== 'OWNER' && (
                             <div className="pt-4 border-t border-slate-100">
                                 <button 
                                     type="button"

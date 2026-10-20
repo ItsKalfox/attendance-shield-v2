@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Expanded Desktop Session Creation Modal**: Increased the modal width on desktop screens (`md:max-w-xl lg:max-w-2xl`) while maintaining standard dimensions on mobile (`max-w-lg`), eliminating layout clutter and offering ample horizontal breathing room for scheduling and geofence controls.
 
 ### Fixed
+- **Instant Member Details Modal State Refresh**: Fixed an issue where saving an updated member name in `ViewMemberModal.jsx` did not immediately reflect in the modal's view mode by binding local `currentMember` state and calling `setViewingMember(updatedMember)` in `Members.jsx`, eliminating the need to refresh the page.
 - **Unified Member Name Display in Member Details Modal**: Replaced split "First Name" and "Last Name" display fields in `ViewMemberModal.jsx` with a single unified "Name" card, perfectly matching the application-wide unified name schema and edit mode input.
 - **Course Details React Hook Order (`useMemo` Fix)**: Fixed a React hook rules violation in `CourseDetails.jsx` caused by a `useMemo` call located after early returns, resolving the crash and blank dark green screen when loading the course details page.
 - **Course Coordinator Deduplication & Additional Instructors Count**:
