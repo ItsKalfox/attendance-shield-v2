@@ -5,8 +5,8 @@ import api from '../../services/api';
 import { useOrganization } from '../../context/OrganizationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useModalDismiss } from '../../hooks/useModalDismiss';
-import { X, Target, Navigation, ChevronDown, Search } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { X, Target, Navigation, ChevronDown, Search, Maximize2, Minimize2, MapPin, Check, Loader2, LocateFixed } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Circle, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -27,13 +27,24 @@ const MapClickHandler = ({ setCoordinates }) => {
     return null;
 };
 
-const CenterToLocation = ({ center }) => {
+const CenterToLocation = ({ center, zoom = 16 }) => {
     const map = useMap();
     useEffect(() => {
         if (center) {
-            map.flyTo([center.lat, center.lng], 16);
+            map.flyTo([center.lat, center.lng], zoom, { duration: 1 });
         }
-    }, [center, map]);
+    }, [center, zoom, map]);
+    return null;
+};
+
+const MapResizeHandler = () => {
+    const map = useMap();
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            map.invalidateSize();
+        }, 150);
+        return () => clearTimeout(timer);
+    }, [map]);
     return null;
 };
 
@@ -61,6 +72,90 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
     const [courseSearch, setCourseSearch] = useState('');
     const [isLectureTypeDropdownOpen, setIsLectureTypeDropdownOpen] = useState(false);
+    const [isMapMaximized, setIsMapMaximized] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    // Debounced location search for place autocomplete
+    useEffect(() => {
+        if (!searchQuery || searchQuery.trim().length < 2) {
+            setSearchResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const q = searchQuery.trim();
+                // 1. Try Photon (fast, free OSM geocoding with CORS)
+                const photonRes = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6`);
+                if (photonRes.ok) {
+                    const data = await photonRes.json();
+                    if (data?.features && data.features.length > 0) {
+                        const results = data.features.map((f, idx) => {
+                            const p = f.properties || {};
+                            const parts = [p.street, p.city || p.town || p.district, p.state, p.country].filter(Boolean);
+                            return {
+                                id: `photon-${p.osm_id || idx}`,
+                                name: p.name || parts[0] || q,
+                                subtitle: parts.join(', '),
+                                lat: f.geometry.coordinates[1],
+                                lng: f.geometry.coordinates[0]
+                            };
+                        });
+                        setSearchResults(results);
+                        setShowSuggestions(true);
+                        setIsSearching(false);
+                        return;
+                    }
+                }
+
+                // 2. Fallback to OpenStreetMap Nominatim
+                const nomRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&addressdetails=1`);
+                if (nomRes.ok) {
+                    const data = await nomRes.json();
+                    const results = (data || []).map((item, idx) => ({
+                        id: `nom-${item.place_id || idx}`,
+                        name: item.name || (item.display_name ? item.display_name.split(',')[0] : q),
+                        subtitle: item.display_name,
+                        lat: parseFloat(item.lat),
+                        lng: parseFloat(item.lon)
+                    }));
+                    setSearchResults(results);
+                    setShowSuggestions(true);
+                } else {
+                    setSearchResults([]);
+                }
+            } catch (err) {
+                console.warn('Location search error:', err);
+                setSearchResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 350);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleSelectPlace = (place) => {
+        setIsUserModified(true);
+        const loc = { lat: place.lat, lng: place.lng };
+        setFormData(prev => ({ ...prev, geofenceCoordinates: loc }));
+        setMapCenter(loc);
+        setSearchQuery(place.name);
+        setShowSuggestions(false);
+    };
+
+    const handleMarkerDrag = (e) => {
+        setIsUserModified(true);
+        const latlng = e.target.getLatLng();
+        const loc = { lat: latlng.lat, lng: latlng.lng };
+        setFormData(prev => ({ ...prev, geofenceCoordinates: loc }));
+        setMapCenter(loc);
+    };
 
     const { isShaking, handleBackdropClick } = useModalDismiss({
         onClose,
@@ -306,6 +401,7 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
     const filteredAllCourses = courses.filter(filterCourseSearch);
 
     return createPortal(
+        <>
         <div onClick={handleBackdropClick} className="modal-overlay z-[100] cursor-default">
             <div onClick={handleBackdropClick} className="modal-container">
                 <div className={`modal-content max-w-lg ${isShaking ? 'animate-modal-shake' : ''}`}>
@@ -556,10 +652,8 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                             {/* Geolocation Section */}
                             <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
                                 <div className="flex items-center justify-between mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 border border-brand-100">
-                                            <Navigation size={18} className="text-brand-600" />
-                                        </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <Navigation size={18} className="text-slate-500 shrink-0" />
                                         <div>
                                             <h3 className="font-bold text-slate-800 text-sm">Enforce Location Geofence</h3>
                                             <p className="text-xs text-slate-500">Restrict check-ins to a GPS-defined radius</p>
@@ -573,21 +667,50 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
 
                                 {formData.isGeofenceEnabled && (
                                     <div className="mt-4 animate-fade-in">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium text-slate-600">Center geofence marker:</span>
-                                            <button type="button" onClick={handleRecalibrate} className="text-xs btn btn-secondary py-1 px-3">
-                                                My Location
-                                            </button>
-                                        </div>
-                                        <div className="h-48 w-full rounded-lg overflow-hidden border border-slate-300 mb-4 z-0 relative">
+                                        <div className="h-52 w-full rounded-xl overflow-hidden border border-slate-300 mb-4 z-0 relative shadow-inner">
                                             <MapContainer center={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]} zoom={16} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
                                                 <TileLayer
                                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                                                 />
-                                                <Marker position={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]} />
-                                                <MapClickHandler setCoordinates={(loc) => setFormData(prev => ({...prev, geofenceCoordinates: loc}))} />
+                                                <Marker 
+                                                    position={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]} 
+                                                    draggable={true}
+                                                    eventHandlers={{ dragend: handleMarkerDrag }}
+                                                />
+                                                <Circle
+                                                    center={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]}
+                                                    radius={formData.geofenceRadius}
+                                                    pathOptions={{ color: '#059669', fillColor: '#10b981', fillOpacity: 0.2, weight: 2 }}
+                                                />
+                                                <MapClickHandler setCoordinates={(loc) => {
+                                                    setIsUserModified(true);
+                                                    setFormData(prev => ({...prev, geofenceCoordinates: loc}));
+                                                    setMapCenter(loc);
+                                                }} />
                                                 <CenterToLocation center={mapCenter} />
+                                                <MapResizeHandler />
                                             </MapContainer>
+
+                                            {/* Maximize & Search button on top right */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsMapMaximized(true)}
+                                                className="absolute top-2.5 right-2.5 z-[400] flex items-center gap-1.5 px-2.5 py-1.5 bg-white/95 hover:bg-white text-slate-700 hover:text-brand-600 rounded-lg shadow-md border border-slate-200/80 text-xs font-semibold backdrop-blur transition active:scale-95 cursor-pointer"
+                                                title="Maximize map and search locations"
+                                            >
+                                                <Maximize2 size={13} className="text-brand-600" />
+                                                <span>Expand & Search</span>
+                                            </button>
+
+                                            {/* Aim / Locate GPS button on bottom right */}
+                                            <button
+                                                type="button"
+                                                onClick={handleRecalibrate}
+                                                className="absolute bottom-2.5 right-2.5 z-[400] w-8 h-8 flex items-center justify-center bg-white/95 hover:bg-white text-slate-700 hover:text-brand-600 rounded-lg shadow-md border border-slate-200/80 backdrop-blur transition active:scale-95 cursor-pointer"
+                                                title="Center on my location"
+                                            >
+                                                <LocateFixed size={16} />
+                                            </button>
                                         </div>
                                         
                                         <div className="mt-4 p-3.5 bg-white rounded-xl border border-slate-200/80 shadow-xs">
@@ -655,9 +778,210 @@ const CreateSessionModal = ({ onClose, onSessionCreated }) => {
                     )}
                 </div>
             </div>
-        </div>,
-        document.body
-    );
+        </div>
+
+        {/* Maximized Map Overlay Modal */}
+        {isMapMaximized && (
+            <div className="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-sm flex flex-col p-2 sm:p-4 md:p-6 animate-fade-in">
+                <div className="relative w-full h-full max-w-5xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-slate-200">
+                    {/* Top Bar: Title, Search Bar, GPS Recalibrate, Close/Minimize button */}
+                    <div className="p-3 sm:p-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 z-[1000] relative">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0 border border-brand-100">
+                                <MapPin size={18} className="text-brand-600" />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-800 text-sm sm:text-base leading-tight">Geofence Location</h3>
+                                <p className="text-[11px] text-slate-400 hidden xs:block">Search a place or click/drag the pin</p>
+                            </div>
+                        </div>
+
+                        {/* Search Bar with live autocomplete */}
+                        <div className="relative flex-1 max-w-md w-full z-[1050]">
+                            <div className="relative">
+                                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onFocus={() => { if (searchResults.length > 0) setShowSuggestions(true); }}
+                                    placeholder="Search place, campus, hall, or address..."
+                                    className="w-full pl-9 pr-9 py-2 text-xs sm:text-sm bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 focus:border-brand-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs transition"
+                                />
+                                {isSearching ? (
+                                    <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-600 animate-spin" />
+                                ) : searchQuery ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSearchQuery(''); setSearchResults([]); setShowSuggestions(false); }}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            {/* Autocomplete suggestions dropdown */}
+                            {showSuggestions && searchResults.length > 0 && (
+                                <>
+                                    <div className="fixed inset-0 z-[1060]" onClick={() => setShowSuggestions(false)}></div>
+                                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-[1070] overflow-hidden divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                                        {searchResults.map((res) => (
+                                            <button
+                                                key={res.id}
+                                                type="button"
+                                                onClick={() => handleSelectPlace(res)}
+                                                className="w-full text-left px-3.5 py-2.5 hover:bg-brand-50/70 transition flex items-start gap-2.5 group cursor-pointer"
+                                            >
+                                                <MapPin size={15} className="text-slate-400 group-hover:text-brand-600 shrink-0 mt-0.5 transition" />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-semibold text-xs sm:text-sm text-slate-800 group-hover:text-brand-700 truncate">
+                                                        {res.name}
+                                                    </div>
+                                                    {res.subtitle && (
+                                                        <div className="text-[11px] text-slate-400 truncate">
+                                                            {res.subtitle}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Right controls: My Location & Close */}
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
+                            <button
+                                type="button"
+                                onClick={handleRecalibrate}
+                                className="btn btn-secondary py-2 px-3 text-xs font-semibold flex items-center gap-1.5"
+                                title="Center map on my current GPS location"
+                            >
+                                <Navigation size={13} className="text-brand-600" />
+                                <span className="hidden sm:inline">My Location</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsMapMaximized(false)}
+                                className="text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 p-2 rounded-xl transition cursor-pointer"
+                                title="Close maximized map"
+                            >
+                                <Minimize2 size={16} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Map Canvas */}
+                    <div className="relative flex-1 w-full bg-slate-100 overflow-hidden z-0 isolate">
+                        <MapContainer
+                            center={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]}
+                            zoom={17}
+                            scrollWheelZoom={true}
+                            style={{ height: '100%', width: '100%' }}
+                        >
+                            <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                            />
+                            <Marker
+                                position={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]}
+                                draggable={true}
+                                eventHandlers={{ dragend: handleMarkerDrag }}
+                            />
+                            <Circle
+                                center={[formData.geofenceCoordinates.lat, formData.geofenceCoordinates.lng]}
+                                radius={formData.geofenceRadius}
+                                pathOptions={{ color: '#059669', fillColor: '#10b981', fillOpacity: 0.18, weight: 2 }}
+                            />
+                            <MapClickHandler setCoordinates={(loc) => {
+                                setIsUserModified(true);
+                                setFormData(prev => ({ ...prev, geofenceCoordinates: loc }));
+                                setMapCenter(loc);
+                            }} />
+                            <CenterToLocation center={mapCenter} zoom={17} />
+                            <MapResizeHandler />
+                        </MapContainer>
+
+                        {/* Floating instruction chip on the map */}
+                        <div className="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-200/80 shadow-md text-[11px] text-slate-600 font-medium flex items-center gap-1.5 pointer-events-none">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Click anywhere on the map or drag the pin to reposition</span>
+                        </div>
+
+                        {/* Aim / Locate GPS button on bottom right */}
+                        <button
+                            type="button"
+                            onClick={handleRecalibrate}
+                            className="absolute bottom-3 right-3 z-[400] w-9 h-9 flex items-center justify-center bg-white/95 hover:bg-white text-slate-700 hover:text-brand-600 rounded-xl shadow-md border border-slate-200/80 backdrop-blur transition active:scale-95 cursor-pointer"
+                            title="Center on my location"
+                        >
+                            <LocateFixed size={18} />
+                        </button>
+                    </div>
+
+                    {/* Bottom Bar: Coordinates, Radius, Confirm Button */}
+                    <div className="p-3 sm:p-4 bg-white border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 z-20">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                            <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200/80 text-xs text-slate-700">
+                                <MapPin size={13} className="text-brand-600" />
+                                <span className="font-mono text-[11px]">
+                                    {formData.geofenceCoordinates.lat.toFixed(5)}, {formData.geofenceCoordinates.lng.toFixed(5)}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200/80 text-xs text-slate-700">
+                                <Target size={13} className="text-slate-500" />
+                                <span>Radius: <strong className="text-brand-700 font-bold">{formData.geofenceRadius}m</strong></span>
+                            </div>
+
+                            {/* Quick radius pills in maximized view */}
+                            <div className="hidden md:flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                {[50, 100, 250, 500].map(r => (
+                                    <button
+                                        key={r}
+                                        type="button"
+                                        onClick={() => {
+                                            setIsUserModified(true);
+                                            setFormData(prev => ({ ...prev, geofenceRadius: r }));
+                                        }}
+                                        className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition ${
+                                            formData.geofenceRadius === r
+                                                ? 'bg-slate-800 text-white shadow-2xs'
+                                                : 'text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                    >
+                                        {r}m
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsMapMaximized(false)}
+                                className="btn btn-secondary py-2 px-3.5 text-xs font-semibold"
+                            >
+                                Close
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsMapMaximized(false)}
+                                className="btn btn-primary py-2 px-4 text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-brand-500/20"
+                            >
+                                <Check size={14} />
+                                Confirm Location
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+    </>,
+    document.body
+);
 };
 
 export default CreateSessionModal;

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Maximized Geofence Map & Live Place Search**: Added an expandable full-screen Leaflet map overlay to the session creation modal with real-time location search and autocomplete (OpenStreetMap & Photon geocoding). Includes automatic camera flying, draggable pin repositioning, live geofence radius boundary visualization (`<Circle>`), and a Google Maps-style one-click GPS recalibration aim button (`<LocateFixed>`).
+- **Sleek Custom Scrollbar Styling**: Replaced default browser/OS scrollbars across the application with slim, rounded 6px scrollbars (`scrollbar-width: thin` & `::-webkit-scrollbar`) with inset padding to complement modern card and modal border radiuses.
+
 ### Fixed
 - **Unified Name Handling & CSV Roster Import**: Standardized user profile settings, manual attendee creation, view/edit member modals, and bulk CSV uploads to a single unified `name` field (`studentId,name,email`), eliminating previous inconsistencies between signup, OAuth, and member rosters while retaining full backward compatibility for legacy records.
 

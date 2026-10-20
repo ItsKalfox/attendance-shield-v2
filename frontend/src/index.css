@@ -16,6 +16,31 @@
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* Sleek modern scrollbars across the app */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+    transition: background-color 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
 }
 
 @layer components {
@@ -218,6 +243,35 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+
+/* Modals: slim rounded scrollbar with track inset from curved corners */
+.modal-content::-webkit-scrollbar,
+.modal-scroll-body::-webkit-scrollbar,
+.modal-flex-card::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track,
+.modal-scroll-body::-webkit-scrollbar-track,
+.modal-flex-card::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 16px;
+}
+
+.modal-content::-webkit-scrollbar-thumb,
+.modal-scroll-body::-webkit-scrollbar-thumb,
+.modal-flex-card::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover,
+.modal-scroll-body::-webkit-scrollbar-thumb:hover,
+.modal-flex-card::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Animations */
