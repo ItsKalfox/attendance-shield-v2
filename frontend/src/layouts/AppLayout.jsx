@@ -163,10 +163,10 @@ const AppLayout = () => {
                                     <div 
                                         className={`w-9 h-9 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold text-sm mr-2.5 shrink-0 shadow-sm ${user?.avatar ? 'hidden' : ''}`}
                                     >
-                                        {user?.firstName?.charAt(0) || 'U'}
+                                        {(user?.name || user?.firstName || 'U').charAt(0).toUpperCase()}
                                     </div>
                                     <div className="truncate min-w-0">
-                                        <p className="text-xs font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
+                                        <p className="text-xs font-bold text-white truncate">{user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'}</p>
                                         <p className="text-[11px] text-brand-300/60 truncate">{user?.email}</p>
                                     </div>
                                 </div>
@@ -239,10 +239,10 @@ const AppLayout = () => {
                                 <div 
                                     className={`w-10 h-10 rounded-full bg-brand-800 flex items-center justify-center text-white font-bold mr-3 flex-shrink-0 shadow-sm ${user?.avatar ? 'hidden' : ''}`}
                                 >
-                                    {user?.firstName?.charAt(0) || 'U'}
+                                    {(user?.name || user?.firstName || 'U').charAt(0).toUpperCase()}
                                 </div>
                                 <div className="truncate">
-                                    <p className="text-sm font-bold text-white truncate">{user?.firstName} {user?.lastName}</p>
+                                    <p className="text-sm font-bold text-white truncate">{user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'User'}</p>
                                     <p className="text-xs text-brand-300/60 truncate">{user?.email}</p>
                                 </div>
                             </div>

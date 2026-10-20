@@ -36,7 +36,7 @@ const getCourses = async (req, res, next) => {
         const courses = await Course.find(query)
             .populate({
                 path: 'instructor',
-                populate: { path: 'userId', select: 'firstName lastName email avatar' }
+                populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             })
             .sort({ createdAt: -1 })
             .lean();
@@ -45,7 +45,7 @@ const getCourses = async (req, res, next) => {
             course.attendeesCount = await CourseMember.countDocuments({ courseId: course._id });
             if (!course.instructor) {
                 const ownerMember = await OrganizationMember.findOne({ organizationId, role: 'OWNER' })
-                    .populate('userId', 'firstName lastName email avatar');
+                    .populate('userId', 'name firstName lastName email avatar');
                 if (ownerMember) {
                     course.instructor = ownerMember;
                     await Course.updateOne({ _id: course._id }, { $set: { instructor: ownerMember._id } });
@@ -104,7 +104,7 @@ const createCourse = async (req, res, next) => {
         const populatedCourse = await Course.findById(course._id)
             .populate({
                 path: 'instructor',
-                populate: { path: 'userId', select: 'firstName lastName email avatar' }
+                populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             });
 
         res.status(201).json(populatedCourse);
@@ -124,7 +124,7 @@ const getCourseById = async (req, res, next) => {
         })
         .populate({
             path: 'instructor',
-            populate: { path: 'userId', select: 'firstName lastName email avatar' }
+            populate: { path: 'userId', select: 'name firstName lastName email avatar' }
         });
 
         if (!course) {
@@ -134,7 +134,7 @@ const getCourseById = async (req, res, next) => {
         // If older course without instructor, assign owner
         if (!course.instructor) {
             const ownerMember = await OrganizationMember.findOne({ organizationId: req.params.organizationId, role: 'OWNER' })
-                .populate('userId', 'firstName lastName email avatar');
+                .populate('userId', 'name firstName lastName email avatar');
             if (ownerMember) {
                 course.instructor = ownerMember;
                 await Course.updateOne({ _id: course._id }, { $set: { instructor: ownerMember._id } });
@@ -216,7 +216,7 @@ const updateCourse = async (req, res, next) => {
         const populatedCourse = await Course.findById(course._id)
             .populate({
                 path: 'instructor',
-                populate: { path: 'userId', select: 'firstName lastName email avatar' }
+                populate: { path: 'userId', select: 'name firstName lastName email avatar' }
             });
 
         res.status(200).json(populatedCourse);
@@ -236,11 +236,11 @@ const getCourseMembers = async (req, res, next) => {
         })
         .populate({
             path: 'userId',
-            select: 'firstName lastName email avatar'
+            select: 'name firstName lastName email avatar'
         })
         .populate({
             path: 'organizationMemberId',
-            select: 'studentId role status joinedAt firstName lastName'
+            select: 'studentId role status joinedAt name firstName lastName'
         });
 
         res.status(200).json(members);

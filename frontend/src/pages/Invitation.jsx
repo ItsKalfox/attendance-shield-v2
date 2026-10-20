@@ -157,10 +157,10 @@ const Invitation = () => {
                             <div className="space-y-4">
                                 <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-left flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
-                                        {user.firstName?.charAt(0) || 'U'}
+                                        {(user.name || user.firstName || 'U').charAt(0).toUpperCase()}
                                     </div>
                                     <div className="truncate text-xs">
-                                        <p className="font-semibold text-slate-800 truncate">{user.firstName} {user.lastName}</p>
+                                        <p className="font-semibold text-slate-800 truncate">{user.name || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User'}</p>
                                         <p className="text-slate-500 font-mono truncate">{user.email}</p>
                                     </div>
                                 </div>

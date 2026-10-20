@@ -598,7 +598,7 @@ const googleAuth = async (req, res, next) => {
             return res.status(400).json({ message: 'Google token is required' });
         }
 
-        let email, given_name, family_name, picture;
+        let email, given_name, family_name, picture, full_name;
 
         try {
             // First try treating the token as an ID token
@@ -608,6 +608,7 @@ const googleAuth = async (req, res, next) => {
             });
             const payload = ticket.getPayload();
             email = payload.email;
+            full_name = payload.name;
             given_name = payload.given_name || payload.name?.split(' ')[0];
             family_name = payload.family_name || (payload.name?.split(' ').slice(1).join(' ') || '');
             picture = payload.picture || payload.avatar_url;
@@ -626,12 +627,14 @@ const googleAuth = async (req, res, next) => {
                 }
                 const altData = await altResponse.json();
                 email = altData.email;
+                full_name = altData.name;
                 given_name = altData.given_name || altData.name?.split(' ')[0];
                 family_name = altData.family_name || (altData.name?.split(' ').slice(1).join(' ') || '');
                 picture = altData.picture || altData.avatar_url;
             } else {
                 const data = await response.json();
                 email = data.email;
+                full_name = data.name;
                 given_name = data.given_name || data.name?.split(' ')[0];
                 family_name = data.family_name || (data.name?.split(' ').slice(1).join(' ') || '');
                 picture = data.picture || data.avatar_url || data.photo || data.picture_url;
@@ -640,7 +643,7 @@ const googleAuth = async (req, res, next) => {
 
         let user = await User.findOne({ email });
 
-        const googleFullName = (payload.name || `${given_name || ''} ${family_name || ''}`).trim() || 'User';
+        const googleFullName = (full_name || `${given_name || ''} ${family_name || ''}`).trim() || 'User';
 
         if (!user) {
             // Generate a random secure password for the user
@@ -709,13 +712,14 @@ const microsoftAuth = async (req, res, next) => {
         const data = response.data;
         // email can be in mail or userPrincipalName
         const email = data.mail || data.userPrincipalName;
+        const displayName = (data.displayName || '').trim();
         
         let given_name = data.givenName ? data.givenName.trim() : '';
         let family_name = data.surname ? data.surname.trim() : '';
 
         // If either given_name or family_name is missing, extract from displayName
-        if ((!given_name || !family_name) && data.displayName) {
-            const nameParts = data.displayName.trim().split(/\s+/);
+        if ((!given_name || !family_name) && displayName) {
+            const nameParts = displayName.split(/\s+/);
             if (!given_name && nameParts.length > 0) {
                 given_name = nameParts[0];
             }

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Expanded Desktop Session Creation Modal**: Increased the modal width on desktop screens (`md:max-w-xl lg:max-w-2xl`) while maintaining standard dimensions on mobile (`max-w-lg`), eliminating layout clutter and offering ample horizontal breathing room for scheduling and geofence controls.
 
 ### Fixed
+- **Google & Microsoft OAuth Name Resolution (`ReferenceError` Fix)**: Fixed runtime reference errors in `googleAuth` (`payload` out of scope) and `microsoftAuth` (`displayName` undeclared identifier) within `backend/src/controllers/authController.js` introduced during unified name refactoring, resolving false "Invalid Google token" and "Invalid Microsoft token" errors upon authentication. Also broadened unified `name` field projection in user and member queries across course, session, and organization controllers.
 - **Unified Name Handling & CSV Roster Import**: Standardized user profile settings, manual attendee creation, view/edit member modals, and bulk CSV uploads to a single unified `name` field (`studentId,name,email`), eliminating previous inconsistencies between signup, OAuth, and member rosters while retaining full backward compatibility for legacy records.
 
 ---

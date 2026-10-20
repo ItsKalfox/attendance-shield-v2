@@ -21,7 +21,7 @@ const getSessions = async (req, res, next) => {
             .populate('courseId', 'name code')
             .populate({
                 path: 'instructorId',
-                populate: { path: 'userId', select: 'firstName lastName email' }
+                populate: { path: 'userId', select: 'name firstName lastName email' }
             })
             .sort({ startTime: -1 });
 
@@ -124,7 +124,7 @@ const createSession = async (req, res, next) => {
         let session = await AttendanceSession.create(sessionData);
         session = await session.populate([
             { path: 'courseId', select: 'name code' },
-            { path: 'instructorId', populate: { path: 'userId', select: 'firstName lastName email' } }
+            { path: 'instructorId', populate: { path: 'userId', select: 'name firstName lastName email' } }
         ]);
 
         res.status(201).json({
@@ -148,7 +148,7 @@ const getSessionById = async (req, res, next) => {
         .populate('courseId', 'name code')
         .populate({
             path: 'instructorId',
-            populate: { path: 'userId', select: 'firstName lastName email' }
+            populate: { path: 'userId', select: 'name firstName lastName email' }
         });
 
         if (!session) {

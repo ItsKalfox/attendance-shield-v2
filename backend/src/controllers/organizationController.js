@@ -132,11 +132,11 @@ const exportOrganizationData = async (req, res, next) => {
         }
 
         const [members, courses, enrollments, sessions, attendanceRecords] = await Promise.all([
-            OrganizationMember.find({ organizationId: orgId }).populate('userId', 'firstName lastName email studentId'),
+            OrganizationMember.find({ organizationId: orgId }).populate('userId', 'name firstName lastName email studentId'),
             Course.find({ organizationId: orgId }).populate('instructor'),
-            CourseMember.find({ organizationId: orgId }).populate('userId', 'firstName lastName email studentId').populate('organizationMemberId', 'firstName lastName studentId').populate('courseId', 'code name'),
+            CourseMember.find({ organizationId: orgId }).populate('userId', 'name firstName lastName email studentId').populate('organizationMemberId', 'name firstName lastName studentId').populate('courseId', 'code name'),
             AttendanceSession.find({ organizationId: orgId }).populate('courseId', 'code name batch semester').populate('instructorId'),
-            AttendanceRecord.find({ organizationId: orgId }).populate('userId', 'firstName lastName email studentId').populate('organizationMemberId', 'firstName lastName studentId').populate('courseId', 'code name').populate('sessionId', 'lectureType startTime')
+            AttendanceRecord.find({ organizationId: orgId }).populate('userId', 'name firstName lastName email studentId').populate('organizationMemberId', 'name firstName lastName studentId').populate('courseId', 'code name').populate('sessionId', 'lectureType startTime')
         ]);
 
         res.status(200).json({
@@ -151,6 +151,7 @@ const exportOrganizationData = async (req, res, next) => {
                 id: m._id,
                 role: m.role,
                 studentId: m.studentId || m.userId?.studentId || '',
+                name: m.name || `${m.firstName || m.userId?.firstName || ''} ${m.lastName || m.userId?.lastName || ''}`.trim(),
                 firstName: m.firstName || m.userId?.firstName || '',
                 lastName: m.lastName || m.userId?.lastName || '',
                 email: m.userId?.email || '',
@@ -173,7 +174,7 @@ const exportOrganizationData = async (req, res, next) => {
                 courseCode: e.courseId?.code || '',
                 courseName: e.courseId?.name || '',
                 studentId: e.organizationMemberId?.studentId || e.userId?.studentId || '',
-                studentName: `${e.organizationMemberId?.firstName || e.userId?.firstName || ''} ${e.organizationMemberId?.lastName || e.userId?.lastName || ''}`.trim(),
+                studentName: e.organizationMemberId?.name || `${e.organizationMemberId?.firstName || e.userId?.firstName || ''} ${e.organizationMemberId?.lastName || e.userId?.lastName || ''}`.trim(),
                 studentEmail: e.userId?.email || '',
                 enrolledAt: e.createdAt
             })),
@@ -196,7 +197,7 @@ const exportOrganizationData = async (req, res, next) => {
                 sessionType: r.sessionId?.lectureType || '',
                 sessionStartTime: r.sessionId?.startTime || '',
                 studentId: r.organizationMemberId?.studentId || r.userId?.studentId || '',
-                studentName: `${r.organizationMemberId?.firstName || r.userId?.firstName || ''} ${r.organizationMemberId?.lastName || r.userId?.lastName || ''}`.trim(),
+                studentName: r.organizationMemberId?.name || `${r.organizationMemberId?.firstName || r.userId?.firstName || ''} ${r.organizationMemberId?.lastName || r.userId?.lastName || ''}`.trim(),
                 studentEmail: r.userId?.email || '',
                 status: r.status,
                 markedAt: r.markedAt,
